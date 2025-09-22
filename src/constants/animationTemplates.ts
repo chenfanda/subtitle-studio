@@ -49,6 +49,54 @@ export const ANIMATION_TEMPLATES: Record<string, AnimationTemplate[]> = {
           }
         }
       ]
+    },
+    {
+      id: 'fade-out',
+      name: 'Fade Out',
+      preview: 'Fade Out',
+      category: 'basic',
+      effects: [
+        {
+          type: 'exit',
+          name: 'fadeOut',
+          duration: 500,
+          properties: { opacity: [1, 0] }
+        }
+      ]
+    },
+    {
+      id: 'slide-down-out',
+      name: 'Slide Down Out',
+      preview: 'Slide Down',
+      category: 'basic',
+      effects: [
+        {
+          type: 'exit',
+          name: 'slideDownOut',
+          duration: 600,
+          properties: { 
+            transform: ['translateY(0)', 'translateY(30px)'],
+            opacity: [1, 0]
+          }
+        }
+      ]
+    },
+    {
+      id: 'scale-out',
+      name: 'Scale Out',
+      preview: 'Scale Out',
+      category: 'basic',
+      effects: [
+        {
+          type: 'exit',
+          name: 'scaleOut',
+          duration: 400,
+          properties: { 
+            transform: ['scale(1)', 'scale(0.8)'],
+            opacity: [1, 0]
+          }
+        }
+      ]
     }
   ],
 
@@ -101,6 +149,58 @@ export const ANIMATION_TEMPLATES: Record<string, AnimationTemplate[]> = {
           properties: { 
             transform: ['rotateY(90deg)', 'rotateY(0)'],
             opacity: [0, 1]
+          }
+        }
+      ]
+    },
+    {
+      id: 'bounce-out',
+      name: 'Bounce Out',
+      preview: 'Bounce Out',
+      category: 'advanced',
+      effects: [
+        {
+          type: 'exit',
+          name: 'bounceOut',
+          duration: 800,
+          easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          properties: { 
+            transform: ['scale(1)', 'scale(1.05)', 'scale(0.95)', 'scale(0.3)'],
+            opacity: [1, 1, 1, 0]
+          }
+        }
+      ]
+    },
+    {
+      id: 'rotate-zoom-out',
+      name: 'Rotate Zoom Out',
+      preview: 'Rotate Out',
+      category: 'advanced',
+      effects: [
+        {
+          type: 'exit',
+          name: 'rotateZoomOut',
+          duration: 700,
+          properties: { 
+            transform: ['rotate(0) scale(1)', 'rotate(-180deg) scale(0.5)'],
+            opacity: [1, 0]
+          }
+        }
+      ]
+    },
+    {
+      id: 'flip-out',
+      name: 'Flip Out',
+      preview: 'Flip Out',
+      category: 'advanced',
+      effects: [
+        {
+          type: 'exit',
+          name: 'flipOut',
+          duration: 600,
+          properties: { 
+            transform: ['rotateY(0)', 'rotateY(-90deg)'],
+            opacity: [1, 0]
           }
         }
       ]
@@ -160,6 +260,23 @@ export const ANIMATION_TEMPLATES: Record<string, AnimationTemplate[]> = {
               '#ff0000', '#ff8000', '#ffff00', 
               '#00ff00', '#0080ff', '#8000ff', '#ff0000'
             ]
+          }
+        }
+      ]
+    },
+    {
+      id: 'typewriter-reverse',
+      name: 'Typewriter Reverse',
+      preview: 'Type Reverse',
+      category: 'featured',
+      effects: [
+        {
+          type: 'exit',
+          name: 'typewriterReverse',
+          duration: 1000,
+          properties: { 
+            width: ['100%', '0%'],
+            opacity: [1, 1]
           }
         }
       ]

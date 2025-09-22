@@ -1,6 +1,7 @@
 import { VerticalToolbar } from '@/components/sidebar/SidebarTabs';
 import { SubtitlePanel } from '@/components/subtitle/SubtitlePanel';
 import { TextPanel } from '@/components/text/TextPanel';
+import { TemplatePanel } from '@/components/templates/TemplatePanel';
 import { useUIStore } from '@/stores/useUIStore';
 
 export function LeftSidebar() {
@@ -18,13 +19,26 @@ export function LeftSidebar() {
       <VerticalToolbar />
       
       <div className="flex-1 overflow-hidden">
-        {activePanel === 'subtitles' && <SubtitlePanel />}
-        {activePanel === 'audio' && <AudioPanel />}
-        {activePanel === 'media' && <MediaPanel />}  
-        {activePanel === 'text' && <TextPanel />}
-        {activePanel === 'broll' && <BRollPanel />}
-        {activePanel === 'search' && <SearchPanel />}
         {activePanel === 'clips' && <ClipsPanel />}
+        {activePanel === 'subtitles' && <SubtitlePanel />}
+        {activePanel === 'text' && <TextPanel />}
+        {activePanel === 'templates' && <TemplatePanel />}
+        {activePanel === 'media' && <MediaPanel />}
+        {activePanel === 'audio' && <AudioPanel />}
+        {activePanel === 'broll' && <BRollPanel />}
+
+      </div>
+    </div>
+  );
+}
+
+function ClipsPanel() {
+  return (
+    <div className="h-full flex items-center justify-center text-text-secondary">
+      <div className="text-center">
+        <div className="text-4xl mb-2">✂️</div>
+        <div>剪辑面板</div>
+        <div className="text-sm mt-1">即将实现</div>
       </div>
     </div>
   );
@@ -60,30 +74,6 @@ function BRollPanel() {
       <div className="text-center">
         <div className="text-4xl mb-2">🎬</div>
         <div>B-roll面板</div>
-        <div className="text-sm mt-1">即将实现</div>
-      </div>
-    </div>
-  );
-}
-
-function SearchPanel() {
-  return (
-    <div className="h-full flex items-center justify-center text-text-secondary">
-      <div className="text-center">
-        <div className="text-4xl mb-2">🔍</div>
-        <div>搜索面板</div>
-        <div className="text-sm mt-1">即将实现</div>
-      </div>
-    </div>
-  );
-}
-
-function ClipsPanel() {
-  return (
-    <div className="h-full flex items-center justify-center text-text-secondary">
-      <div className="text-center">
-        <div className="text-4xl mb-2">✂️</div>
-        <div>剪辑面板</div>
         <div className="text-sm mt-1">即将实现</div>
       </div>
     </div>

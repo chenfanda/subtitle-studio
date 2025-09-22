@@ -19,7 +19,7 @@ const QUICK_FONTS = [
 ];
 
 export function SubtitleEditor() {
-  const { subtitles, updateSubtitleRichText, validateSubtitle } = useProjectStore();
+  const { subtitles, updateSubtitleRichText, updateSubtitle, validateSubtitle } = useProjectStore();
   const { editingSubtitleId, setEditingSubtitle } = useUIStore();
   
   const [editStartTime, setEditStartTime] = useState('');
@@ -93,6 +93,11 @@ export function SubtitleEditor() {
   const handleCancel = () => {
     setEditingSubtitle(null);
     setErrors([]);
+  };
+
+  const handleRemoveAnimations = () => {
+    if (!currentSubtitle) return;
+    updateSubtitle(currentSubtitle.id, { animations: [] });
   };
 
   const updateEditorContent = () => {
@@ -190,6 +195,7 @@ export function SubtitleEditor() {
   }
 
   const selectedText = selectionRange && selectionRange.start !== selectionRange.end;
+  const hasAnimations = currentSubtitle.animations && currentSubtitle.animations.length > 0;
 
   return (
     <div className="p-4 bg-bg-secondary border-t border-border-secondary space-y-4">
@@ -303,6 +309,28 @@ export function SubtitleEditor() {
             {convertRichTextToPlainText(richTextSegments).length}/100 字符 • 选中文本显示格式化选项 • Ctrl+Enter 保存 • Esc 取消
           </div>
         </div>
+
+        {hasAnimations && (
+          <div>
+            <label className="block text-xs text-text-tertiary mb-1">动效信息</label>
+            <div className="bg-bg-tertiary border border-border-secondary rounded p-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-text-primary">
+                  已应用 {currentSubtitle.animations!.length} 个动效
+                </div>
+                <button
+                  onClick={handleRemoveAnimations}
+                  className="text-xs text-accent-red hover:text-accent-red/80 transition-colors"
+                >
+                  移除动效
+                </button>
+              </div>
+              <div className="text-xs text-text-tertiary mt-1">
+                {currentSubtitle.animations!.map(anim => anim.name).join(', ')}
+              </div>
+            </div>
+          </div>
+        )}
 
         {errors.length > 0 && (
           <div className="text-xs text-accent-red space-y-1">
