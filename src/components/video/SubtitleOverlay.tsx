@@ -3,6 +3,8 @@ import { useProjectStore } from '../../stores/useProjectStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '../../types/subtitle';
 import { SubtitleQuickToolbar } from './SubtitleQuickToolbar';
+import { convertSegmentsToCSS } from '../../utils/textStyleUtils';
+import type { RichTextSegment } from '../../types/subtitle';
 
 export function SubtitleOverlay() {
   const { 
@@ -11,7 +13,7 @@ export function SubtitleOverlay() {
     updateSubtitlePosition, 
     getSubtitlePosition 
   } = useProjectStore();
-  const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
+  const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle, setActivePanel } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickToolbar, setShowQuickToolbar] = useState(false);
@@ -30,7 +32,64 @@ export function SubtitleOverlay() {
   
   const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85 };
   
-  const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
+  const handleDoubleClick = () => {
+    if (currentSubtitle) {
+      setEditingSubtitle(currentSubtitle.id);
+      setActivePanel('subtitles');
+    }
+  };
+
+  const renderSubtitleContent = () => {
+    if (!currentSubtitle) return null;
+    
+    // 如果有富文本数据，渲染富文本
+    if (currentSubtitle.richText && currentSubtitle.richText.length > 0) {
+      const baseStyle = currentSubtitle.style || DEFAULT_SUBTITLE_STYLE;
+      const segmentStyles = convertSegmentsToCSS(currentSubtitle.richText, baseStyle);
+      
+      return (
+        <div style={{
+          textAlign: baseStyle.alignment,
+          wordBreak: 'break-word',
+        }}>
+          {currentSubtitle.richText.map((segment, index) => {
+            const segmentStyle = segmentStyles[index];
+            return (
+              <span
+                key={index}
+                style={segmentStyle}
+              >
+                {segment.text}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+    
+    // 否则渲染简单文本（保持原有逻辑）
+    return (
+      <div 
+        style={{
+          fontFamily: subtitleStyle.fontFamily,
+          fontSize: `${subtitleStyle.fontSize}px`,
+          color: subtitleStyle.color,
+          backgroundColor: subtitleStyle.backgroundColor,
+          opacity: subtitleStyle.opacity,
+          textAlign: subtitleStyle.alignment,
+          textShadow: subtitleStyle.shadow.enabled 
+            ? `${subtitleStyle.shadow.offsetX}px ${subtitleStyle.shadow.offsetY}px ${subtitleStyle.shadow.blur}px ${subtitleStyle.shadow.color}`
+            : undefined,
+          wordBreak: 'break-word',
+          borderColor: subtitleStyle.borderColor,
+          borderWidth: subtitleStyle.borderWidth ? `${subtitleStyle.borderWidth}px` : undefined,
+          borderStyle: subtitleStyle.borderWidth ? 'solid' : undefined,
+        }}
+      >
+        {currentSubtitle.text}
+      </div>
+    );
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.detail === 2) return;
@@ -73,11 +132,7 @@ export function SubtitleOverlay() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleDoubleClick = () => {
-    if (currentSubtitle) {
-      setEditingSubtitle(currentSubtitle.id);
-    }
-  };
+  const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
 
   return (
     <div className="absolute inset-0 pointer-events-none z-20">
@@ -104,25 +159,7 @@ export function SubtitleOverlay() {
               : 'border-2 border-transparent'
             }
           `}>
-            <div 
-              style={{
-                fontFamily: subtitleStyle.fontFamily,
-                fontSize: `${subtitleStyle.fontSize}px`,
-                color: subtitleStyle.color,
-                backgroundColor: subtitleStyle.backgroundColor,
-                opacity: subtitleStyle.opacity,
-                textAlign: subtitleStyle.alignment,
-                textShadow: subtitleStyle.shadow.enabled 
-                  ? `${subtitleStyle.shadow.offsetX}px ${subtitleStyle.shadow.offsetY}px ${subtitleStyle.shadow.blur}px ${subtitleStyle.shadow.color}`
-                  : undefined,
-                wordBreak: 'break-word',
-                borderColor: subtitleStyle.borderColor,
-                borderWidth: subtitleStyle.borderWidth ? `${subtitleStyle.borderWidth}px` : undefined,
-                borderStyle: subtitleStyle.borderWidth ? 'solid' : undefined,
-              }}
-            >
-              {currentSubtitle.text}
-            </div>
+            {renderSubtitleContent()}
             
             {isSelected && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-purple rounded-full border-2 border-white"></div>

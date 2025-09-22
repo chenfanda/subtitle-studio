@@ -142,3 +142,113 @@ const isValidColor = (color: string): boolean => {
 const camelToKebab = (str: string): string => {
   return str.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
 };
+
+// 富文本处理函数
+import type { RichTextSegment, SubtitleStyle } from '@/types/subtitle';
+
+export const convertRichTextToPlainText = (segments: RichTextSegment[]): string => {
+  return segments.map(segment => segment.text).join('');
+};
+
+export const createRichTextFromPlainText = (text: string, baseStyle?: SubtitleStyle): RichTextSegment[] => {
+  return [{
+    text: text,
+    style: baseStyle ? {} : undefined
+  }];
+};
+
+export const applyStyleToSegments = (
+  segments: RichTextSegment[], 
+  startIndex: number, 
+  endIndex: number, 
+  style: Partial<SubtitleStyle>
+): RichTextSegment[] => {
+  const result: RichTextSegment[] = [];
+  let currentIndex = 0;
+  
+  for (const segment of segments) {
+    const segmentStart = currentIndex;
+    const segmentEnd = currentIndex + segment.text.length;
+    
+    // 片段完全在选择范围之外
+    if (segmentEnd <= startIndex || segmentStart >= endIndex) {
+      result.push(segment);
+      currentIndex = segmentEnd;
+      continue;
+    }
+    
+    // 片段与选择范围有交集，需要分割
+    const beforeText = segment.text.slice(0, Math.max(0, startIndex - segmentStart));
+    const selectedText = segment.text.slice(
+      Math.max(0, startIndex - segmentStart),
+      Math.min(segment.text.length, endIndex - segmentStart)
+    );
+    const afterText = segment.text.slice(Math.min(segment.text.length, endIndex - segmentStart));
+    
+    // 添加选择范围前的部分
+    if (beforeText) {
+      result.push({
+        text: beforeText,
+        style: segment.style
+      });
+    }
+    
+    // 添加选择范围内的部分（应用新样式）
+    if (selectedText) {
+      result.push({
+        text: selectedText,
+        style: { ...segment.style, ...style }
+      });
+    }
+    
+    // 添加选择范围后的部分
+    if (afterText) {
+      result.push({
+        text: afterText,
+        style: segment.style
+      });
+    }
+    
+    currentIndex = segmentEnd;
+  }
+  
+  return result;
+};
+
+export const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegment[] => {
+  if (segments.length <= 1) return segments;
+  
+  const result: RichTextSegment[] = [];
+  let current = segments[0];
+  
+  for (let i = 1; i < segments.length; i++) {
+    const next = segments[i];
+    
+    // 检查样式是否相同
+    if (JSON.stringify(current.style) === JSON.stringify(next.style)) {
+      // 合并相邻的相同样式片段
+      current = {
+        text: current.text + next.text,
+        style: current.style
+      };
+    } else {
+      result.push(current);
+      current = next;
+    }
+  }
+  
+  result.push(current);
+  return result;
+};
+
+export const getTextSelectionFromSegments = (segments: RichTextSegment[], startIndex: number, endIndex: number): string => {
+  const fullText = convertRichTextToPlainText(segments);
+  return fullText.slice(startIndex, endIndex);
+};
+
+export const convertSegmentsToCSS = (segments: RichTextSegment[], baseStyle: SubtitleStyle): React.CSSProperties[] => {
+  return segments.map(segment => {
+    const mergedStyle = { ...baseStyle, ...segment.style };
+    return convertStyleToCSS(mergedStyle);
+  });
+};

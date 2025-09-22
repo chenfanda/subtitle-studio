@@ -15,6 +15,10 @@ const FONT_SIZE_OPTIONS = [
   12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 48
 ];
 
+const GLOW_COLORS = [
+  '#00BFFF', '#FFD700', '#FF4500', '#00FF7F', '#9932CC', '#FFFFFF', '#FF69B4'
+];
+
 interface SubtitleQuickToolbarProps {
   subtitleId: string;
   position: { x: number; y: number };
@@ -23,38 +27,81 @@ interface SubtitleQuickToolbarProps {
 
 export function SubtitleQuickToolbar({ subtitleId, position, onClose }: SubtitleQuickToolbarProps) {
   const { subtitles, updateSubtitle } = useProjectStore();
-  const { setEditingSubtitle } = useUIStore();
+  const { setActivePanel } = useUIStore();
   const [isVisible, setIsVisible] = useState(true);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showBrightness, setShowBrightness] = useState(false);
   
   const subtitle = subtitles.find(s => s.id === subtitleId);
   const currentStyle = subtitle?.style || DEFAULT_SUBTITLE_STYLE;
+  const currentGlowColor = currentStyle.shadow?.enabled ? currentStyle.shadow.color : null;
+  const currentBrightness = currentStyle.shadow?.enabled ? currentStyle.shadow.blur : 15;
 
   const handleClose = () => {
     setIsVisible(false);
     onClose();
   };
 
-  const handleHighlight = () => {
-    setEditingSubtitle(subtitleId);
-    handleClose();
+
+
+  const handleColorSelect = (color: string) => {
+    const newStyle = {
+      ...currentStyle,
+      shadow: {
+        enabled: true,
+        color: color,
+        offsetX: 0,
+        offsetY: 0,
+        blur: currentBrightness
+      }
+    };
+    updateSubtitle(subtitleId, { style: newStyle });
+    setShowColorPicker(false);
+  };
+
+  const handleBrightnessChange = (brightness: number) => {
+    if (currentGlowColor) {
+      const newStyle = {
+        ...currentStyle,
+        shadow: {
+          enabled: true,
+          color: currentGlowColor,
+          offsetX: 0,
+          offsetY: 0,
+          blur: brightness
+        }
+      };
+      updateSubtitle(subtitleId, { style: newStyle });
+    }
+  };
+
+  const handleRemoveGlow = () => {
+    const newStyle = {
+      ...currentStyle,
+      shadow: {
+        enabled: false,
+        color: '#000000',
+        offsetX: 0,
+        offsetY: 0,
+        blur: 0
+      }
+    };
+    updateSubtitle(subtitleId, { style: newStyle });
+    setShowColorPicker(false);
   };
 
   const handleFontChange = (fontFamily: string) => {
     const newStyle = { ...currentStyle, fontFamily };
     updateSubtitle(subtitleId, { style: newStyle });
-    setEditingSubtitle(subtitleId);
-    handleClose();
   };
 
   const handleFontSizeChange = (fontSize: number) => {
     const newStyle = { ...currentStyle, fontSize };
     updateSubtitle(subtitleId, { style: newStyle });
-    setEditingSubtitle(subtitleId);
-    handleClose();
   };
 
   const handleStyleEdit = () => {
-    setEditingSubtitle(subtitleId);
+    setActivePanel('text');
     handleClose();
   };
 
@@ -71,13 +118,60 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        onClick={handleHighlight}
-        className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
-        title="高亮"
-      >
-        高亮
-      </button>
+      <div className="relative">
+        <button
+          onClick={() => setShowColorPicker(!showColorPicker)}
+          className="w-6 h-6 rounded-full border-2 border-gray-600 hover:border-gray-400 transition-colors"
+          style={{ backgroundColor: currentGlowColor || '#666666' }}
+          title="发光颜色"
+        />
+        
+        {showColorPicker && (
+          <div className="absolute top-8 left-0 bg-gray-800 border border-gray-600 rounded p-2 grid grid-cols-4 gap-1 min-w-32">
+            <button
+              onClick={handleRemoveGlow}
+              className="w-5 h-5 bg-gray-600 rounded border hover:border-gray-400 text-xs text-white flex items-center justify-center"
+              title="移除发光"
+            >
+              ✕
+            </button>
+            {GLOW_COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => handleColorSelect(color)}
+                className="w-5 h-5 rounded border border-gray-600 hover:border-gray-400"
+                style={{ backgroundColor: color }}
+                title={`选择 ${color}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        <button
+          onClick={() => setShowBrightness(!showBrightness)}
+          className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
+          title="亮度"
+          disabled={!currentGlowColor}
+        >
+          ☀
+        </button>
+        
+        {showBrightness && currentGlowColor && (
+          <div className="absolute top-8 left-0 bg-gray-800 border border-gray-600 rounded p-2 w-24">
+            <input
+              type="range"
+              min="5"
+              max="30"
+              value={currentBrightness}
+              onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-400 text-center mt-1">{currentBrightness}</div>
+          </div>
+        )}
+      </div>
 
       <select
         value={currentStyle.fontFamily}

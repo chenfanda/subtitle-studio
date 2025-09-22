@@ -7,11 +7,17 @@ export interface SubtitlePosition {
   rotation?: number; // 旋转角度 (默认 0)
 }
 
+export interface RichTextSegment {
+  text: string;                    // 片段文本
+  style?: Partial<SubtitleStyle>;  // 片段独立样式（覆盖默认样式）
+}
+
 export interface SubtitleItem {
   id: string;
   startTime: number; // 毫秒
   endTime: number; // 毫秒
-  text: string;
+  text: string;      // 保持原有纯文本字段（兼容性 + 时间轴显示）
+  richText?: RichTextSegment[]; // 可选的富文本片段数组
   speaker?: string; // 可选字段，支持多说话人
   style?: SubtitleStyle;
   trackIndex?: number; // 多轨道支持

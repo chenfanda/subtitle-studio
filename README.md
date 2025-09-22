@@ -19,8 +19,8 @@ subtitle-studio/
 │   │   ├── video/                      # ✅ 已实现 - 视频相关组件
 │   │   │   ├── VideoPlayer.tsx         # ✅ 视频播放器组件
 │   │   │   ├── VideoControls.tsx       # ✅ 播放控制栏
-│   │   │   ├── SubtitleOverlay.tsx     # ✅ 字幕叠加层 (已支持样式应用和快速工具栏)
-│   │   │   ├── SubtitleQuickToolbar.tsx # ✅ 快速编辑工具栏 (4按钮功能)
+│   │   │   ├── SubtitleOverlay.tsx     # ✅ 字幕叠加层 (已支持富文本渲染和快速工具栏)
+│   │   │   ├── SubtitleQuickToolbar.tsx # ✅ 快速编辑工具栏 (发光颜色+亮度控制)
 │   │   │   ├── StickerOverlay.tsx      # ❌ 待开发 - 贴纸叠加层
 │   │   │   └── EffectOverlay.tsx       # ❌ 待开发 - 特效叠加层
 │   │   │
@@ -33,7 +33,7 @@ subtitle-studio/
 │   │   │
 │   │   ├── subtitle/                   # ✅ 已实现 - 字幕编辑组件
 │   │   │   ├── SubtitleList.tsx        # ✅ 字幕列表面板
-│   │   │   ├── SubtitleEditor.tsx      # ✅ 字幕编辑器 (文字内容和时间编辑)
+│   │   │   ├── SubtitleEditor.tsx      # ✅ 富文本字幕编辑器 (支持片段样式编辑)
 │   │   │   ├── SubtitlePanel.tsx       # ✅ 字幕面板容器
 │   │   │   └── SubtitleToolbar.tsx     # ✅ 字幕工具栏
 │   │   │
@@ -43,7 +43,7 @@ subtitle-studio/
 │   │   │   ├── SocialMediaTab.tsx      # ✅ "社交媒体"分类 - 社交平台样式模板  
 │   │   │   ├── TitleStylesTab.tsx      # ✅ "标题"分类 - 标题类样式模板
 │   │   │   ├── NoteStylesTab.tsx       # ✅ "便签"分类 - 便签/标注样式模板
-│   │   │   └── StylePreviewCard.tsx    # ✅ 样式模板预览卡片 (需优化背景填充)
+│   │   │   └── StylePreviewCard.tsx    # ✅ 样式模板预览卡片
 │   │   │
 │   │   ├── templates/                  # ❌ 待开发 - 动态效果模板相关组件  
 │   │   │   ├── TemplatePanel.tsx       # ❌ 动态效果模板面板容器
@@ -98,7 +98,7 @@ subtitle-studio/
 │   │       └── MediaIcons.tsx          # ❌ 媒体相关图标
 │   │
 │   ├── stores/                         # ✅ 状态管理层 - 应用状态协调
-│   │   ├── useProjectStore.ts          # ✅ 项目状态 + 应用阶段管理 (已支持位置和动画)
+│   │   ├── useProjectStore.ts          # ✅ 项目状态 + 富文本支持 (已支持位置和动画)
 │   │   ├── useUIStore.ts               # ✅ UI状态管理
 │   │   ├── useTimelineStore.ts         # ✅ 时间轴状态
 │   │   ├── useSettingsStore.ts         # ✅ 用户设置
@@ -108,12 +108,12 @@ subtitle-studio/
 │   │   ├── useMediaStore.ts            # ✅ 媒体素材状态管理
 │   │   └── useBrollStore.ts            # ✅ B-roll素材状态管理
 │   │
-│   ├── utils/                          # ⚠️ 工具函数层 - 纯功能函数，无状态
+│   ├── utils/                          # ✅ 工具函数层 - 纯功能函数，无状态
 │   │   ├── fileUpload.ts               # ✅ 文件上传工具函数
 │   │   ├── videoUtils.ts               # ✅ 视频播放工具函数
 │   │   ├── subtitleParser.ts           # ✅ SRT字幕解析工具
 │   │   ├── timelineUtils.ts            # ✅ 时间轴工具函数
-│   │   ├── textStyleUtils.ts           # ✅ 文字样式处理工具
+│   │   ├── textStyleUtils.ts           # ✅ 文字样式+富文本处理工具 (已扩展)
 │   │   ├── animationUtils.ts           # ✅ 动画效果工具
 │   │   ├── previewUtils.ts             # ✅ 预览渲染工具 (已修复类型错误)
 │   │   ├── audioUtils.ts               # ✅ 音频处理工具
@@ -124,7 +124,7 @@ subtitle-studio/
 │   │
 │   ├── types/                          # ✅ 类型定义
 │   │   ├── project.ts                  # ✅ 项目类型
-│   │   ├── subtitle.ts                 # ✅ 字幕类型 (已扩展fontWeight、fontStyle支持)
+│   │   ├── subtitle.ts                 # ✅ 字幕类型 (已扩展富文本支持)
 │   │   ├── timeline.ts                 # ✅ 时间轴类型
 │   │   ├── ui.ts                       # ✅ UI类型
 │   │   ├── textStyle.ts                # ✅ 文字样式类型定义
@@ -207,7 +207,7 @@ subtitle-studio/
 ### 完整的状态管理体系
 ```
 useProjectStore (全局项目状态)
-├── 字幕数据 (支持位置、样式、动画)
+├── 字幕数据 (支持位置、样式、动画、富文本)
 ├── 项目配置和播放状态
 └── 数据持久化和同步
 
@@ -233,6 +233,18 @@ UI状态管理：
 
 ## 已实现的关键功能
 
+### 富文本字幕编辑系统 🆕
+- 统一的富文本编辑器，支持文本片段样式编辑
+- 选中文本片段应用颜色、字体、发光等效果
+- 智能渲染：自动检测富文本或纯文本
+- 完整数据流：编辑 → 保存 → 渲染 → 显示
+
+### 快速编辑工具栏优化
+- 发光颜色选择器（7种颜色+无发光）
+- 亮度控制滑块（5-30范围调节）
+- 字体类型和字体大小即时调整
+- 样式按钮正确跳转到文字面板
+
 ### 字幕样式应用系统
 - 文字样式模板选择和应用
 - 实时样式预览和更新
@@ -242,11 +254,5 @@ UI状态管理：
 ### 视频字幕交互系统
 - 字幕选中状态管理
 - 位置拖拽功能
-- 快速编辑工具栏
-- 双击进入详细编辑
-
-### 快速编辑工具栏功能
-- 高亮效果选择（多种发光颜色）
-- 字体类型下拉选择
-- 字体大小下拉选择
-- 样式按钮跳转文字面板
+- 双击进入富文本编辑
+- 单击显示快速工具栏

@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { ProjectState } from '@/types/project';
-import type { SubtitleItem, SubtitlePosition } from '@/types/subtitle';
+import type { SubtitleItem, SubtitlePosition, RichTextSegment } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import { APP_CONFIG } from '@/constants/config';
+import { convertRichTextToPlainText, createRichTextFromPlainText } from '@/utils/textStyleUtils';
 
 export type AppStage = 'upload' | 'processing' | 'editing';
 
@@ -26,6 +27,7 @@ interface ProjectStore extends ProjectState {
   
   addSubtitle: (subtitle: Omit<SubtitleItem, 'id'>) => void;
   updateSubtitle: (id: string, updates: Partial<SubtitleItem>) => void;
+  updateSubtitleRichText: (id: string, richText: RichTextSegment[]) => void;
   deleteSubtitle: (id: string) => void;
   deleteSubtitles: (ids: string[]) => void;
   splitSubtitle: (id: string, splitTime: number) => void;
@@ -149,7 +151,25 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => {
           const index = state.subtitles.findIndex(s => s.id === id);
           if (index !== -1) {
-            Object.assign(state.subtitles[index], updates);
+            const subtitle = state.subtitles[index];
+            
+            // 如果更新了富文本，同步更新纯文本字段
+            if (updates.richText) {
+              updates.text = convertRichTextToPlainText(updates.richText);
+            }
+            
+            Object.assign(subtitle, updates);
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      updateSubtitleRichText: (id, richText) => 
+        set((state) => {
+          const index = state.subtitles.findIndex(s => s.id === id);
+          if (index !== -1) {
+            const subtitle = state.subtitles[index];
+            subtitle.richText = richText;
+            subtitle.text = convertRichTextToPlainText(richText);
             state.saveStatus = 'unsaved';
           }
         }),
@@ -179,6 +199,7 @@ export const useProjectStore = create<ProjectStore>()(
             id: generateId(),
             startTime: splitTime,
             text: original.text,
+            richText: original.richText ? [...original.richText] : undefined,
           };
           
           state.subtitles[index].endTime = splitTime;
@@ -196,10 +217,16 @@ export const useProjectStore = create<ProjectStore>()(
           
           if (subtitlesToMerge.length < 2) return;
           
+          const mergedText = subtitlesToMerge.map(s => s.text).join(' ');
+          const mergedRichText = subtitlesToMerge.some(s => s.richText) 
+            ? subtitlesToMerge.flatMap(s => s.richText || createRichTextFromPlainText(s.text, s.style))
+            : undefined;
+          
           const merged: SubtitleItem = {
             ...subtitlesToMerge[0],
             endTime: subtitlesToMerge[subtitlesToMerge.length - 1].endTime,
-            text: subtitlesToMerge.map(s => s.text).join(' '),
+            text: mergedText,
+            richText: mergedRichText,
           };
           
           state.subtitles = state.subtitles.filter(s => !ids.includes(s.id));
@@ -227,6 +254,7 @@ export const useProjectStore = create<ProjectStore>()(
             id: generateId(),
             startTime: original.endTime + 100,
             endTime: original.endTime + 100 + (original.endTime - original.startTime),
+            richText: original.richText ? [...original.richText] : undefined,
           };
           
           const insertIndex = state.subtitles.findIndex(
@@ -331,11 +359,15 @@ export const useProjectStore = create<ProjectStore>()(
       validateSubtitle: (subtitle) => {
         const errors: string[] = [];
         
-        if (!subtitle.text?.trim()) {
+        const textToCheck = subtitle.richText 
+          ? convertRichTextToPlainText(subtitle.richText)
+          : subtitle.text;
+        
+        if (!textToCheck?.trim()) {
           errors.push('字幕内容不能为空');
         }
         
-        if (subtitle.text && subtitle.text.length > APP_CONFIG.MAX_SUBTITLE_LENGTH) {
+        if (textToCheck && textToCheck.length > APP_CONFIG.MAX_SUBTITLE_LENGTH) {
           errors.push(`字幕长度不能超过 ${APP_CONFIG.MAX_SUBTITLE_LENGTH} 字符`);
         }
         
