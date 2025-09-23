@@ -5,7 +5,12 @@ import type { ProjectState } from '@/types/project';
 import type { SubtitleItem, SubtitlePosition, RichTextSegment } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import { APP_CONFIG } from '@/constants/config';
-import { convertRichTextToPlainText, createRichTextFromPlainText } from '@/utils/textStyleUtils';
+import { 
+  convertRichTextToPlainText, 
+  createRichTextFromPlainText,
+  hasAnyAnimation,
+  getSegmentAnimations
+} from '@/utils/textStyleUtils';
 
 export type AppStage = 'upload' | 'processing' | 'editing';
 
@@ -37,6 +42,11 @@ interface ProjectStore extends ProjectState {
   
   updateSubtitlePosition: (id: string, x: number, y: number) => void;
   getSubtitlePosition: (id: string) => SubtitlePosition;
+  
+  // 移除字幕级别的动效方法，改为片段级别检测
+  clearAllAnimations: (id: string) => void;
+  hasSubtitleAnimations: (id: string) => boolean;
+  getSubtitleAnimations: (id: string) => any[];
   
   moveSubtitles: (ids: string[], deltaTime: number) => void;
   adjustSubtitleTiming: (id: string, startTime: number, endTime: number) => void;
@@ -292,6 +302,28 @@ export const useProjectStore = create<ProjectStore>()(
       getSubtitlePosition: (id) => {
         const subtitle = get().subtitles.find(s => s.id === id);
         return subtitle?.position || { ...DEFAULT_SUBTITLE_POSITION };
+      },
+      
+      // 片段级别动效管理方法
+      clearAllAnimations: (id) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle?.richText) {
+            subtitle.richText.forEach(segment => {
+              segment.animation = undefined;
+            });
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      hasSubtitleAnimations: (id) => {
+        const subtitle = get().subtitles.find(s => s.id === id);
+        return subtitle?.richText ? hasAnyAnimation(subtitle.richText) : false;
+      },
+      
+      getSubtitleAnimations: (id) => {
+        const subtitle = get().subtitles.find(s => s.id === id);
+        return subtitle?.richText ? getSegmentAnimations(subtitle.richText) : [];
       },
       
       moveSubtitles: (ids, deltaTime) => 

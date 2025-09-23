@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '../../types/subtitle';
 import { SubtitleQuickToolbar } from './SubtitleQuickToolbar';
-import { convertSegmentsToCSS } from '../../utils/textStyleUtils';
+import { convertToWebAnimation } from '../../utils/animationUtils';
+import { convertStyleToCSS } from '../../utils/textStyleUtils';
 import type { RichTextSegment } from '../../types/subtitle';
 
 export function SubtitleOverlay() {
@@ -13,11 +14,13 @@ export function SubtitleOverlay() {
     updateSubtitlePosition, 
     getSubtitlePosition 
   } = useProjectStore();
-  const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle, setActivePanel } = useUIStore();
+  const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickToolbar, setShowQuickToolbar] = useState(false);
+  const [segmentAnimations, setSegmentAnimations] = useState<Map<number, Animation>>(new Map());
   const subtitleRef = useRef<HTMLDivElement>(null);
+  const segmentRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   const currentSubtitle = useMemo(() => {
     if (!subtitles || !currentTime) return null;
@@ -32,64 +35,107 @@ export function SubtitleOverlay() {
   
   const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85 };
   
-  const handleDoubleClick = () => {
-    if (currentSubtitle) {
-      setEditingSubtitle(currentSubtitle.id);
-      setActivePanel('subtitles');
-    }
-  };
+  const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
 
-  const renderSubtitleContent = () => {
+  // 渲染富文本内容
+  const renderRichTextContent = () => {
     if (!currentSubtitle) return null;
     
-    // 如果有富文本数据，渲染富文本
-    if (currentSubtitle.richText && currentSubtitle.richText.length > 0) {
-      const baseStyle = currentSubtitle.style || DEFAULT_SUBTITLE_STYLE;
-      const segmentStyles = convertSegmentsToCSS(currentSubtitle.richText, baseStyle);
-      
-      return (
-        <div style={{
-          textAlign: baseStyle.alignment,
-          wordBreak: 'break-word',
-        }}>
-          {currentSubtitle.richText.map((segment, index) => {
-            const segmentStyle = segmentStyles[index];
-            return (
-              <span
-                key={index}
-                style={segmentStyle}
-              >
-                {segment.text}
-              </span>
-            );
-          })}
-        </div>
-      );
+    if (currentSubtitle.richText) {
+      return currentSubtitle.richText.map((segment, index) => (
+        <span
+          key={index}
+          ref={(el) => {
+            if (el) {
+              segmentRefs.current.set(index, el);
+            } else {
+              segmentRefs.current.delete(index);
+            }
+          }}
+          style={convertStyleToCSS(segment.style)}
+          data-segment-index={index}
+          data-animation={segment.animation?.name || ''}
+        >
+          {segment.text}
+        </span>
+      ));
     }
     
-    // 否则渲染简单文本（保持原有逻辑）
+    // 回退到纯文本渲染
     return (
-      <div 
-        style={{
-          fontFamily: subtitleStyle.fontFamily,
-          fontSize: `${subtitleStyle.fontSize}px`,
-          color: subtitleStyle.color,
-          backgroundColor: subtitleStyle.backgroundColor,
-          opacity: subtitleStyle.opacity,
-          textAlign: subtitleStyle.alignment,
-          textShadow: subtitleStyle.shadow.enabled 
-            ? `${subtitleStyle.shadow.offsetX}px ${subtitleStyle.shadow.offsetY}px ${subtitleStyle.shadow.blur}px ${subtitleStyle.shadow.color}`
-            : undefined,
-          wordBreak: 'break-word',
-          borderColor: subtitleStyle.borderColor,
-          borderWidth: subtitleStyle.borderWidth ? `${subtitleStyle.borderWidth}px` : undefined,
-          borderStyle: subtitleStyle.borderWidth ? 'solid' : undefined,
-        }}
-      >
+      <span style={convertStyleToCSS(subtitleStyle)}>
         {currentSubtitle.text}
-      </div>
+      </span>
     );
   };
+
+  // 播放片段动效
+  const playSegmentAnimations = () => {
+    if (!currentSubtitle?.richText) return;
+    
+    // 清除之前的动画
+    stopAllAnimations();
+    
+    const newAnimations = new Map<number, Animation>();
+    
+    currentSubtitle.richText.forEach((segment, index) => {
+      if (!segment.animation) return;
+      
+      const element = segmentRefs.current.get(index);
+      if (!element) return;
+      
+      const keyframes = convertToWebAnimation(segment.animation);
+      const options: KeyframeAnimationOptions = {
+        duration: segment.animation.duration,
+        easing: segment.animation.easing || 'ease',
+        iterations: segment.animation.type === 'continuous' ? Infinity : 1,
+        fill: 'both',
+        delay: segment.animation.delay || 0
+      };
+      
+      const animation = element.animate(keyframes, options);
+      newAnimations.set(index, animation);
+      
+      // 如果是入场动画，播放完成后保持状态
+      if (segment.animation.type === 'entrance') {
+        animation.onfinish = () => {
+          // 动画完成后保持最终状态
+        };
+      }
+    });
+    
+    setSegmentAnimations(newAnimations);
+  };
+
+  // 停止所有动画
+  const stopAllAnimations = () => {
+    segmentAnimations.forEach(animation => {
+      animation.cancel();
+    });
+    setSegmentAnimations(new Map());
+  };
+
+  // 当字幕变化时播放动效
+  useEffect(() => {
+    if (currentSubtitle && currentSubtitle.richText) {
+      // 延迟一下确保DOM元素已渲染
+      setTimeout(() => {
+        playSegmentAnimations();
+      }, 50);
+    } else {
+      stopAllAnimations();
+    }
+
+    return () => stopAllAnimations();
+  }, [currentSubtitle?.id]);
+
+  // 清理函数
+  useEffect(() => {
+    return () => {
+      stopAllAnimations();
+      segmentRefs.current.clear();
+    };
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.detail === 2) return;
@@ -132,7 +178,11 @@ export function SubtitleOverlay() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
+  const handleDoubleClick = () => {
+    if (currentSubtitle) {
+      setEditingSubtitle(currentSubtitle.id);
+    }
+  };
 
   return (
     <div className="absolute inset-0 pointer-events-none z-20">
@@ -159,7 +209,15 @@ export function SubtitleOverlay() {
               : 'border-2 border-transparent'
             }
           `}>
-            {renderSubtitleContent()}
+            <div 
+              className="subtitle-content"
+              style={{
+                wordBreak: 'break-word',
+                textAlign: subtitleStyle.alignment,
+              }}
+            >
+              {renderRichTextContent()}
+            </div>
             
             {isSelected && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-purple rounded-full border-2 border-white"></div>

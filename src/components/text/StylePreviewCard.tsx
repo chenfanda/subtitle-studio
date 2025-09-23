@@ -11,7 +11,13 @@ export function StylePreviewCard({ template }: StylePreviewCardProps) {
   const selectTemplate = useTextStyleStore((state) => state.selectTemplate);
   
   const isSelected = selectedTemplate?.id === template.id;
-  const previewStyle = convertStyleToCSS(template.style);
+  const fullStyle: SubtitleStyle = {
+    ...template.style,
+    position: 'bottom',    // 默认值
+    alignment: 'center',   // 默认值  
+    opacity: 1            // 默认值
+  };
+  const previewStyle = convertStyleToCSS(fullStyle);
 
   return (
     <button

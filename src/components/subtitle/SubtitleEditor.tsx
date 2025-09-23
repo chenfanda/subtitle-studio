@@ -6,9 +6,12 @@ import {
   convertRichTextToPlainText, 
   createRichTextFromPlainText, 
   applyStyleToSegments,
+  applyAnimationToSegments,
   mergeAdjacentSegments
 } from '@/utils/textStyleUtils';
 import type { RichTextSegment, SubtitleStyle } from '@/types/subtitle';
+import type { AnimationEffect } from '@/types/animation';
+import { ANIMATION_TEMPLATES } from '@/constants/animationTemplates';
 
 const QUICK_COLORS = [
   '#ffffff', '#ffff00', '#ff0000', '#00ff00', '#0000ff', '#ff00ff', '#00ffff', '#ffa500'
@@ -19,8 +22,15 @@ const QUICK_FONTS = [
 ];
 
 export function SubtitleEditor() {
-  const { subtitles, updateSubtitleRichText, updateSubtitle, validateSubtitle } = useProjectStore();
-  const { editingSubtitleId, setEditingSubtitle } = useUIStore();
+  const { 
+    subtitles, 
+    updateSubtitleRichText, 
+    validateSubtitle,
+    hasSubtitleAnimations,
+    clearAllAnimations,
+    getSubtitleAnimations
+  } = useProjectStore();
+  const { editingSubtitleId, setEditingSubtitle, setActivePanel } = useUIStore();
   
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
@@ -33,6 +43,17 @@ export function SubtitleEditor() {
   const currentSubtitle = editingSubtitleId 
     ? subtitles.find(s => s.id === editingSubtitleId)
     : null;
+
+  // 获取所有可用的动效选项
+  const getAllAnimations = (): AnimationEffect[] => {
+    const allAnimations: AnimationEffect[] = [];
+    Object.values(ANIMATION_TEMPLATES).forEach(templates => {
+      templates.forEach(template => {
+        allAnimations.push(...template.effects);
+      });
+    });
+    return allAnimations;
+  };
 
   useEffect(() => {
     if (currentSubtitle) {
@@ -95,9 +116,23 @@ export function SubtitleEditor() {
     setErrors([]);
   };
 
-  const handleRemoveAnimations = () => {
+  const handleRemoveAllAnimations = () => {
     if (!currentSubtitle) return;
-    updateSubtitle(currentSubtitle.id, { animations: [] });
+    if (confirm('确定要删除当前字幕的所有动效吗？')) {
+      clearAllAnimations(currentSubtitle.id);
+      // 重新加载数据
+      if (currentSubtitle.richText) {
+        const updatedSegments = currentSubtitle.richText.map(segment => ({
+          ...segment,
+          animation: undefined
+        }));
+        setRichTextSegments(updatedSegments);
+      }
+    }
+  };
+
+  const handleSwitchToTemplatePanel = () => {
+    setActivePanel('templates');
   };
 
   const updateEditorContent = () => {
@@ -119,7 +154,10 @@ export function SubtitleEditor() {
         .map(([key, value]) => `${key.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}: ${value}`)
         .join('; ');
       
-      return `<span style="${styleStr}">${segment.text.replace(/\n/g, '<br>')}</span>`;
+      // 添加动效标识
+      const animationClass = segment.animation ? 'has-animation' : '';
+      
+      return `<span class="${animationClass}" style="${styleStr}" data-animation="${segment.animation?.name || ''}">${segment.text.replace(/\n/g, '<br>')}</span>`;
     }).join('');
     
     editorRef.current.innerHTML = html;
@@ -171,6 +209,46 @@ export function SubtitleEditor() {
     }, 0);
   };
 
+  const applyAnimationToSelection = (animationName: string) => {
+    if (!selectionRange || selectionRange.start === selectionRange.end) return;
+    
+    // 查找对应的动效
+    const allAnimations = getAllAnimations();
+    const animation = allAnimations.find(anim => anim.name === animationName);
+    
+    if (!animation) return;
+    
+    const newSegments = applyAnimationToSegments(
+      richTextSegments,
+      selectionRange.start,
+      selectionRange.end,
+      animation
+    );
+    
+    const optimizedSegments = mergeAdjacentSegments(newSegments);
+    setRichTextSegments(optimizedSegments);
+    
+    // 延迟更新编辑器内容
+    setTimeout(() => {
+      updateEditorContent();
+    }, 0);
+  };
+
+  const removeAnimationFromSelection = () => {
+    if (!selectionRange || selectionRange.start === selectionRange.end) return;
+    
+    const newSegments = richTextSegments.map((segment, index) => {
+      // 简化处理：这里需要根据选择范围来处理
+      return { ...segment, animation: undefined };
+    });
+    
+    setRichTextSegments(newSegments);
+    
+    setTimeout(() => {
+      updateEditorContent();
+    }, 0);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       handleSave();
@@ -195,7 +273,8 @@ export function SubtitleEditor() {
   }
 
   const selectedText = selectionRange && selectionRange.start !== selectionRange.end;
-  const hasAnimations = currentSubtitle.animations && currentSubtitle.animations.length > 0;
+  const hasAnimations = hasSubtitleAnimations(currentSubtitle.id);
+  const subtitleAnimations = getSubtitleAnimations(currentSubtitle.id);
 
   return (
     <div className="p-4 bg-bg-secondary border-t border-border-secondary space-y-4">
@@ -239,53 +318,71 @@ export function SubtitleEditor() {
           {/* 格式化工具栏 */}
           {selectedText && (
             <div className="mb-2 p-2 bg-bg-tertiary rounded border border-border-secondary">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-text-tertiary">颜色:</span>
-                {QUICK_COLORS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => applyStyleToSelection({ color })}
-                    className="w-5 h-5 rounded border border-gray-500 hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    title={`应用颜色 ${color}`}
-                  />
-                ))}
-                
-                <div className="w-px h-4 bg-border-secondary mx-1" />
-                
-                <select
-                  onChange={(e) => applyStyleToSelection({ fontFamily: e.target.value })}
-                  className="text-xs bg-bg-secondary border border-border-secondary rounded px-1 py-0.5"
-                  defaultValue=""
-                >
-                  <option value="">字体</option>
-                  {QUICK_FONTS.map(font => (
-                    <option key={font} value={font}>{font}</option>
+              <div className="space-y-2">
+                {/* 样式工具 */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-text-tertiary">样式:</span>
+                  {QUICK_COLORS.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => applyStyleToSelection({ color })}
+                      className="w-5 h-5 rounded border border-gray-500 hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      title={`应用颜色 ${color}`}
+                    />
                   ))}
-                </select>
-                
-                <button
-                  onClick={() => applyStyleToSelection({ fontWeight: 'bold' })}
-                  className="px-2 py-0.5 text-xs bg-bg-secondary border border-border-secondary rounded hover:bg-bg-elevated"
-                >
-                  粗体
-                </button>
-                
-                <button
-                  onClick={() => applyStyleToSelection({ fontStyle: 'italic' })}
-                  className="px-2 py-0.5 text-xs bg-bg-secondary border border-border-secondary rounded hover:bg-bg-elevated"
-                >
-                  斜体
-                </button>
-                
-                <button
-                  onClick={() => applyStyleToSelection({ 
-                    shadow: { enabled: true, color: '#ffff00', offsetX: 0, offsetY: 0, blur: 8 }
-                  })}
-                  className="px-2 py-0.5 text-xs bg-bg-secondary border border-border-secondary rounded hover:bg-bg-elevated"
-                >
-                  发光
-                </button>
+                  
+                  <div className="w-px h-4 bg-border-secondary mx-1" />
+                  
+                  <select
+                    onChange={(e) => applyStyleToSelection({ fontFamily: e.target.value })}
+                    className="text-xs bg-bg-secondary border border-border-secondary rounded px-1 py-0.5"
+                    defaultValue=""
+                  >
+                    <option value="">字体</option>
+                    {QUICK_FONTS.map(font => (
+                      <option key={font} value={font}>{font}</option>
+                    ))}
+                  </select>
+                  
+                  <button
+                    onClick={() => applyStyleToSelection({ fontWeight: 'bold' })}
+                    className="px-2 py-0.5 text-xs bg-bg-secondary border border-border-secondary rounded hover:bg-bg-elevated"
+                  >
+                    粗体
+                  </button>
+                  
+                  <button
+                    onClick={() => applyStyleToSelection({ fontStyle: 'italic' })}
+                    className="px-2 py-0.5 text-xs bg-bg-secondary border border-border-secondary rounded hover:bg-bg-elevated"
+                  >
+                    斜体
+                  </button>
+                </div>
+
+                {/* 动效工具 */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-text-tertiary">动效:</span>
+                  <select
+                    onChange={(e) => e.target.value && applyAnimationToSelection(e.target.value)}
+                    className="text-xs bg-bg-secondary border border-border-secondary rounded px-2 py-1"
+                    defaultValue=""
+                  >
+                    <option value="">选择动效</option>
+                    <option value="fadeIn">淡入</option>
+                    <option value="slideUp">上滑</option>
+                    <option value="scaleIn">缩放入</option>
+                    <option value="glowPulse">发光脉冲</option>
+                    <option value="typewriter">打字机</option>
+                  </select>
+                  
+                  <button
+                    onClick={removeAnimationFromSelection}
+                    className="px-2 py-0.5 text-xs bg-accent-red/20 text-accent-red border border-accent-red/30 rounded hover:bg-accent-red/30"
+                  >
+                    移除动效
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -312,22 +409,44 @@ export function SubtitleEditor() {
 
         {hasAnimations && (
           <div>
-            <label className="block text-xs text-text-tertiary mb-1">动效信息</label>
-            <div className="bg-bg-tertiary border border-border-secondary rounded p-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-text-primary">
-                  已应用 {currentSubtitle.animations!.length} 个动效
+            <label className="block text-xs text-text-tertiary mb-1">应用的动效</label>
+            <div className="bg-bg-tertiary border border-border-secondary rounded p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-yellow-400">✨</span>
+                  <div className="text-sm text-text-primary font-medium">
+                    {subtitleAnimations.length} 个动效片段
+                  </div>
                 </div>
                 <button
-                  onClick={handleRemoveAnimations}
-                  className="text-xs text-accent-red hover:text-accent-red/80 transition-colors"
+                  onClick={handleRemoveAllAnimations}
+                  className="text-xs text-accent-red hover:text-accent-red/80 transition-colors px-2 py-1 rounded hover:bg-accent-red/10"
                 >
-                  移除动效
+                  清除所有动效
                 </button>
               </div>
-              <div className="text-xs text-text-tertiary mt-1">
-                {currentSubtitle.animations!.map(anim => anim.name).join(', ')}
+              <div className="text-xs text-text-tertiary space-y-1">
+                {subtitleAnimations.map((anim, index) => (
+                  <div key={index}>
+                    • {anim.name} ({anim.type}) - {anim.duration}ms
+                  </div>
+                ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {!hasAnimations && (
+          <div>
+            <label className="block text-xs text-text-tertiary mb-1">动效设置</label>
+            <div className="bg-bg-tertiary border border-border-secondary rounded p-3 text-center">
+              <div className="text-sm text-text-tertiary mb-2">选中文本后可添加动效</div>
+              <button
+                onClick={handleSwitchToTemplatePanel}
+                className="py-2 px-4 text-xs bg-accent-purple hover:bg-accent-purple/80 text-white rounded transition-colors"
+              >
+                浏览动效模板
+              </button>
             </div>
           </div>
         )}

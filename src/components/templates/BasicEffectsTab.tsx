@@ -13,7 +13,7 @@ export function BasicEffectsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {visibleTemplates.map((template) => (
           <EffectPreviewCard key={template.id} template={template} />
         ))}

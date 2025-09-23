@@ -8,21 +8,22 @@ export interface SubtitlePosition {
 }
 
 export interface RichTextSegment {
-  text: string;                    // 片段文本
-  style?: Partial<SubtitleStyle>;  // 片段独立样式（覆盖默认样式）
+  text: string;
+  style?: SubtitleStyle;
+  animation?: AnimationEffect;  // ✨ 新增：片段级别动效
 }
 
 export interface SubtitleItem {
   id: string;
   startTime: number; // 毫秒
   endTime: number; // 毫秒
-  text: string;      // 保持原有纯文本字段（兼容性 + 时间轴显示）
-  richText?: RichTextSegment[]; // 可选的富文本片段数组
+  text: string;
   speaker?: string; // 可选字段，支持多说话人
   style?: SubtitleStyle;
   trackIndex?: number; // 多轨道支持
   position?: SubtitlePosition; // 位置和变换信息
-  animations?: AnimationEffect[]; // 动画效果
+  richText?: RichTextSegment[]; // 富文本片段（包含样式和动效）
+  // 移除字幕级别的 animations 字段，改为片段级别
 }
 
 export interface SubtitleStyle {

@@ -64,6 +64,7 @@ export function SubtitleList() {
             const isSelected = selectedSubtitleIds.includes(subtitle.id);
             const isEditing = editingSubtitleId === subtitle.id;
             const isCurrent = currentTimeMs >= subtitle.startTime && currentTimeMs <= subtitle.endTime;
+            const hasAnimation = subtitle.richText ? subtitle.richText.some(segment => segment.animation) : false;
 
             return (
               <div
@@ -117,9 +118,19 @@ export function SubtitleList() {
                       {subtitle.text}
                     </div>
 
-                    {/* 序号 */}
-                    <div className="text-xs text-text-disabled mt-1">
-                      #{index + 1}
+                    {/* 序号和动效状态 */}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="text-xs text-text-disabled">
+                        #{index + 1}
+                      </div>
+                      {hasAnimation && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-yellow-400" title="已应用动效">✨</span>
+                          <span className="text-xs text-text-tertiary">
+                            {subtitle.richText?.filter(seg => seg.animation).length || 0} 个动效
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -133,6 +144,14 @@ export function SubtitleList() {
                     )}
                     {isEditing && (
                       <div className="text-xs text-accent-purple">✎</div>
+                    )}
+                    {hasAnimation && (
+                      <div 
+                        className="text-sm text-yellow-400" 
+                        title={`${subtitle.richText?.filter(seg => seg.animation).length || 0} 个动效片段`}
+                      >
+                        ✨
+                      </div>
                     )}
                   </div>
                 </div>
