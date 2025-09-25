@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { ProjectState } from '@/types/project';
-import type { SubtitleItem, SubtitlePosition, RichTextSegment } from '@/types/subtitle';
+import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import { APP_CONFIG } from '@/constants/config';
 import { 
@@ -43,13 +43,16 @@ interface ProjectStore extends ProjectState {
   updateSubtitlePosition: (id: string, x: number, y: number) => void;
   getSubtitlePosition: (id: string) => SubtitlePosition;
   
-  // 移除字幕级别的动效方法，改为片段级别检测
   clearAllAnimations: (id: string) => void;
   hasSubtitleAnimations: (id: string) => boolean;
   getSubtitleAnimations: (id: string) => any[];
   
   moveSubtitles: (ids: string[], deltaTime: number) => void;
   adjustSubtitleTiming: (id: string, startTime: number, endTime: number) => void;
+  
+  setSubtitleAudio: (id: string, audioData: SubtitleAudioData) => void;
+  removeSubtitleAudio: (id: string) => void;
+  getSubtitlesWithAudio: () => SubtitleItem[];
   
   markUnsaved: () => void;
   markSaved: () => void;
@@ -163,7 +166,6 @@ export const useProjectStore = create<ProjectStore>()(
           if (index !== -1) {
             const subtitle = state.subtitles[index];
             
-            // 如果更新了富文本，同步更新纯文本字段
             if (updates.richText) {
               updates.text = convertRichTextToPlainText(updates.richText);
             }
@@ -304,7 +306,6 @@ export const useProjectStore = create<ProjectStore>()(
         return subtitle?.position || { ...DEFAULT_SUBTITLE_POSITION };
       },
       
-      // 片段级别动效管理方法
       clearAllAnimations: (id) =>
         set((state) => {
           const subtitle = state.subtitles.find(s => s.id === id);
@@ -350,6 +351,28 @@ export const useProjectStore = create<ProjectStore>()(
             state.saveStatus = 'unsaved';
           }
         }),
+      
+      setSubtitleAudio: (id, audioData) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            subtitle.audioTrack = audioData;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      removeSubtitleAudio: (id) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            subtitle.audioTrack = undefined;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      getSubtitlesWithAudio: () => {
+        return get().subtitles.filter(subtitle => subtitle.audioTrack);
+      },
       
       markUnsaved: () => 
         set((state) => {

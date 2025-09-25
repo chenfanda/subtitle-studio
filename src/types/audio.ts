@@ -1,4 +1,4 @@
-export type AudioCategory = 'like' | 'epic' | 'ambient' | 'acoustic' | 'electronic' | 'hipHop';
+export type AudioCategory = 'like' | 'epic' | 'ambient' | 'acoustic' | 'electronic' | 'hipHop' | 'custom';
 
 export interface AudioTrack {
   id: string;

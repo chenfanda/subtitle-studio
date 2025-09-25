@@ -2,6 +2,7 @@ import { VerticalToolbar } from '@/components/sidebar/SidebarTabs';
 import { SubtitlePanel } from '@/components/subtitle/SubtitlePanel';
 import { TextPanel } from '@/components/text/TextPanel';
 import { TemplatePanel } from '@/components/templates/TemplatePanel';
+import { AudioPanel } from '@/components/audio/AudioPanel';
 import { useUIStore } from '@/stores/useUIStore';
 
 export function LeftSidebar() {
@@ -26,7 +27,6 @@ export function LeftSidebar() {
         {activePanel === 'media' && <MediaPanel />}
         {activePanel === 'audio' && <AudioPanel />}
         {activePanel === 'broll' && <BRollPanel />}
-
       </div>
     </div>
   );
@@ -38,18 +38,6 @@ function ClipsPanel() {
       <div className="text-center">
         <div className="text-4xl mb-2">✂️</div>
         <div>剪辑面板</div>
-        <div className="text-sm mt-1">即将实现</div>
-      </div>
-    </div>
-  );
-}
-
-function AudioPanel() {
-  return (
-    <div className="h-full flex items-center justify-center text-text-secondary">
-      <div className="text-center">
-        <div className="text-4xl mb-2">🎵</div>
-        <div>音频面板</div>
         <div className="text-sm mt-1">即将实现</div>
       </div>
     </div>

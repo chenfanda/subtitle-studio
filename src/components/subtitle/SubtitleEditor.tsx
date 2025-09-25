@@ -24,7 +24,8 @@ export function SubtitleEditor() {
     validateSubtitle,
     hasSubtitleAnimations,
     clearAllAnimations,
-    getSubtitleAnimations
+    getSubtitleAnimations,
+    removeSubtitleAudio
   } = useProjectStore();
   const { 
     editingSubtitleId, 
@@ -47,14 +48,11 @@ export function SubtitleEditor() {
     ? subtitles.find(s => s.id === editingSubtitleId)
     : null;
 
-  // 简化更新函数
   const updateRichTextWithType = (newSegments: RichTextSegment[], type: UpdateType) => {
     if (type === UpdateType.TEXT_INPUT) {
-      // 输入时不更新状态，避免光标跳转
       return;
     }
     
-    // 其他类型直接更新状态，让 useEffect 处理渲染
     setRichTextSegments(newSegments);
   };
 
@@ -96,7 +94,6 @@ export function SubtitleEditor() {
     const startTimeMs = parseTimeToMs(editStartTime);
     const endTimeMs = parseTimeToMs(editEndTime);
     
-    // 保存时从DOM获取最新文本，但保持富文本结构
     const currentPlainText = editorRef.current?.innerText || '';
     const updatedSegments = updateRichTextFromPlainText(richTextSegments, currentPlainText);
 
@@ -154,6 +151,11 @@ export function SubtitleEditor() {
     setActivePanel('templates');
   };
 
+  const handleRemoveAudio = () => {
+    if (!currentSubtitle) return;
+    removeSubtitleAudio(currentSubtitle.id);
+  };
+
   const updateEditorContent = () => {
     if (!editorRef.current) return;
     
@@ -182,8 +184,6 @@ export function SubtitleEditor() {
   };
 
   const handleInput = () => {
-    // 输入时不做任何数据结构重建，避免光标跳转
-    // 让用户自由编辑，保存时再同步数据
   };
 
   const getSelectionRange = (): {start: number, end: number} | null => {
@@ -225,7 +225,6 @@ export function SubtitleEditor() {
     }
   };
 
-  // 单一渲染机制
   useEffect(() => {
     updateEditorContent();
   }, [richTextSegments]);
@@ -332,28 +331,47 @@ export function SubtitleEditor() {
           </div>
         </div>
 
-        {(hasAnimations || hasCustomStyles) && (
+        {(hasAnimations || hasCustomStyles || currentSubtitle.audioTrack) && (
           <div>
-            <label className="block text-xs text-text-tertiary mb-1">清除格式</label>
-            <div className="bg-bg-tertiary border border-border-secondary rounded p-3">
-              <div className="flex gap-2">
-                {hasCustomStyles && (
+            <label className="block text-xs text-text-tertiary mb-1">配音与格式管理</label>
+            <div className="bg-bg-tertiary border border-border-secondary rounded p-3 space-y-2">
+              {currentSubtitle.audioTrack && (
+                <div className="flex items-center justify-between p-2 bg-green-500/10 border border-green-500/20 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🎵</span>
+                    <span className="text-xs text-text-primary">
+                      配音: {currentSubtitle.audioTrack.track.name}
+                    </span>
+                  </div>
                   <button
-                    onClick={handleClearStyles}
-                    className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                    onClick={handleRemoveAudio}
+                    className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                   >
-                    清除样式
+                    移除配音
                   </button>
-                )}
-                {hasAnimations && (
-                  <button
-                    onClick={handleRemoveAllAnimations}
-                    className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                  >
-                    清除动效
-                  </button>
-                )}
-              </div>
+                </div>
+              )}
+              
+              {(hasCustomStyles || hasAnimations) && (
+                <div className="flex gap-2">
+                  {hasCustomStyles && (
+                    <button
+                      onClick={handleClearStyles}
+                      className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                    >
+                      清除样式
+                    </button>
+                  )}
+                  {hasAnimations && (
+                    <button
+                      onClick={handleRemoveAllAnimations}
+                      className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                    >
+                      清除动效
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
