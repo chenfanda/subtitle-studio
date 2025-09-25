@@ -33,7 +33,7 @@ subtitle-studio/
 │   │   │
 │   │   ├── subtitle/                   # ✅ 已实现 - 字幕编辑组件
 │   │   │   ├── SubtitleList.tsx        # ✅ 字幕列表面板
-│   │   │   ├── SubtitleEditor.tsx      # ✅ 富文本字幕编辑器 (支持片段样式编辑)
+│   │   │   ├── SubtitleEditor.tsx      # ✅ 富文本字幕编辑器 (已修复光标跳转和文字消失问题)
 │   │   │   ├── SubtitlePanel.tsx       # ✅ 字幕面板容器
 │   │   │   └── SubtitleToolbar.tsx     # ✅ 字幕工具栏
 │   │   │
@@ -45,14 +45,14 @@ subtitle-studio/
 │   │   │   ├── NoteStylesTab.tsx       # ✅ "便签"分类 - 便签/标注样式模板
 │   │   │   └── StylePreviewCard.tsx    # ✅ 样式模板预览卡片
 │   │   │
-│   │   ├── templates/                  # ❌ 待开发 - 动态效果模板相关组件  
-│   │   │   ├── TemplatePanel.tsx       # ❌ 动态效果模板面板容器
-│   │   │   ├── CustomEffectsTab.tsx    # ❌ "自定义"标签 - 用户自定义动态效果
-│   │   │   ├── FeaturedEffectsTab.tsx  # ❌ "精选"标签 - 官方推荐动态效果
-│   │   │   ├── AdvancedEffectsTab.tsx  # ❌ "高级"标签 - 高级动画效果
-│   │   │   ├── BasicEffectsTab.tsx     # ❌ "基本"标签 - 基础动画效果
-│   │   │   ├── EffectPreviewCard.tsx   # ❌ 动态效果预览卡片
-│   │   │   └── AnimationPreview.tsx    # ❌ 动画效果实时预览组件
+│   │   ├── templates/                  # ✅ 已实现 - 动态效果模板相关组件  
+│   │   │   ├── TemplatePanel.tsx       # ✅ 动态效果模板面板容器
+│   │   │   ├── CustomEffectsTab.tsx    # ✅ "自定义"标签 - 用户自定义动态效果
+│   │   │   ├── FeaturedEffectsTab.tsx  # ✅ "精选"标签 - 官方推荐动态效果
+│   │   │   ├── AdvancedEffectsTab.tsx  # ✅ "高级"标签 - 高级动画效果
+│   │   │   ├── BasicEffectsTab.tsx     # ✅ "基本"标签 - 基础动画效果
+│   │   │   ├── EffectPreviewCard.tsx   # ✅ 动态效果预览卡片
+│   │   │   └── AnimationPreview.tsx    # ✅ 动画效果实时预览组件
 │   │   │
 │   │   ├── audio/                      # ❌ 待开发 - 音频库相关组件
 │   │   │   ├── AudioPanel.tsx          # ❌ 音频面板容器
@@ -113,7 +113,7 @@ subtitle-studio/
 │   │   ├── videoUtils.ts               # ✅ 视频播放工具函数
 │   │   ├── subtitleParser.ts           # ✅ SRT字幕解析工具
 │   │   ├── timelineUtils.ts            # ✅ 时间轴工具函数
-│   │   ├── textStyleUtils.ts           # ✅ 文字样式+富文本处理工具 (已扩展)
+│   │   ├── textStyleUtils.ts           # ✅ 文字样式+富文本处理工具 (已扩展+修复)
 │   │   ├── animationUtils.ts           # ✅ 动画效果工具
 │   │   ├── previewUtils.ts             # ✅ 预览渲染工具 (已修复类型错误)
 │   │   ├── audioUtils.ts               # ✅ 音频处理工具
@@ -185,7 +185,7 @@ subtitle-studio/
 - 支持样式预览和快速应用
 - 集成快速编辑工具栏
 
-### 2. **模板 (templates/)** - 动态效果模板 ❌ 待开发
+### 2. **模板 (templates/)** - 动态效果模板 ✅ 已完成
 - 按动效分类：自定义/精选/高级/基本
 - 提供预设的动画效果组合
 - 支持动画实时预览
@@ -256,3 +256,27 @@ UI状态管理：
 - 位置拖拽功能
 - 双击进入富文本编辑
 - 单击显示快速工具栏
+
+### 动态效果模板系统 🆕
+- 按分类组织的动效模板（自定义/精选/高级/基本）
+- 支持文本片段级别的动画应用
+- 动画效果实时预览和播放
+- 与文字样式系统完美集成
+
+## 最新修复和优化 🆕
+
+### SubtitleEditor 核心问题修复
+- ✅ **修复光标跳转问题** - 输入时不触发重新渲染
+- ✅ **修复文字消失问题** - 消除双重渲染的竞态条件
+- ✅ **简化渲染逻辑** - 统一为单一useEffect渲染机制
+- ✅ **优化状态同步** - 区分输入和样式应用的更新时机
+
+### 富文本处理工具扩展
+- ✅ **新增 updateRichTextFromPlainText 函数** - 保持富文本结构，只更新文本内容
+- ✅ **优化 mergeAdjacentSegments 使用** - 在样式应用时自动合并相邻相同片段
+- ✅ **完善光标位置管理** - 确保样式应用时的用户体验
+
+### 数据流优化
+- ✅ **输入时**: DOM直接响应，不更新状态，不重新渲染
+- ✅ **样式应用时**: 更新富文本状态，useEffect自动重新渲染
+- ✅ **保存时**: 同步DOM最新内容到富文本结构，保持样式和动效

@@ -19,6 +19,64 @@ export const createRichTextFromPlainText = (
   }];
 };
 
+export const updateRichTextFromPlainText = (
+  existingSegments: RichTextSegment[],
+  newPlainText: string
+): RichTextSegment[] => {
+  if (!newPlainText) return [];
+  
+  // 如果没有现有富文本结构，创建简单的单段结构
+  if (!existingSegments || existingSegments.length === 0) {
+    return [{
+      text: newPlainText,
+      style: { ...DEFAULT_SUBTITLE_STYLE },
+      animation: undefined
+    }];
+  }
+  
+  // 如果只有一个段落，直接更新文本内容，保持样式和动效
+  if (existingSegments.length === 1) {
+    return [{
+      ...existingSegments[0],
+      text: newPlainText
+    }];
+  }
+  
+  // 多个段落的情况，尽量保持原有的样式结构
+  // 这里简化处理：如果文本长度变化不大，尝试按比例分配
+  const originalLength = convertRichTextToPlainText(existingSegments).length;
+  const newLength = newPlainText.length;
+  
+  if (Math.abs(originalLength - newLength) <= originalLength * 0.1) {
+    // 变化较小，尝试保持结构
+    let currentIndex = 0;
+    const result: RichTextSegment[] = [];
+    
+    for (const segment of existingSegments) {
+      const segmentRatio = segment.text.length / originalLength;
+      const newSegmentLength = Math.round(newLength * segmentRatio);
+      const segmentText = newPlainText.substring(currentIndex, currentIndex + newSegmentLength);
+      
+      if (segmentText) {
+        result.push({
+          ...segment,
+          text: segmentText
+        });
+        currentIndex += newSegmentLength;
+      }
+    }
+    
+    return result;
+  } else {
+    // 变化较大，合并为单个段落，使用第一个段落的样式
+    return [{
+      text: newPlainText,
+      style: existingSegments[0]?.style || { ...DEFAULT_SUBTITLE_STYLE },
+      animation: existingSegments[0]?.animation
+    }];
+  }
+};
+
 export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties => {
   if (!style) return {};
   

@@ -5,7 +5,7 @@ import { msToSRTTime } from '@/utils/subtitleParser';
 import { 
   convertRichTextToPlainText, 
   createRichTextFromPlainText, 
-  mergeAdjacentSegments
+  updateRichTextFromPlainText
 } from '@/utils/textStyleUtils';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import type { RichTextSegment } from '@/types/subtitle';
@@ -39,7 +39,7 @@ export function SubtitleEditor() {
   const [richTextSegments, setRichTextSegments] = useState<RichTextSegment[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [selectionRange, setSelectionRange] = useState<{start: number, end: number} | null>(null);
-  const [needsDelayedRender, setNeedsDelayedRender] = useState(false);
+
   
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -47,16 +47,15 @@ export function SubtitleEditor() {
     ? subtitles.find(s => s.id === editingSubtitleId)
     : null;
 
-  // 智能更新函数
+  // 简化更新函数
   const updateRichTextWithType = (newSegments: RichTextSegment[], type: UpdateType) => {
-    setRichTextSegments(newSegments);
-    
     if (type === UpdateType.TEXT_INPUT) {
-      setNeedsDelayedRender(true);
-    } else {
-      setNeedsDelayedRender(false);
-      setTimeout(() => updateEditorContent(), 0);
+      // 输入时不更新状态，避免光标跳转
+      return;
     }
+    
+    // 其他类型直接更新状态，让 useEffect 处理渲染
+    setRichTextSegments(newSegments);
   };
 
   useEffect(() => {
@@ -96,13 +95,16 @@ export function SubtitleEditor() {
 
     const startTimeMs = parseTimeToMs(editStartTime);
     const endTimeMs = parseTimeToMs(editEndTime);
-    const plainText = convertRichTextToPlainText(richTextSegments);
+    
+    // 保存时从DOM获取最新文本，但保持富文本结构
+    const currentPlainText = editorRef.current?.innerText || '';
+    const updatedSegments = updateRichTextFromPlainText(richTextSegments, currentPlainText);
 
     const updates = {
-      text: plainText.trim(),
+      text: currentPlainText.trim(),
       startTime: startTimeMs,
       endTime: endTimeMs,
-      richText: richTextSegments
+      richText: updatedSegments
     };
 
     const validationErrors = validateSubtitle(updates);
@@ -112,7 +114,7 @@ export function SubtitleEditor() {
       return;
     }
 
-    updateSubtitleRichText(currentSubtitle.id, richTextSegments);
+    updateSubtitleRichText(currentSubtitle.id, updatedSegments);
     setEditingSubtitle(null);
     setErrors([]);
   };
@@ -180,11 +182,8 @@ export function SubtitleEditor() {
   };
 
   const handleInput = () => {
-    if (!editorRef.current) return;
-    
-    const text = editorRef.current.innerText;
-    const updatedSegments = createRichTextFromPlainText(text, currentSubtitle?.style);
-    updateRichTextWithType(updatedSegments, UpdateType.TEXT_INPUT);
+    // 输入时不做任何数据结构重建，避免光标跳转
+    // 让用户自由编辑，保存时再同步数据
   };
 
   const getSelectionRange = (): {start: number, end: number} | null => {
@@ -226,23 +225,9 @@ export function SubtitleEditor() {
     }
   };
 
-  // 延迟渲染处理
+  // 单一渲染机制
   useEffect(() => {
-    if (needsDelayedRender) {
-      const timer = setTimeout(() => {
-        updateEditorContent();
-        setNeedsDelayedRender(false);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [needsDelayedRender]);
-
-  // 监听外部样式更新
-  useEffect(() => {
-    if (!needsDelayedRender) {
-      updateEditorContent();
-    }
+    updateEditorContent();
   }, [richTextSegments]);
 
   if (!currentSubtitle) {
