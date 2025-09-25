@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { TextStyleCategory, TextStyleTemplate, TextStyleConfig } from '@/types/textStyle';
 import { TEXT_STYLE_TEMPLATES } from '@/constants/textStyleTemplates';
-import { useProjectStore } from './useProjectStore';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { 
+  applyStyleToAllSegments, 
+  applyStyleToSegments, 
+  createRichTextFromPlainText,
+  mergeAdjacentSegments
+} from '@/utils/textStyleUtils';
 
 const convertToSubtitleShadow = (textShadow?: TextStyleConfig['shadow']) => ({
   enabled: !!textShadow,
@@ -19,7 +25,7 @@ interface TextStyleStore {
   setActiveCategory: (category: TextStyleCategory) => void;
   selectTemplate: (template: TextStyleTemplate) => void;
   clearSelection: () => void;
-  applyToSubtitle: (subtitleId: string) => void;
+  applyToRange: (subtitleId: string, startIndex?: number, endIndex?: number) => void;
   getTemplatesByCategory: (category: TextStyleCategory) => TextStyleTemplate[];
 }
 
@@ -44,7 +50,7 @@ export const useTextStyleStore = create<TextStyleStore>()(
         state.selectedTemplate = null;
       }),
     
-    applyToSubtitle: (subtitleId) => {
+    applyToRange: (subtitleId, startIndex?, endIndex?) => {
       const { selectedTemplate } = get();
       if (!selectedTemplate) return;
       
@@ -61,9 +67,42 @@ export const useTextStyleStore = create<TextStyleStore>()(
         shadow: convertToSubtitleShadow(selectedTemplate.style.shadow),
       };
       
-      useProjectStore.getState().updateSubtitle(subtitleId, { 
-        style: subtitleStyle 
-      });
+      const projectStore = useProjectStore.getState();
+      const subtitle = projectStore.subtitles.find(s => s.id === subtitleId);
+      
+      if (!subtitle) return;
+      
+      // 统一范围应用逻辑
+      if (startIndex !== undefined && endIndex !== undefined) {
+        // 应用到指定范围
+        let richTextSegments = subtitle.richText;
+        
+        if (!richTextSegments) {
+          // 创建富文本数据
+          richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
+        }
+        
+        const updatedSegments = applyStyleToSegments(
+          richTextSegments, 
+          startIndex, 
+          endIndex, 
+          subtitleStyle
+        );
+        
+        const optimizedSegments = mergeAdjacentSegments(updatedSegments);
+        projectStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+        
+      } else {
+        // 应用到整个字幕
+        if (subtitle.richText) {
+          // 有富文本数据，应用到所有片段
+          const updatedSegments = applyStyleToAllSegments(subtitle.richText, subtitleStyle);
+          projectStore.updateSubtitleRichText(subtitleId, updatedSegments);
+        } else {
+          // 没有富文本数据，直接更新字幕样式
+          projectStore.updateSubtitle(subtitleId, { style: subtitleStyle });
+        }
+      }
     },
     
     getTemplatesByCategory: (category) => {

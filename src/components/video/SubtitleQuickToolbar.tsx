@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
+import { 
+  applyStyleToAllSegments,
+  applyStyleToSegments,
+  createRichTextFromPlainText,
+  mergeAdjacentSegments
+} from '@/utils/textStyleUtils';
 
 const FONT_OPTIONS = [
   'Alibaba PuHuiTi',
@@ -26,8 +32,8 @@ interface SubtitleQuickToolbarProps {
 }
 
 export function SubtitleQuickToolbar({ subtitleId, position, onClose }: SubtitleQuickToolbarProps) {
-  const { subtitles, updateSubtitle } = useProjectStore();
-  const { setActivePanel } = useUIStore();
+  const { subtitles, updateSubtitle, updateSubtitleRichText } = useProjectStore();
+  const { setActivePanel, richTextSelection } = useUIStore();
   const [isVisible, setIsVisible] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBrightness, setShowBrightness] = useState(false);
@@ -37,16 +43,49 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
   const currentGlowColor = currentStyle.shadow?.enabled ? currentStyle.shadow.color : null;
   const currentBrightness = currentStyle.shadow?.enabled ? currentStyle.shadow.blur : 15;
 
+  const applyStyleUpdate = (styleUpdate: Partial<typeof currentStyle>) => {
+    if (!subtitle) return;
+
+    // 检查是否有富文本选中状态
+    const hasRichTextSelection = richTextSelection && richTextSelection.subtitleId === subtitleId;
+
+    if (hasRichTextSelection) {
+      // 应用到选中片段
+      let richTextSegments = subtitle.richText;
+      
+      if (!richTextSegments) {
+        richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
+      }
+      
+      const updatedSegments = applyStyleToSegments(
+        richTextSegments,
+        richTextSelection.startIndex,
+        richTextSelection.endIndex,
+        styleUpdate
+      );
+      
+      const optimizedSegments = mergeAdjacentSegments(updatedSegments);
+      updateSubtitleRichText(subtitleId, optimizedSegments);
+      
+    } else {
+      // 应用到整个字幕
+      if (subtitle.richText) {
+        const updatedSegments = applyStyleToAllSegments(subtitle.richText, styleUpdate);
+        updateSubtitleRichText(subtitleId, updatedSegments);
+      } else {
+        const newStyle = { ...currentStyle, ...styleUpdate };
+        updateSubtitle(subtitleId, { style: newStyle });
+      }
+    }
+  };
+
   const handleClose = () => {
     setIsVisible(false);
     onClose();
   };
 
-
-
   const handleColorSelect = (color: string) => {
-    const newStyle = {
-      ...currentStyle,
+    applyStyleUpdate({
       shadow: {
         enabled: true,
         color: color,
@@ -54,15 +93,13 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
         offsetY: 0,
         blur: currentBrightness
       }
-    };
-    updateSubtitle(subtitleId, { style: newStyle });
+    });
     setShowColorPicker(false);
   };
 
   const handleBrightnessChange = (brightness: number) => {
     if (currentGlowColor) {
-      const newStyle = {
-        ...currentStyle,
+      applyStyleUpdate({
         shadow: {
           enabled: true,
           color: currentGlowColor,
@@ -70,14 +107,12 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
           offsetY: 0,
           blur: brightness
         }
-      };
-      updateSubtitle(subtitleId, { style: newStyle });
+      });
     }
   };
 
   const handleRemoveGlow = () => {
-    const newStyle = {
-      ...currentStyle,
+    applyStyleUpdate({
       shadow: {
         enabled: false,
         color: '#000000',
@@ -85,19 +120,16 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
         offsetY: 0,
         blur: 0
       }
-    };
-    updateSubtitle(subtitleId, { style: newStyle });
+    });
     setShowColorPicker(false);
   };
 
   const handleFontChange = (fontFamily: string) => {
-    const newStyle = { ...currentStyle, fontFamily };
-    updateSubtitle(subtitleId, { style: newStyle });
+    applyStyleUpdate({ fontFamily });
   };
 
   const handleFontSizeChange = (fontSize: number) => {
-    const newStyle = { ...currentStyle, fontSize };
-    updateSubtitle(subtitleId, { style: newStyle });
+    applyStyleUpdate({ fontSize });
   };
 
   const handleStyleEdit = () => {

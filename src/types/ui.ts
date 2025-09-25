@@ -1,5 +1,11 @@
 export type PanelType = 'clips' | 'media' | 'search' | 'audio' | 'text' | 'broll' | 'subtitles' | 'templates';
 
+export interface RichTextSelection {
+  subtitleId: string;
+  startIndex: number;
+  endIndex: number;
+}
+
 export interface UIState {
   // 左侧面板
   activePanel: PanelType;

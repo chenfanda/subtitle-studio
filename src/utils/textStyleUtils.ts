@@ -15,7 +15,7 @@ export const createRichTextFromPlainText = (
   return [{
     text,
     style: style || { ...DEFAULT_SUBTITLE_STYLE },
-    animation: undefined // 初始化时无动效
+    animation: undefined
   }];
 };
 
@@ -54,16 +54,14 @@ export const applyStyleToSegments = (
     const segmentEnd = currentIndex + segment.text.length;
     
     if (segmentEnd <= startIndex || segmentStart >= endIndex) {
-      // 片段完全在选择范围外
       result.push({ ...segment });
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
-      // 片段完全在选择范围内
       result.push({
         ...segment,
-        style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle }
+        style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
+        animation: segment.animation // 保留动效
       });
     } else {
-      // 片段部分在选择范围内，需要分割
       const beforeText = segment.text.substring(0, Math.max(0, startIndex - segmentStart));
       const selectedText = segment.text.substring(
         Math.max(0, startIndex - segmentStart),
@@ -83,7 +81,7 @@ export const applyStyleToSegments = (
         result.push({
           text: selectedText,
           style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
-          animation: segment.animation
+          animation: segment.animation // 保留动效
         });
       }
       
@@ -102,6 +100,26 @@ export const applyStyleToSegments = (
   return result;
 };
 
+export const applyStyleToAllSegments = (
+  segments: RichTextSegment[],
+  newStyle: Partial<SubtitleStyle>
+): RichTextSegment[] => {
+  return segments.map(segment => ({
+    ...segment,
+    style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
+    animation: segment.animation // 保留动效
+  }));
+};
+
+export const applyStyleToSegmentsByRange = (
+  segments: RichTextSegment[],
+  startIndex: number,
+  endIndex: number,
+  newStyle: Partial<SubtitleStyle>
+): RichTextSegment[] => {
+  return applyStyleToSegments(segments, startIndex, endIndex, newStyle);
+};
+
 export const applyAnimationToSegments = (
   segments: RichTextSegment[],
   startIndex: number,
@@ -116,16 +134,14 @@ export const applyAnimationToSegments = (
     const segmentEnd = currentIndex + segment.text.length;
     
     if (segmentEnd <= startIndex || segmentStart >= endIndex) {
-      // 片段完全在选择范围外
       result.push({ ...segment });
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
-      // 片段完全在选择范围内
       result.push({
         ...segment,
+        style: segment.style, // 保留样式
         animation: { ...animation }
       });
     } else {
-      // 片段部分在选择范围内，需要分割
       const beforeText = segment.text.substring(0, Math.max(0, startIndex - segmentStart));
       const selectedText = segment.text.substring(
         Math.max(0, startIndex - segmentStart),
@@ -144,7 +160,7 @@ export const applyAnimationToSegments = (
       if (selectedText) {
         result.push({
           text: selectedText,
-          style: segment.style,
+          style: segment.style, // 保留样式
           animation: { ...animation }
         });
       }
@@ -164,6 +180,15 @@ export const applyAnimationToSegments = (
   return result;
 };
 
+export const applyAnimationToSegmentsByRange = (
+  segments: RichTextSegment[],
+  startIndex: number,
+  endIndex: number,
+  animation: AnimationEffect
+): RichTextSegment[] => {
+  return applyAnimationToSegments(segments, startIndex, endIndex, animation);
+};
+
 export const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegment[] => {
   if (segments.length <= 1) return segments;
   
@@ -173,7 +198,6 @@ export const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegm
     const current = segments[i];
     const last = result[result.length - 1];
     
-    // 检查是否可以合并（样式和动效都相同）
     if (
       JSON.stringify(current.style) === JSON.stringify(last.style) &&
       JSON.stringify(current.animation) === JSON.stringify(last.animation)

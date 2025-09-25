@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { UIState, PanelType } from '@/types/ui';
+import type { UIState, PanelType, RichTextSelection } from '@/types/ui';
 import { APP_CONFIG } from '@/constants/config';
 
 interface UIStore extends UIState {
+  // 富文本选中状态
+  richTextSelection: RichTextSelection | null;
+  setRichTextSelection: (selection: RichTextSelection | null) => void;
+  clearRichTextSelection: () => void;
+  
   // 面板控制
   setActivePanel: (panel: PanelType) => void;
   toggleLeftPanel: () => void;
@@ -63,6 +68,18 @@ export const useUIStore = create<UIStore>()(
     immer((set, get) => ({
       // 初始状态
       ...initialState,
+      richTextSelection: null,
+      
+      // 富文本选中状态
+      setRichTextSelection: (selection) =>
+        set((state) => {
+          state.richTextSelection = selection;
+        }),
+      
+      clearRichTextSelection: () =>
+        set((state) => {
+          state.richTextSelection = null;
+        }),
       
       // 面板控制
       setActivePanel: (panel) => 
@@ -91,7 +108,7 @@ export const useUIStore = create<UIStore>()(
       // 字幕选择
       setSelectedSubtitles: (ids) => 
         set((state) => {
-          state.selectedSubtitleIds = [...new Set(ids)]; // 去重
+          state.selectedSubtitleIds = [...new Set(ids)];
         }),
       
       addSelectedSubtitle: (id) => 
@@ -112,6 +129,7 @@ export const useUIStore = create<UIStore>()(
         set((state) => {
           state.selectedSubtitleIds = [];
           state.editingSubtitleId = null;
+          state.richTextSelection = null;
         }),
       
       toggleSubtitleSelection: (id) => 
@@ -128,9 +146,12 @@ export const useUIStore = create<UIStore>()(
         set((state) => {
           state.editingSubtitleId = id;
           
-          // 如果开始编辑，确保该字幕被选中
           if (id && !state.selectedSubtitleIds.includes(id)) {
             state.selectedSubtitleIds = [id];
+          }
+          
+          if (!id) {
+            state.richTextSelection = null;
           }
         }),
       
@@ -161,7 +182,6 @@ export const useUIStore = create<UIStore>()(
       setShowSettingsModal: (show) => 
         set((state) => {
           if (show) {
-            // 关闭其他模态框
             state.showExportModal = false;
             state.showHelpModal = false;
           }
@@ -209,8 +229,6 @@ export const useUIStore = create<UIStore>()(
       // 快捷操作
       focusNextSubtitle: () => {
         const { editingSubtitleId } = get();
-        // 这里需要配合 ProjectStore 使用
-        // 实际实现会依赖字幕数据
         console.log('Focus next subtitle from:', editingSubtitleId);
       },
       
@@ -220,18 +238,19 @@ export const useUIStore = create<UIStore>()(
       },
       
       selectAllSubtitles: () => {
-        // 这个方法需要在组件中调用，因为需要访问项目store中的字幕数据
         console.log('Select all subtitles');
       },
       
       // 重置
       resetUIState: () => 
-        set(() => ({ ...initialState })),
+        set(() => ({ 
+          ...initialState,
+          richTextSelection: null
+        })),
     }))
   )
 );
 
-// 修复后的选择器 - 避免创建新对象
 export const useSelectedSubtitles = () => 
   useUIStore((state) => state.selectedSubtitleIds);
 
@@ -241,7 +260,9 @@ export const useEditingSubtitle = () =>
 export const useActivePanel = () => 
   useUIStore((state) => state.activePanel);
 
-// 拆分选择器，避免每次创建新对象
+export const useRichTextSelection = () =>
+  useUIStore((state) => state.richTextSelection);
+
 export const useLeftPanelWidth = () => 
   useUIStore((state) => state.leftPanelWidth);
 

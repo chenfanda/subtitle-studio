@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTemplateStore, useSelectedTemplate } from '@/stores/useTemplateStore';
-import { useSelectedSubtitles } from '@/stores/useUIStore';
+import { useSelectedSubtitles, useRichTextSelection } from '@/stores/useUIStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { convertToWebAnimation } from '@/utils/animationUtils';
-import { applyAnimationToSegments, mergeAdjacentSegments } from '@/utils/textStyleUtils';
+import { convertRichTextToPlainText } from '@/utils/textStyleUtils';
 import type { AnimationTemplate } from '@/types/animation';
 
 interface EffectPreviewCardProps {
@@ -13,21 +13,51 @@ interface EffectPreviewCardProps {
 export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
   const selectedTemplate = useSelectedTemplate();
   const selectTemplate = useTemplateStore((state) => state.selectTemplate);
+  const applyAnimationToRange = useTemplateStore((state) => state.applyAnimationToRange);
   const selectedSubtitleIds = useSelectedSubtitles();
+  const richTextSelection = useRichTextSelection();
   const { subtitles, updateSubtitleRichText } = useProjectStore();
   
   const previewRef = useRef<HTMLDivElement>(null);
   const [animation, setAnimation] = useState<Animation | null>(null);
+  const [isApplied, setIsApplied] = useState(false);
+  const [hasThisEffect, setHasThisEffect] = useState(false);
   
   const isSelected = selectedTemplate?.id === template.id;
   const hasSelectedSubtitles = selectedSubtitleIds.length > 0;
+  const hasRichTextSelection = richTextSelection && selectedSubtitleIds.includes(richTextSelection.subtitleId);
   
   const selectedSubtitle = hasSelectedSubtitles 
     ? subtitles.find(s => s.id === selectedSubtitleIds[0])
     : null;
   
-  const previewText = selectedSubtitle?.text || template.preview;
+  // 显示选中片段的文字，而不是整个句子
+  const getPreviewText = () => {
+    if (hasRichTextSelection && selectedSubtitle) {
+      if (selectedSubtitle.richText) {
+        const fullText = convertRichTextToPlainText(selectedSubtitle.richText);
+        return fullText.substring(richTextSelection.startIndex, richTextSelection.endIndex);
+      } else {
+        return selectedSubtitle.text.substring(richTextSelection.startIndex, richTextSelection.endIndex);
+      }
+    }
+    return selectedSubtitle?.text || template.preview;
+  };
+  
+  const previewText = getPreviewText();
   const previewStyle = selectedSubtitle?.style;
+
+  // 检查当前字幕是否已有此动效
+  useEffect(() => {
+    if (selectedSubtitle?.richText && template.effects.length > 0) {
+      const hasEffect = selectedSubtitle.richText.some(segment => 
+        segment.animation?.name === template.effects[0].name
+      );
+      setHasThisEffect(hasEffect);
+    } else {
+      setHasThisEffect(false);
+    }
+  }, [selectedSubtitle, template.effects]);
 
   useEffect(() => {
     if (isSelected && previewRef.current) {
@@ -37,7 +67,7 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
     }
 
     return () => stopAnimation();
-  }, [isSelected, selectedSubtitle]);
+  }, [isSelected, selectedSubtitle, richTextSelection]);
 
   const playAnimation = () => {
     if (!template.effects.length || !previewRef.current) return;
@@ -85,32 +115,61 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
     
     const primaryEffect = template.effects[0];
     
-    selectedSubtitleIds.forEach(subtitleId => {
-      const subtitle = subtitles.find(s => s.id === subtitleId);
-      if (!subtitle) return;
-      
-      // 获取当前字幕的富文本数据
-      let richTextSegments = subtitle.richText;
-      if (!richTextSegments) {
-        // 如果没有富文本，从纯文本创建
-        richTextSegments = [{
-          text: subtitle.text,
-          style: subtitle.style,
-          animation: undefined
-        }];
+    if (!hasThisEffect) {
+      // 应用动效
+      if (hasRichTextSelection) {
+        applyAnimationToRange(
+          richTextSelection.subtitleId,
+          primaryEffect,
+          richTextSelection.startIndex,
+          richTextSelection.endIndex
+        );
+      } else {
+        selectedSubtitleIds.forEach(subtitleId => {
+          applyAnimationToRange(subtitleId, primaryEffect);
+        });
       }
       
-      // 应用动效到整个字幕（所有片段）
-      const updatedSegments = richTextSegments.map(segment => ({
-        ...segment,
-        animation: { ...primaryEffect }
-      }));
-      
-      const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-      
-      // 更新字幕
-      updateSubtitleRichText(subtitleId, optimizedSegments);
-    });
+      // 应用成功反馈
+      setIsApplied(true);
+      setTimeout(() => setIsApplied(false), 1500);
+    } else {
+      // 移除动效
+      handleRemoveEffect();
+    }
+  };
+
+  const handleRemoveEffect = () => {
+    if (!selectedSubtitle?.richText) return;
+    
+    const updatedSegments = selectedSubtitle.richText.map(segment => ({
+      ...segment,
+      style: segment.style, // 保留样式
+      animation: segment.animation?.name === template.effects[0].name ? undefined : segment.animation
+    }));
+    
+    updateSubtitleRichText(selectedSubtitle.id, updatedSegments);
+    setHasThisEffect(false);
+  };
+
+  const getButtonText = () => {
+    if (hasThisEffect) {
+      return '移除动效';
+    }
+    if (isApplied) {
+      return '✓ 已应用';
+    }
+    return hasRichTextSelection ? '应用到选中片段' : '应用到整个字幕';
+  };
+
+  const getButtonStyle = () => {
+    if (hasThisEffect) {
+      return 'bg-red-600 hover:bg-red-700 text-white';
+    }
+    if (isApplied) {
+      return 'bg-green-600 text-white';
+    }
+    return 'bg-accent-purple hover:bg-accent-purple/80 text-white';
   };
 
   return (
@@ -145,14 +204,22 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
       {isSelected && (
         <div className="absolute top-1 right-1 w-3 h-3 bg-accent-purple rounded-full" />
       )}
+
+      {hasThisEffect && (
+        <div className="absolute top-1 left-1 w-3 h-3 bg-orange-500 rounded-full" />
+      )}
+
+      {isApplied && (
+        <div className="absolute top-1 left-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+      )}
       
       {isSelected && hasSelectedSubtitles && (
         <div className="absolute bottom-1 left-1 right-1">
           <button
             onClick={handleApply}
-            className="w-full py-1 px-2 text-xs bg-accent-purple hover:bg-accent-purple/80 text-white rounded transition-colors"
+            className={`w-full py-1 px-2 text-xs rounded transition-colors ${getButtonStyle()}`}
           >
-            应用到整个字幕
+            {getButtonText()}
           </button>
         </div>
       )}
