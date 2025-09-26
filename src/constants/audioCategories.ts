@@ -6,7 +6,8 @@ export const AUDIO_CATEGORIES: { id: AudioCategory; name: string }[] = [
   { id: 'ambient', name: 'Ambient' },
   { id: 'acoustic', name: 'Acoustic' },
   { id: 'electronic', name: 'Electronic' },
-  { id: 'hipHop', name: 'Hip Hop' }
+  { id: 'hipHop', name: 'Hip Hop' },
+  { id: 'custom', name: '自定义' }
 ];
 
 export const AUDIO_LIBRARY: Record<AudioCategory, AudioTrack[]> = {
@@ -125,5 +126,7 @@ export const AUDIO_LIBRARY: Record<AudioCategory, AudioTrack[]> = {
     }
   ],
 
-  hipHop: []
+  hipHop: [],
+
+  custom: []
 };
