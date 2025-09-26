@@ -1,33 +1,25 @@
 import { useRef, useState } from 'react';
 import { useMediaStore } from '@/stores/useMediaStore';
-import { validateMediaFile, createMediaItem, formatFileSize } from '@/utils/mediaUtils';
+import { validateMediaFile, createMediaItem } from '@/utils/mediaUtils';
 
 export function MediaUpload() {
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addUploadedMedia } = useMediaStore();
 
   const handleFileSelect = async (files: FileList) => {
-    setError(null);
     setIsUploading(true);
-
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const validation = validateMediaFile(file);
-        
-        if (!validation.isValid) {
-          setError(validation.error || '文件验证失败');
-          continue;
+        if (validation.isValid) {
+          const mediaItem = await createMediaItem(file);
+          addUploadedMedia(mediaItem);
         }
-
-        const mediaItem = await createMediaItem(file);
-        addUploadedMedia(mediaItem);
       }
     } catch (err) {
-      setError('上传失败，请重试');
+      console.error('Upload failed:', err);
     } finally {
       setIsUploading(false);
     }
@@ -43,59 +35,19 @@ export function MediaUpload() {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelect(e.dataTransfer.files);
-    }
-  };
-
   return (
-    <div className="space-y-3">
-      <div
+    <>
+      <button
         onClick={handleClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`
-          border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
-          ${isDragOver 
-            ? 'border-accent-purple bg-accent-purple/10' 
-            : 'border-border-secondary hover:border-accent-purple hover:bg-accent-purple/5'
-          }
-          ${isUploading ? 'pointer-events-none opacity-50' : ''}
-        `}
+        disabled={isUploading}
+        className="w-full py-2 px-4 bg-accent-purple hover:bg-accent-purple/80 disabled:bg-accent-purple/50 text-white text-sm rounded transition-colors flex items-center justify-center gap-2"
       >
-        <div className="space-y-2">
-          <div className="text-2xl">
-            {isUploading ? '⏳' : '📁'}
-          </div>
-          <div className="text-sm text-text-primary">
-            {isUploading ? '上传中...' : '点击上传或拖拽文件到此处'}
-          </div>
-          <div className="text-xs text-text-tertiary">
-            支持 JPG, PNG, GIF, WebP 格式，最大 10MB
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="text-xs text-accent-red bg-accent-red/10 border border-accent-red/20 rounded p-2">
-          {error}
-        </div>
-      )}
+        {isUploading ? (
+          <>⏳ 上传中...</>
+        ) : (
+          <>☁️ 上传</>
+        )}
+      </button>
 
       <input
         ref={fileInputRef}
@@ -105,6 +57,6 @@ export function MediaUpload() {
         onChange={handleFileChange}
         className="hidden"
       />
-    </div>
+    </>
   );
 }

@@ -1,74 +1,48 @@
-import { useEffect } from 'react';
-import { useMediaStore, useTrendingItems, useSearchResults } from '@/stores/useMediaStore';
+import { useState, useEffect } from 'react';
+import { useMediaStore, useTrendingItems } from '@/stores/useMediaStore';
 import { GifCard } from './GifCard';
 import type { GifItem } from '@/types/media';
+import type { SubtitleItem } from '@/types/subtitle';
 
-export function GifsLibrary() {
-  const { 
-    searchState,
-    loadTrending,
-    loadMoreResults
-  } = useMediaStore();
-  
-  const searchResults = useSearchResults();
+interface GifsLibraryProps {
+  currentSubtitle?: SubtitleItem | null;
+}
+
+export function GifsLibrary({ currentSubtitle }: GifsLibraryProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { loadTrending } = useMediaStore();
   const trendingItems = useTrendingItems();
-
-  const hasSearchQuery = Boolean(searchState.query);
-  const allGifs = hasSearchQuery ? searchResults : trendingItems;
-  const gifs = allGifs.filter((item): item is GifItem => item.type === 'gif');
+  
+  const gifs = trendingItems.filter((item): item is GifItem => item.type === 'gif');
+  const visibleGifs = isExpanded ? gifs : gifs.slice(0, 3);
+  const hasMore = gifs.length > 3;
 
   useEffect(() => {
-    if (!hasSearchQuery) {
-      loadTrending('gif');
-    }
-  }, [hasSearchQuery, loadTrending]);
-
-  const handleLoadMore = () => {
-    if (hasSearchQuery && searchState.hasMore && !searchState.isLoading) {
-      loadMoreResults();
-    }
-  };
+    loadTrending('gif');
+  }, [loadTrending]);
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-text-primary">
-            {hasSearchQuery ? `搜索结果: ${searchState.query}` : '热门GIF'}
-          </h4>
-          {hasSearchQuery && (
-            <span className="text-xs text-text-tertiary">
-              {gifs.length} 项
-            </span>
-          )}
-        </div>
-        
-        {gifs.length > 0 ? (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              {gifs.map((gif) => (
-                <GifCard key={gif.id} gif={gif} />
-              ))}
-            </div>
-            
-            {hasSearchQuery && searchState.hasMore && (
-              <div className="flex justify-center pt-4">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={searchState.isLoading}
-                  className="px-4 py-2 text-sm bg-bg-secondary hover:bg-bg-elevated disabled:bg-bg-secondary text-text-primary rounded transition-colors"
-                >
-                  {searchState.isLoading ? '加载中...' : '加载更多'}
-                </button>
-              </div>
-            )}
-          </>
+    <div className="px-4 pb-4">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-medium text-text-primary">Giphy GIFS</h4>
+        {hasMore && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs text-accent-purple hover:text-accent-purple/80 transition-colors"
+          >
+            查看更多
+          </button>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
+        {visibleGifs.length > 0 ? (
+          visibleGifs.map((gif) => (
+            <GifCard key={gif.id} gif={gif} currentSubtitle={currentSubtitle} />
+          ))
         ) : (
-          <div className="text-center py-8 text-text-tertiary">
-            <div className="text-2xl mb-2">🎬</div>
-            <div className="text-sm">
-              {hasSearchQuery ? '没有找到相关GIF' : '暂无GIF'}
-            </div>
+          <div className="aspect-square bg-bg-tertiary rounded border-2 border-dashed border-border-secondary flex items-center justify-center text-text-tertiary text-xl">
+            +
           </div>
         )}
       </div>

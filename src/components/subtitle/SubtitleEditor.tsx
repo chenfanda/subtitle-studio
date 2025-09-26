@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useMediaStore } from '@/stores/useMediaStore';
 import { msToSRTTime } from '@/utils/subtitleParser';
 import { 
   convertRichTextToPlainText, 
@@ -34,6 +35,7 @@ export function SubtitleEditor() {
     setRichTextSelection,
     clearRichTextSelection
   } = useUIStore();
+  const { placedMedia, removeMedia } = useMediaStore();
   
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
@@ -47,6 +49,12 @@ export function SubtitleEditor() {
   const currentSubtitle = editingSubtitleId 
     ? subtitles.find(s => s.id === editingSubtitleId)
     : null;
+
+  const currentSubtitleMedia = currentSubtitle ? 
+    placedMedia.filter(item =>
+      item.position.startTime === currentSubtitle.startTime &&
+      item.position.endTime === currentSubtitle.endTime
+    ) : [];
 
   const updateRichTextWithType = (newSegments: RichTextSegment[], type: UpdateType) => {
     if (type === UpdateType.TEXT_INPUT) {
@@ -149,6 +157,10 @@ export function SubtitleEditor() {
 
   const handleSwitchToTemplatePanel = () => {
     setActivePanel('templates');
+  };
+
+  const handleSwitchToMediaPanel = () => {
+    setActivePanel('media');
   };
 
   const handleRemoveAudio = () => {
@@ -307,6 +319,13 @@ export function SubtitleEditor() {
                 >
                   ✨
                 </button>
+                <button
+                  onClick={handleSwitchToMediaPanel}
+                  className="p-1.5 bg-accent-purple text-white rounded hover:bg-accent-purple/80 transition-colors"
+                  title="插入媒体"
+                >
+                  🖼️
+                </button>
               </div>
             </div>
           )}
@@ -331,7 +350,7 @@ export function SubtitleEditor() {
           </div>
         </div>
 
-        {(hasAnimations || hasCustomStyles || currentSubtitle.audioTrack) && (
+        {(hasAnimations || hasCustomStyles || currentSubtitle.audioTrack || currentSubtitleMedia.length > 0) && (
           <div>
             <label className="block text-xs text-text-tertiary mb-1">配音与格式管理</label>
             <div className="bg-bg-tertiary border border-border-secondary rounded p-3 space-y-2">
@@ -351,6 +370,23 @@ export function SubtitleEditor() {
                   </button>
                 </div>
               )}
+
+              {currentSubtitleMedia.map(mediaItem => (
+                <div key={mediaItem.media.id} className="flex items-center justify-between p-2 bg-blue-500/10 border border-blue-500/20 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🖼️</span>
+                    <span className="text-xs text-text-primary">
+                      媒体: {mediaItem.media.type === 'sticker' ? '贴纸' : 'GIF'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeMedia(mediaItem.media.id)}
+                    className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                  >
+                    移除媒体
+                  </button>
+                </div>
+              ))}
               
               {(hasCustomStyles || hasAnimations) && (
                 <div className="flex gap-2">

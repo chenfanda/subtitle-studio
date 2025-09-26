@@ -3,6 +3,7 @@ import { SubtitlePanel } from '@/components/subtitle/SubtitlePanel';
 import { TextPanel } from '@/components/text/TextPanel';
 import { TemplatePanel } from '@/components/templates/TemplatePanel';
 import { AudioPanel } from '@/components/audio/AudioPanel';
+import { MediaPanel } from '@/components/media/MediaPanel';
 import { useUIStore } from '@/stores/useUIStore';
 
 export function LeftSidebar() {
@@ -38,18 +39,6 @@ function ClipsPanel() {
       <div className="text-center">
         <div className="text-4xl mb-2">✂️</div>
         <div>剪辑面板</div>
-        <div className="text-sm mt-1">即将实现</div>
-      </div>
-    </div>
-  );
-}
-
-function MediaPanel() {
-  return (
-    <div className="h-full flex items-center justify-center text-text-secondary">
-      <div className="text-center">
-        <div className="text-4xl mb-2">🖼️</div>
-        <div>媒体面板</div>
         <div className="text-sm mt-1">即将实现</div>
       </div>
     </div>
