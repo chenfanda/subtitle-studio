@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { MediaItem, PlacedMediaItem } from '@/types/media';
+import type { MediaItem, PlacedMediaItem, UploadedMediaItem } from '@/types/media';
 import { searchStickers, searchGifs, getTrendingStickers, getTrendingGifs } from '@/utils/giphyApi';
-import { createMediaPlacement } from '@/utils/mediaUtils';
 import { useProjectStore } from './useProjectStore';
 
 interface SearchState {
@@ -13,37 +12,35 @@ interface SearchState {
 }
 
 interface MediaStore {
-  // 搜索状态
   searchState: SearchState;
   searchResults: MediaItem[];
   trendingItems: MediaItem[];
   searchHistory: string[];
   
-  // 选择状态
   selectedMedia: MediaItem | null;
   activeMediaType: 'sticker' | 'gif';
   
-  // 已放置的媒体素材
   placedMedia: PlacedMediaItem[];
+  uploadedMedia: UploadedMediaItem[];
   
-  // 搜索方法
   searchMedia: (query: string, type: 'sticker' | 'gif') => Promise<void>;
   loadMoreResults: () => Promise<void>;
   loadTrending: (type: 'sticker' | 'gif') => Promise<void>;
   clearSearch: () => void;
   
-  // 选择方法
   selectMedia: (media: MediaItem) => void;
   clearSelection: () => void;
   setActiveMediaType: (type: 'sticker' | 'gif') => void;
   
-  // 媒体放置方法
-  placeOnTimeline: (startTime: number, endTime: number, x?: number, y?: number) => void;
-  updateMediaPosition: (mediaId: string, x: number, y: number, scale?: number) => void;
+  addUploadedMedia: (media: UploadedMediaItem) => void;
+  removeUploadedMedia: (id: string) => void;
+  getUploadedMedia: () => UploadedMediaItem[];
+  
+  placeOnTimeline: (media: MediaItem, startTime: number, endTime: number, x?: number, y?: number) => void;
+  updateMediaPosition: (mediaId: string, x: number, y: number, scale?: number, rotation?: number) => void;
   updateMediaTiming: (mediaId: string, startTime: number, endTime: number) => void;
   removeMedia: (mediaId: string) => void;
   
-  // 工具方法
   addToHistory: (query: string) => void;
   clearHistory: () => void;
   getMediaAtTime: (time: number) => PlacedMediaItem[];
@@ -51,7 +48,6 @@ interface MediaStore {
 
 export const useMediaStore = create<MediaStore>()(
   immer((set, get) => ({
-    // 初始状态
     searchState: {
       query: '',
       isLoading: false,
@@ -65,8 +61,8 @@ export const useMediaStore = create<MediaStore>()(
     selectedMedia: null,
     activeMediaType: 'sticker',
     placedMedia: [],
+    uploadedMedia: [],
     
-    // 搜索媒体
     searchMedia: async (query, type) => {
       if (!query.trim()) return;
       
@@ -90,7 +86,6 @@ export const useMediaStore = create<MediaStore>()(
           state.searchState.offset = 25;
         });
         
-        // 添加到搜索历史
         get().addToHistory(query);
         
       } catch (error) {
@@ -101,7 +96,6 @@ export const useMediaStore = create<MediaStore>()(
       }
     },
     
-    // 加载更多结果
     loadMoreResults: async () => {
       const { searchState, activeMediaType } = get();
       if (searchState.isLoading || !searchState.hasMore || !searchState.query) return;
@@ -133,7 +127,6 @@ export const useMediaStore = create<MediaStore>()(
       }
     },
     
-    // 加载热门内容
     loadTrending: async (type) => {
       try {
         const trendingFn = type === 'sticker' ? getTrendingStickers : getTrendingGifs;
@@ -149,7 +142,6 @@ export const useMediaStore = create<MediaStore>()(
       }
     },
     
-    // 清除搜索
     clearSearch: () => 
       set((state) => {
         state.searchState.query = '';
@@ -158,61 +150,67 @@ export const useMediaStore = create<MediaStore>()(
         state.searchResults = [];
       }),
     
-    // 选择媒体
     selectMedia: (media) => 
       set((state) => {
         state.selectedMedia = media;
       }),
     
-    // 清除选择
     clearSelection: () => 
       set((state) => {
         state.selectedMedia = null;
       }),
     
-    // 设置媒体类型
     setActiveMediaType: (type) => 
       set((state) => {
         state.activeMediaType = type;
-        state.selectedMedia = null; // 切换类型时清除选择
+        state.selectedMedia = null;
       }),
     
-    // 放置到时间轴
-    placeOnTimeline: (startTime, endTime, x = 50, y = 50) => {
-      const { selectedMedia } = get();
-      if (!selectedMedia) return;
-      
-      const placement = createMediaPlacement(
-        selectedMedia,
-        startTime,
-        endTime,
-        x,
-        y,
-        1 // 默认缩放
-      );
+    addUploadedMedia: (media) =>
+      set((state) => {
+        state.uploadedMedia.push(media);
+      }),
+    
+    removeUploadedMedia: (id) =>
+      set((state) => {
+        state.uploadedMedia = state.uploadedMedia.filter(item => item.id !== id);
+      }),
+    
+    getUploadedMedia: () => {
+      return get().uploadedMedia;
+    },
+    
+    placeOnTimeline: (media, startTime, endTime, x = 50, y = 50) => {
+      const placement: PlacedMediaItem = {
+        media,
+        position: {
+          x,
+          y,
+          scale: 1,
+          rotation: 0,
+          startTime,
+          endTime
+        }
+      };
       
       set((state) => {
         state.placedMedia.push(placement);
       });
       
-      // 通知项目Store有媒体变更
       useProjectStore.getState().markUnsaved();
     },
     
-    // 更新媒体位置
-    updateMediaPosition: (mediaId, x, y, scale) => 
+    updateMediaPosition: (mediaId, x, y, scale, rotation) => 
       set((state) => {
         const media = state.placedMedia.find(item => item.media.id === mediaId);
         if (media) {
           media.position.x = x;
           media.position.y = y;
-          if (scale !== undefined) {
-            media.position.scale = scale;
-          }
+          if (scale !== undefined) media.position.scale = scale;
+          if (rotation !== undefined) media.position.rotation = rotation;
         }
       }),
     
-    // 更新媒体时间
     updateMediaTiming: (mediaId, startTime, endTime) => 
       set((state) => {
         const media = state.placedMedia.find(item => item.media.id === mediaId);
@@ -222,32 +220,27 @@ export const useMediaStore = create<MediaStore>()(
         }
       }),
     
-    // 移除媒体
     removeMedia: (mediaId) => 
       set((state) => {
         state.placedMedia = state.placedMedia.filter(item => item.media.id !== mediaId);
       }),
     
-    // 添加到搜索历史
     addToHistory: (query) => 
       set((state) => {
         const trimmed = query.trim();
         if (trimmed && !state.searchHistory.includes(trimmed)) {
           state.searchHistory.unshift(trimmed);
-          // 保持历史记录最多10条
           if (state.searchHistory.length > 10) {
             state.searchHistory = state.searchHistory.slice(0, 10);
           }
         }
       }),
     
-    // 清除搜索历史
     clearHistory: () => 
       set((state) => {
         state.searchHistory = [];
       }),
     
-    // 获取指定时间的媒体
     getMediaAtTime: (time) => {
       const { placedMedia } = get();
       return placedMedia.filter(item => 
@@ -257,7 +250,6 @@ export const useMediaStore = create<MediaStore>()(
   }))
 );
 
-// 便捷选择器
 export const useSearchState = () => 
   useMediaStore((state) => state.searchState);
 
@@ -275,6 +267,9 @@ export const useActiveMediaType = () =>
 
 export const usePlacedMedia = () => 
   useMediaStore((state) => state.placedMedia);
+
+export const useUploadedMedia = () => 
+  useMediaStore((state) => state.uploadedMedia);
 
 export const useSearchHistory = () => 
   useMediaStore((state) => state.searchHistory);

@@ -5,6 +5,7 @@ export interface MediaItem {
   tags: string[];
   width: number;
   height: number;
+  type: 'sticker' | 'gif';
 }
 
 export interface StickerItem extends MediaItem {
@@ -14,6 +15,22 @@ export interface StickerItem extends MediaItem {
 export interface GifItem extends MediaItem {
   type: 'gif';
 }
+
+export interface UploadedStickerItem extends StickerItem {
+  isCustom: true;
+  uploadedAt: Date;
+  fileName: string;
+  fileSize: number;
+}
+
+export interface UploadedGifItem extends GifItem {
+  isCustom: true;
+  uploadedAt: Date;
+  fileName: string;
+  fileSize: number;
+}
+
+export type UploadedMediaItem = UploadedStickerItem | UploadedGifItem;
 
 export interface MediaPosition {
   x: number;

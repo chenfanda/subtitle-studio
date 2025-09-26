@@ -1,204 +1,109 @@
-import type { MediaItem, StickerItem, GifItem, MediaPosition, PlacedMediaItem } from '@/types/media';
+import type { UploadedMediaItem, PlacedMediaItem, UploadedStickerItem, UploadedGifItem } from '@/types/media';
+import type { SubtitleItem } from '@/types/subtitle';
 
-export const resizeMediaItem = (item: MediaItem, maxWidth: number, maxHeight: number): { width: number; height: number } => {
-  const aspectRatio = item.width / item.height;
-  let newWidth = item.width;
-  let newHeight = item.height;
+export interface FileValidationResult {
+  isValid: boolean;
+  error?: string;
+}
 
-  if (newWidth > maxWidth) {
-    newWidth = maxWidth;
-    newHeight = newWidth / aspectRatio;
+export const validateMediaFile = (file: File): FileValidationResult => {
+  const supportedFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const fileType = file.type;
+  
+  if (!supportedFormats.includes(fileType)) {
+    return {
+      isValid: false,
+      error: `不支持的文件格式。支持的格式：JPG, PNG, GIF, WebP`
+    };
   }
 
-  if (newHeight > maxHeight) {
-    newHeight = maxHeight;
-    newWidth = newHeight * aspectRatio;
-  }
-
-  return { width: Math.round(newWidth), height: Math.round(newHeight) };
-};
-
-export const calculateMediaPosition = (
-  item: MediaItem, 
-  containerWidth: number, 
-  containerHeight: number, 
-  position: MediaPosition
-): { x: number; y: number; width: number; height: number } => {
-  const scaledWidth = item.width * position.scale;
-  const scaledHeight = item.height * position.scale;
-  
-  const x = (containerWidth * position.x / 100) - (scaledWidth / 2);
-  const y = (containerHeight * position.y / 100) - (scaledHeight / 2);
-  
-  return {
-    x: Math.round(x),
-    y: Math.round(y),
-    width: Math.round(scaledWidth),
-    height: Math.round(scaledHeight)
-  };
-};
-
-export const validateMediaFile = (file: File): boolean => {
-  const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const maxSize = 10 * 1024 * 1024; // 10MB
-  
-  return validImageTypes.includes(file.type) && file.size <= maxSize;
+  if (file.size > maxSize) {
+    return {
+      isValid: false,
+      error: '文件过大。最大支持 10MB'
+    };
+  }
+
+  return { isValid: true };
 };
 
-export const createMediaFromFile = async (file: File): Promise<MediaItem> => {
-  return new Promise((resolve, reject) => {
+export const createMediaItem = async (file: File): Promise<UploadedMediaItem> => {
+  const url = URL.createObjectURL(file);
+  const isGif = file.type === 'image/gif';
+  
+  return new Promise((resolve) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
-    
     img.onload = () => {
-      const mediaItem: MediaItem = {
-        id: generateMediaId(),
+      const baseItem = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         url,
         preview: url,
-        tags: [file.name.split('.')[0]],
+        tags: ['custom'],
         width: img.width,
-        height: img.height
+        height: img.height,
+        isCustom: true as const,
+        uploadedAt: new Date(),
+        fileName: file.name,
+        fileSize: file.size
       };
-      
-      URL.revokeObjectURL(url);
-      resolve(mediaItem);
+
+      if (isGif) {
+        resolve({
+          ...baseItem,
+          type: 'gif' as const
+        } as UploadedGifItem);
+      } else {
+        resolve({
+          ...baseItem,
+          type: 'sticker' as const
+        } as UploadedStickerItem);
+      }
     };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
-    
     img.src = url;
   });
 };
 
-export const optimizeMediaForWeb = (item: MediaItem, maxWidth: number = 800): MediaItem => {
-  if (item.width <= maxWidth) return item;
+export const calculateTimeRangeFromTextSelection = (
+  subtitle: SubtitleItem,
+  selectionRange: { start: number, end: number }
+): { startTime: number, endTime: number } => {
+  const totalDuration = subtitle.endTime - subtitle.startTime;
+  const totalTextLength = subtitle.text.length;
   
-  const aspectRatio = item.width / item.height;
-  const optimizedWidth = maxWidth;
-  const optimizedHeight = Math.round(maxWidth / aspectRatio);
+  if (totalTextLength === 0) {
+    return {
+      startTime: subtitle.startTime,
+      endTime: subtitle.endTime
+    };
+  }
+  
+  const startRatio = Math.max(0, selectionRange.start / totalTextLength);
+  const endRatio = Math.min(1, selectionRange.end / totalTextLength);
   
   return {
-    ...item,
-    width: optimizedWidth,
-    height: optimizedHeight
+    startTime: subtitle.startTime + (totalDuration * startRatio),
+    endTime: subtitle.startTime + (totalDuration * endRatio)
   };
 };
 
-export const createStickerFromGiphy = (giphyData: any): StickerItem => {
-  return {
-    id: giphyData.id,
-    type: 'sticker',
-    url: giphyData.images.original.url,
-    preview: giphyData.images.fixed_height_small.url,
-    tags: giphyData.tags ? giphyData.tags.split(', ') : [],
-    width: parseInt(giphyData.images.original.width),
-    height: parseInt(giphyData.images.original.height)
-  };
+export const isMediaVisibleAtTime = (item: PlacedMediaItem, currentTime: number): boolean => {
+  const currentTimeMs = currentTime * 1000;
+  return currentTimeMs >= item.position.startTime && currentTimeMs <= item.position.endTime;
 };
 
-export const createGifFromGiphy = (giphyData: any): GifItem => {
-  return {
-    id: giphyData.id,
-    type: 'gif',
-    url: giphyData.images.original.url,
-    preview: giphyData.images.fixed_height.url,
-    tags: giphyData.tags ? giphyData.tags.split(', ') : [],
-    width: parseInt(giphyData.images.original.width),
-    height: parseInt(giphyData.images.original.height)
-  };
-};
-
-export const getMediaDimensions = (url: string): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.width, height: img.height });
-    img.onerror = reject;
-    img.src = url;
-  });
-};
-
-export const createMediaPlacement = (
-  media: MediaItem, 
-  startTime: number, 
-  endTime: number,
-  x: number = 50,
-  y: number = 50,
-  scale: number = 1
-): PlacedMediaItem => {
-  return {
-    media,
-    position: {
-      x,
-      y,
-      scale,
-      rotation: 0,
-      startTime,
-      endTime
-    }
-  };
-};
-
-export const updateMediaPosition = (
-  placement: PlacedMediaItem, 
-  updates: Partial<MediaPosition>
-): PlacedMediaItem => {
-  return {
-    ...placement,
-    position: {
-      ...placement.position,
-      ...updates
-    }
-  };
-};
-
-export const isMediaVisible = (placement: PlacedMediaItem, currentTime: number): boolean => {
-  return currentTime >= placement.position.startTime && currentTime <= placement.position.endTime;
-};
-
-export const filterMediaByTags = (items: MediaItem[], tags: string[]): MediaItem[] => {
-  if (tags.length === 0) return items;
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
   
-  return items.filter(item => 
-    tags.some(tag => 
-      item.tags.some(itemTag => 
-        itemTag.toLowerCase().includes(tag.toLowerCase())
-      )
-    )
-  );
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const sortMediaByRelevance = (items: MediaItem[], searchTerm: string): MediaItem[] => {
-  if (!searchTerm) return items;
-  
-  const searchLower = searchTerm.toLowerCase();
-  
-  return [...items].sort((a, b) => {
-    const aScore = calculateRelevanceScore(a, searchLower);
-    const bScore = calculateRelevanceScore(b, searchLower);
-    return bScore - aScore;
-  });
-};
-
-export const compressImageQuality = (canvas: HTMLCanvasElement, quality: number = 0.8): string => {
-  return canvas.toDataURL('image/jpeg', quality);
-};
-
-const generateMediaId = (): string => {
-  return `media_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
-const calculateRelevanceScore = (item: MediaItem, searchTerm: string): number => {
-  let score = 0;
-  
-  item.tags.forEach(tag => {
-    const tagLower = tag.toLowerCase();
-    if (tagLower === searchTerm) score += 10;
-    else if (tagLower.includes(searchTerm)) score += 5;
-    else if (searchTerm.includes(tagLower)) score += 3;
-  });
-  
-  return score;
+export const cleanupMediaUrl = (url: string): void => {
+  if (url.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
 };

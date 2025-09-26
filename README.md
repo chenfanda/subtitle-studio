@@ -12,16 +12,16 @@ subtitle-studio/
 │   │   ├── layout/                     # ✅ 已实现 - 基础布局组件
 │   │   │   ├── AppLayout.tsx           # ✅ 页面路由器
 │   │   │   ├── HeaderBar.tsx           # ✅ 顶部标题栏
-│   │   │   ├── LeftSidebar.tsx         # ✅ 左侧边栏容器 (已集成AudioPanel)
-│   │   │   ├── VideoArea.tsx           # ✅ 视频区域 (已集成SubtitleOverlay)
+│   │   │   ├── LeftSidebar.tsx         # ⚠️ 需集成 - 左侧边栏容器 (需添加MediaPanel路由)
+│   │   │   ├── VideoArea.tsx           # ⚠️ 需集成 - 视频区域 (需添加MediaOverlay)
 │   │   │   └── TimelineArea.tsx        # ✅ 时间轴区域容器
 │   │   │
-│   │   ├── video/                      # ✅ 已实现 - 视频相关组件
+│   │   ├── video/                      # ⚠️ 部分实现 - 视频相关组件
 │   │   │   ├── VideoPlayer.tsx         # ✅ 视频播放器组件
 │   │   │   ├── VideoControls.tsx       # ✅ 播放控制栏
 │   │   │   ├── SubtitleOverlay.tsx     # ✅ 字幕叠加层 (已支持富文本渲染和快速工具栏)
 │   │   │   ├── SubtitleQuickToolbar.tsx # ✅ 快速编辑工具栏 (发光颜色+亮度控制)
-│   │   │   ├── StickerOverlay.tsx      # ❌ 待开发 - 贴纸叠加层
+│   │   │   ├── MediaOverlay.tsx        # ✅ 媒体叠加层 (贴纸+GIF叠加)
 │   │   │   └── EffectOverlay.tsx       # ❌ 待开发 - 特效叠加层
 │   │   │
 │   │   ├── timeline/                   # ✅ 已实现 - 时间轴组件
@@ -31,9 +31,9 @@ subtitle-studio/
 │   │   │   ├── SubtitleTrack.tsx       # ✅ 字幕轨道
 │   │   │   └── AudioWaveform.tsx       # ✅ 音频波形
 │   │   │
-│   │   ├── subtitle/                   # ✅ 已实现 - 字幕编辑组件
+│   │   ├── subtitle/                   # ⚠️ 部分实现 - 字幕编辑组件
 │   │   │   ├── SubtitleList.tsx        # ✅ 字幕列表面板
-│   │   │   ├── SubtitleEditor.tsx      # ✅ 富文本字幕编辑器 (已集成配音管理UI)
+│   │   │   ├── SubtitleEditor.tsx      # ⚠️ 需集成 - 富文本字幕编辑器 (需添加媒体插入功能)
 │   │   │   ├── SubtitlePanel.tsx       # ✅ 字幕面板容器
 │   │   │   └── SubtitleToolbar.tsx     # ✅ 字幕工具栏
 │   │   │
@@ -54,7 +54,7 @@ subtitle-studio/
 │   │   │   ├── EffectPreviewCard.tsx   # ✅ 动态效果预览卡片
 │   │   │   └── AnimationPreview.tsx    # ✅ 动画效果实时预览组件
 │   │   │
-│   │   ├── audio/                      # ✅ 已实现 - 音频库相关组件 🆕
+│   │   ├── audio/                      # ✅ 已实现 - 音频库相关组件
 │   │   │   ├── AudioPanel.tsx          # ✅ 音频面板容器 (6个分类标签页)
 │   │   │   ├── AudioLibrary.tsx        # ✅ 音频网格展示容器
 │   │   │   ├── AudioCard.tsx           # ✅ 单个音频卡片 (悬停播放+点击应用配音)
@@ -67,14 +67,15 @@ subtitle-studio/
 │   │   │   ├── ElectronicAudioTab.tsx  # ✅ Electronic分类音频展示
 │   │   │   └── CustomAudioTab.tsx      # ✅ 自定义分类 (上传+已上传音频)
 │   │   │
-│   │   ├── media/                      # ❌ 待开发 - 媒体素材相关组件
-│   │   │   ├── MediaPanel.tsx          # ❌ 媒体面板容器
-│   │   │   ├── StickerLibrary.tsx      # ❌ Giphy Sticker库
-│   │   │   ├── GifsLibrary.tsx         # ❌ Giphy GIFS库
-│   │   │   ├── StickerCard.tsx         # ❌ 贴纸卡片组件
-│   │   │   ├── GifCard.tsx             # ❌ GIF卡片组件
-│   │   │   ├── MediaSearch.tsx         # ❌ 媒体搜索组件
-│   │   │   └── MediaUpload.tsx         # ❌ 媒体上传组件
+│   │   ├── media/                      # ✅ 已实现 - 媒体素材相关组件 🆕
+│   │   │   ├── MediaPanel.tsx          # ✅ 媒体面板容器 (贴纸+GIF分类标签)
+│   │   │   ├── StickerLibrary.tsx      # ✅ Giphy Sticker库展示
+│   │   │   ├── GifsLibrary.tsx         # ✅ Giphy GIFS库展示
+│   │   │   ├── StickerCard.tsx         # ✅ 贴纸卡片组件 (点击应用到视频画面)
+│   │   │   ├── GifCard.tsx             # ✅ GIF卡片组件 (点击应用到视频画面)
+│   │   │   ├── MediaSearch.tsx         # ✅ 媒体搜索组件 (搜索历史+关键词)
+│   │   │   ├── MediaUpload.tsx         # ✅ 媒体上传组件 (拖拽+文件选择)
+│   │   │   └── MediaElement.tsx        # ✅ 视频画面媒体元素 (拖拽+选中+删除) 🆕
 │   │   │
 │   │   ├── broll/                      # ❌ 待开发 - B-roll相关组件
 │   │   │   ├── BrollPanel.tsx          # ❌ B-roll面板容器
@@ -109,7 +110,7 @@ subtitle-studio/
 │   │   ├── useTextStyleStore.ts        # ✅ 文字样式状态管理
 │   │   ├── useTemplateStore.ts         # ✅ 动效模板状态管理
 │   │   ├── useAudioStore.ts            # ✅ 音频素材状态管理 (完整音频播放控制)
-│   │   ├── useMediaStore.ts            # ✅ 媒体素材状态管理
+│   │   ├── useMediaStore.ts            # ✅ 媒体素材状态管理 (贴纸+GIF管理) 🆕
 │   │   └── useBrollStore.ts            # ✅ B-roll素材状态管理
 │   │
 │   ├── utils/                          # ✅ 工具函数层 - 纯功能函数，无状态
@@ -121,8 +122,8 @@ subtitle-studio/
 │   │   ├── animationUtils.ts           # ✅ 动画效果工具
 │   │   ├── previewUtils.ts             # ✅ 预览渲染工具
 │   │   ├── audioUtils.ts               # ✅ 音频处理工具 (完整音频处理功能)
-│   │   ├── mediaUtils.ts               # ✅ 媒体素材工具
-│   │   ├── mediaApi.ts                 # ❌ 媒体API集成 (前端模拟，待后端集成)
+│   │   ├── mediaUtils.ts               # ✅ 媒体处理工具 (文件验证+时间计算+显示判断) 🆕
+│   │   ├── giphyApi.ts                 # ✅ Giphy API模拟工具 (前端模拟数据) 🆕
 │   │   ├── brollUtils.ts               # ✅ B-roll处理工具
 │   │   └── exportUtils.ts              # ❌ 导出格式转换工具
 │   │
@@ -134,7 +135,7 @@ subtitle-studio/
 │   │   ├── textStyle.ts                # ✅ 文字样式类型定义
 │   │   ├── animation.ts                # ✅ 动画效果类型定义
 │   │   ├── audio.ts                    # ✅ 音频素材类型定义 (已扩展custom分类)
-│   │   ├── media.ts                    # ✅ 媒体素材类型定义
+│   │   ├── media.ts                    # ✅ 媒体素材类型定义 (扩展上传类型支持) 🆕
 │   │   └── broll.ts                    # ✅ B-roll类型定义
 │   │
 │   ├── constants/                      # ✅ 常量配置
@@ -143,7 +144,7 @@ subtitle-studio/
 │   │   ├── styles.ts                   # ✅ 样式常量
 │   │   ├── textStyleTemplates.ts       # ✅ 文字样式模板数据
 │   │   ├── animationTemplates.ts       # ✅ 动画效果模板数据
-│   │   ├── audioCategories.ts          # ✅ 音频分类配置 (已添加custom分类和完整数据) 🆕
+│   │   ├── audioCategories.ts          # ✅ 音频分类配置 (已添加custom分类和完整数据)
 │   │   ├── mediaCategories.ts          # ✅ 媒体分类配置
 │   │   └── icons.ts                    # ❌ 图标映射配置
 │   │
