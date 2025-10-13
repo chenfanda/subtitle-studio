@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getTrendingStickers } from '@/utils/giphyApi';
-import { useUploadedMedia } from '@/stores/useMediaStore';
+import { useMediaStore, useTrendingItems, useUploadedMedia } from '@/stores/useMediaStore';
 import { StickerCard } from './StickerCard';
-import type { StickerItem, MediaItem, UploadedStickerItem } from '@/types/media';
+import type { StickerItem, UploadedStickerItem } from '@/types/media';
 import type { SubtitleItem } from '@/types/subtitle';
 
 interface StickerLibraryProps {
@@ -11,32 +10,19 @@ interface StickerLibraryProps {
 
 export function StickerLibrary({ currentSubtitle }: StickerLibraryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [trendingStickers, setTrendingStickers] = useState<MediaItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
+  const { loadTrending } = useMediaStore();
+  const trendingItems = useTrendingItems();
   const uploadedMedia = useUploadedMedia();
-  const uploadedStickers = uploadedMedia.filter((item): item is UploadedStickerItem => item.type === 'sticker');
   
-  // 合并上传的贴纸和热门贴纸
+  const uploadedStickers = uploadedMedia.filter((item): item is UploadedStickerItem => item.type === 'sticker');
+  const trendingStickers = trendingItems.filter((item): item is StickerItem => item.type === 'sticker');
   const allStickers = [...uploadedStickers, ...trendingStickers];
   const visibleStickers = isExpanded ? allStickers : allStickers.slice(0, 3);
   const hasMore = allStickers.length > 3;
 
   useEffect(() => {
-    const loadStickers = async () => {
-      try {
-        setIsLoading(true);
-        const stickerData = await getTrendingStickers(20);
-        setTrendingStickers(stickerData);
-      } catch (error) {
-        console.error('Failed to load stickers:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStickers();
-  }, []);
+    loadTrending('sticker');
+  }, [loadTrending]);
 
   return (
     <div className="px-4 pb-4">
@@ -53,11 +39,7 @@ export function StickerLibrary({ currentSubtitle }: StickerLibraryProps) {
       </div>
       
       <div className="grid grid-cols-3 gap-2">
-        {isLoading && uploadedStickers.length === 0 ? (
-          Array.from({ length: 3 }, (_, i) => (
-            <div key={i} className="aspect-square bg-bg-tertiary rounded animate-pulse" />
-          ))
-        ) : visibleStickers.length > 0 ? (
+        {visibleStickers.length > 0 ? (
           visibleStickers.map((sticker) => (
             <StickerCard key={sticker.id} sticker={sticker as StickerItem} currentSubtitle={currentSubtitle} />
           ))

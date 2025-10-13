@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useMediaStore, useTrendingItems } from '@/stores/useMediaStore';
+import { useMediaStore, useTrendingItems, useUploadedMedia } from '@/stores/useMediaStore';
 import { GifCard } from './GifCard';
-import type { GifItem } from '@/types/media';
+import type { GifItem, UploadedGifItem } from '@/types/media';
 import type { SubtitleItem } from '@/types/subtitle';
 
 interface GifsLibraryProps {
@@ -12,10 +12,13 @@ export function GifsLibrary({ currentSubtitle }: GifsLibraryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { loadTrending } = useMediaStore();
   const trendingItems = useTrendingItems();
+  const uploadedMedia = useUploadedMedia();
   
-  const gifs = trendingItems.filter((item): item is GifItem => item.type === 'gif');
-  const visibleGifs = isExpanded ? gifs : gifs.slice(0, 3);
-  const hasMore = gifs.length > 3;
+  const uploadedGifs = uploadedMedia.filter((item): item is UploadedGifItem => item.type === 'gif');
+  const trendingGifs = trendingItems.filter((item): item is GifItem => item.type === 'gif');
+  const allGifs = [...uploadedGifs, ...trendingGifs];
+  const visibleGifs = isExpanded ? allGifs : allGifs.slice(0, 3);
+  const hasMore = allGifs.length > 3;
 
   useEffect(() => {
     loadTrending('gif');
