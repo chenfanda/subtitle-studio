@@ -1,4 +1,4 @@
-import type { BrollVideo, BrollRecommendation, BrollPlacement } from '@/types/broll';
+import type { BrollVideo, BrollRecommendation, BrollPlacement, BrollTransition } from '@/types/broll';
 import type { SubtitleItem } from '@/types/subtitle';
 
 export const generateBrollRecommendations = (subtitles: SubtitleItem[]): BrollRecommendation[] => {
@@ -138,6 +138,83 @@ export const generateBrollThumbnail = (videoUrl: string, timeOffset: number = 1)
     video.onerror = reject;
     video.src = videoUrl;
   });
+};
+
+// 🆕 上传B-roll视频处理
+export const uploadBrollVideo = async (file: File): Promise<BrollVideo> => {
+  // 验证文件
+  if (!validateBrollFile(file)) {
+    throw new Error('Invalid file type or size');
+  }
+
+  // 创建视频URL
+  const videoUrl = URL.createObjectURL(file);
+
+  try {
+    // 获取视频时长
+    const duration = await getBrollDuration(videoUrl);
+
+    // 生成缩略图
+    const thumbnail = await generateBrollThumbnail(videoUrl);
+
+    // 创建BrollVideo对象
+    const brollVideo: BrollVideo = {
+      id: `uploaded_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: file.name.replace(/\.[^/.]+$/, ''), // 移除扩展名
+      url: videoUrl,
+      thumbnail,
+      duration: Math.floor(duration),
+      tags: ['本地上传', 'custom'],
+    };
+
+    return brollVideo;
+  } catch (error) {
+    // 清理URL
+    URL.revokeObjectURL(videoUrl);
+    throw error;
+  }
+};
+
+// 🆕 应用过渡样式
+export const applyTransitionStyle = (
+  transition: BrollTransition,
+  progress: number
+): React.CSSProperties => {
+  switch (transition) {
+    case 'fade':
+      // 淡入淡出效果
+      if (progress < 0.1) {
+        return {
+          opacity: progress * 10,
+          transition: 'opacity 0.3s ease-in-out'
+        };
+      }
+      if (progress > 0.9) {
+        return {
+          opacity: (1 - progress) * 10,
+          transition: 'opacity 0.3s ease-in-out'
+        };
+      }
+      return { opacity: 1 };
+
+    case 'glow':
+      // 光晕效果
+      if (progress < 0.1 || progress > 0.9) {
+        const glowIntensity = progress < 0.1 
+          ? progress * 10 
+          : (1 - progress) * 10;
+        return {
+          filter: `brightness(${1 + glowIntensity * 0.3})`,
+          boxShadow: `0 0 ${30 * glowIntensity}px rgba(255, 255, 255, ${0.5 * glowIntensity})`,
+          transition: 'all 0.3s ease-in-out'
+        };
+      }
+      return {};
+
+    case 'none':
+    default:
+      return {};
+  }
 };
 
 export const analyzeSceneContent = (subtitles: SubtitleItem[]): { themes: string[]; mood: string; context: string } => {

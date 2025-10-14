@@ -4,6 +4,7 @@ import { TextPanel } from '@/components/text/TextPanel';
 import { TemplatePanel } from '@/components/templates/TemplatePanel';
 import { AudioPanel } from '@/components/audio/AudioPanel';
 import { MediaPanel } from '@/components/media/MediaPanel';
+import { BrollPanel } from '@/components/broll/BrollPanel';  // 🆕 新增导入
 import { useUIStore } from '@/stores/useUIStore';
 
 export function LeftSidebar() {
@@ -27,7 +28,7 @@ export function LeftSidebar() {
         {activePanel === 'templates' && <TemplatePanel />}
         {activePanel === 'media' && <MediaPanel />}
         {activePanel === 'audio' && <AudioPanel />}
-        {activePanel === 'broll' && <BRollPanel />}
+        {activePanel === 'broll' && <BrollPanel />}  {/* 🆕 修改：使用真正的 BrollPanel */}
       </div>
     </div>
   );
@@ -39,18 +40,6 @@ function ClipsPanel() {
       <div className="text-center">
         <div className="text-4xl mb-2">✂️</div>
         <div>剪辑面板</div>
-        <div className="text-sm mt-1">即将实现</div>
-      </div>
-    </div>
-  );
-}
-
-function BRollPanel() {
-  return (
-    <div className="h-full flex items-center justify-center text-text-secondary">
-      <div className="text-center">
-        <div className="text-4xl mb-2">🎬</div>
-        <div>B-roll面板</div>
         <div className="text-sm mt-1">即将实现</div>
       </div>
     </div>

@@ -1,14 +1,26 @@
+import { useMemo } from 'react';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { SubtitleOverlay } from '../video/SubtitleOverlay';
 import { MediaOverlay } from '../video/MediaOverlay';
 import { VideoControls } from '../video/VideoControls';
 import { Watermark } from '../common/Watermark';
+import { BrollVideoPlayer } from '../broll/BrollVideoPlayer';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 
 export function VideoArea() {
-  const { videoUrl, appStage } = useProjectStore();
+  const { videoUrl, appStage, subtitles, currentTime } = useProjectStore();
   const { watermark } = useSettingsStore();
+
+  // 检测当前时间的字幕及其B-roll
+  const currentSubtitle = useMemo(() => {
+    const currentTimeMs = currentTime * 1000;
+    return subtitles.find(s => 
+      currentTimeMs >= s.startTime && currentTimeMs <= s.endTime
+    );
+  }, [subtitles, currentTime]);
+
+  const hasBroll = !!currentSubtitle?.brollVideo;
 
   if (appStage !== 'editing' || !videoUrl) {
     return (
@@ -33,10 +45,30 @@ export function VideoArea() {
             maxHeight: '100%'
           }}
         >
-          <VideoPlayer />
+          {/* 主视频播放器 - 有B-roll时隐藏 */}
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              opacity: hasBroll ? 0 : 1, 
+              transition: 'opacity 0.3s',
+              pointerEvents: hasBroll ? 'none' : 'auto'  // ✅ 关键修复：有B-roll时禁用交互
+            }}
+          >
+            <VideoPlayer />
+          </div>
           
+          {/* B-roll视频播放器 - 有B-roll时显示 */}
+          {hasBroll && currentSubtitle?.brollVideo && (
+            <BrollVideoPlayer 
+              brollData={currentSubtitle.brollVideo}
+              subtitle={currentSubtitle}
+            />
+          )}
+          
+          {/* 字幕叠加层 - 始终显示 */}
           <SubtitleOverlay />
           
+          {/* 媒体叠加层 - 始终显示 */}
           <MediaOverlay />
           
           <Watermark config={watermark} />

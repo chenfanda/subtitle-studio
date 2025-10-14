@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { ProjectState } from '@/types/project';
 import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData } from '@/types/subtitle';
+import type { BrollVideoData } from '@/types/broll';  // 🆕 新增导入
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import { APP_CONFIG } from '@/constants/config';
 import { 
@@ -53,6 +54,10 @@ interface ProjectStore extends ProjectState {
   setSubtitleAudio: (id: string, audioData: SubtitleAudioData) => void;
   removeSubtitleAudio: (id: string) => void;
   getSubtitlesWithAudio: () => SubtitleItem[];
+  
+  // 🆕 B-roll管理方法
+  setSubtitleBroll: (id: string, brollData: BrollVideoData) => void;
+  removeSubtitleBroll: (id: string) => void;
   
   markUnsaved: () => void;
   markSaved: () => void;
@@ -373,6 +378,26 @@ export const useProjectStore = create<ProjectStore>()(
       getSubtitlesWithAudio: () => {
         return get().subtitles.filter(subtitle => subtitle.audioTrack);
       },
+      
+      // 🆕 设置字幕的B-roll
+      setSubtitleBroll: (id, brollData) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            subtitle.brollVideo = brollData;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      // 🆕 移除字幕的B-roll
+      removeSubtitleBroll: (id) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            subtitle.brollVideo = undefined;
+            state.saveStatus = 'unsaved';
+          }
+        }),
       
       markUnsaved: () => 
         set((state) => {

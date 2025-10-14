@@ -1,4 +1,5 @@
 import type { AudioTrack } from './audio';
+import type { BrollVideoData } from './broll';  // 新增导入
 
 export interface SubtitlePosition {
   x: number;
@@ -48,6 +49,7 @@ export interface SubtitleItem {
   position?: SubtitlePosition;
   richText?: RichTextSegment[];
   audioTrack?: SubtitleAudioData;
+  brollVideo?: BrollVideoData;  // 新增字段
 }
 
 export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {

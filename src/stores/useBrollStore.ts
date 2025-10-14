@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { BrollVideo, BrollRecommendation, BrollPlacement } from '@/types/broll';
+import type { BrollVideo, BrollRecommendation, BrollPlacement, BrollTransition } from '@/types/broll';
 import type { SubtitleItem } from '@/types/subtitle';
 import { 
   searchBrollVideos, 
@@ -25,6 +25,11 @@ interface BrollStore {
   selectedBroll: BrollVideo | null;
   selectedSubtitle: SubtitleItem | null;
   
+  // 🆕 弹窗状态
+  selectedVideo: BrollVideo | null;
+  selectedTransition: BrollTransition;
+  dialogView: 'search' | 'edit';
+  
   // 已放置的B-roll
   placedBrolls: BrollPlacement[];
   
@@ -39,6 +44,13 @@ interface BrollStore {
   selectBroll: (broll: BrollVideo) => void;
   selectSubtitle: (subtitle: SubtitleItem) => void;
   clearSelection: () => void;
+  
+  // 🆕 弹窗视图方法
+  selectVideo: (video: BrollVideo) => void;
+  selectTransition: (transition: BrollTransition) => void;
+  setDialogView: (view: 'search' | 'edit') => void;
+  applyToSubtitle: (subtitleId: string) => void;
+  resetDialog: () => void;
   
   // B-roll放置方法
   placeOnTimeline: (startTime: number, endTime: number) => void;
@@ -73,6 +85,12 @@ export const useBrollStore = create<BrollStore>()(
     
     selectedBroll: null,
     selectedSubtitle: null,
+    
+    // 🆕 弹窗状态初始值
+    selectedVideo: null,
+    selectedTransition: 'none',
+    dialogView: 'search',
+    
     placedBrolls: [],
     recommendations: [],
     
@@ -94,7 +112,6 @@ export const useBrollStore = create<BrollStore>()(
           state.searchState.isLoading = false;
         });
         
-        // 添加到搜索历史
         get().addToHistory(query);
         
       } catch (error) {
@@ -105,33 +122,72 @@ export const useBrollStore = create<BrollStore>()(
       }
     },
     
-    // 清除搜索
     clearSearch: () => 
       set((state) => {
         state.searchState.query = '';
         state.searchState.results = [];
       }),
     
-    // 选择B-roll
     selectBroll: (broll) => 
       set((state) => {
         state.selectedBroll = broll;
       }),
     
-    // 选择字幕（用于关联B-roll）
     selectSubtitle: (subtitle) => 
       set((state) => {
         state.selectedSubtitle = subtitle;
       }),
     
-    // 清除选择
     clearSelection: () => 
       set((state) => {
         state.selectedBroll = null;
         state.selectedSubtitle = null;
       }),
     
-    // 放置到时间轴
+    // 🆕 选择视频（弹窗中点击卡片）
+    selectVideo: (video) => 
+      set((state) => {
+        state.selectedVideo = video;
+        state.dialogView = 'edit'; // 自动切换到编辑视图
+      }),
+    
+    // 🆕 选择过渡效果
+    selectTransition: (transition) => 
+      set((state) => {
+        state.selectedTransition = transition;
+      }),
+    
+    // 🆕 设置弹窗视图
+    setDialogView: (view) => 
+      set((state) => {
+        state.dialogView = view;
+      }),
+    
+    // 🆕 应用到字幕
+    applyToSubtitle: (subtitleId) => {
+      const { selectedVideo, selectedTransition } = get();
+      if (!selectedVideo) return;
+      
+      const projectStore = useProjectStore.getState();
+      projectStore.setSubtitleBroll(subtitleId, {
+        video: selectedVideo,
+        volume: 50,
+        startOffset: 0,
+        transition: selectedTransition
+      });
+      
+      // 重置弹窗状态
+      get().resetDialog();
+    },
+    
+    // 🆕 重置弹窗状态
+    resetDialog: () => 
+      set((state) => {
+        state.selectedVideo = null;
+        state.selectedTransition = 'none';
+        state.dialogView = 'search';
+      }),
+    
     placeOnTimeline: (startTime, endTime) => {
       const { selectedBroll } = get();
       if (!selectedBroll) return;
@@ -140,23 +196,20 @@ export const useBrollStore = create<BrollStore>()(
         selectedBroll,
         startTime,
         endTime - startTime,
-        0.3 // 默认音量
+        0.3
       );
       
       set((state) => {
         state.placedBrolls.push(placement);
       });
       
-      // 通知项目Store有变更
       useProjectStore.getState().markUnsaved();
     },
     
-    // 放置在字幕旁边
     placeBesideSubtitle: (subtitleId, paddingBefore = 500, paddingAfter = 500) => {
       const { selectedBroll } = get();
       if (!selectedBroll) return;
       
-      // 从项目Store获取字幕信息
       const projectStore = useProjectStore.getState();
       const subtitle = projectStore.subtitles.find(s => s.id === subtitleId);
       if (!subtitle) return;
@@ -175,7 +228,6 @@ export const useBrollStore = create<BrollStore>()(
       projectStore.markUnsaved();
     },
     
-    // 更新B-roll时间
     updateBrollTiming: (brollId, startTime, endTime) => 
       set((state) => {
         const broll = state.placedBrolls.find(item => item.brollVideo.id === brollId);
@@ -185,7 +237,6 @@ export const useBrollStore = create<BrollStore>()(
         }
       }),
     
-    // 更新B-roll音量
     updateBrollVolume: (brollId, volume) => 
       set((state) => {
         const broll = state.placedBrolls.find(item => item.brollVideo.id === brollId);
@@ -194,19 +245,16 @@ export const useBrollStore = create<BrollStore>()(
         }
       }),
     
-    // 移除B-roll
     removeBroll: (brollId) => 
       set((state) => {
         state.placedBrolls = state.placedBrolls.filter(item => item.brollVideo.id !== brollId);
       }),
     
-    // 按时长筛选B-roll
     filterBrollsByDuration: (minDuration, maxDuration) => {
       const { searchState } = get();
       return filterBrollByDuration(searchState.results, minDuration, maxDuration);
     },
     
-    // 为当前字幕优化B-roll
     optimizeBrollForCurrentSubtitle: () => {
       const { selectedBroll, selectedSubtitle } = get();
       if (!selectedBroll || !selectedSubtitle) return null;
@@ -214,13 +262,11 @@ export const useBrollStore = create<BrollStore>()(
       return optimizeBrollForSubtitle(selectedBroll, selectedSubtitle);
     },
     
-    // 生成基础推荐（简单版本，基于关键词）
     generateBasicRecommendations: (subtitles) => {
-      // 基础版本：为每个字幕生成简单的关键词推荐
       const recommendations: BrollRecommendation[] = subtitles.map(subtitle => ({
         subtitleId: subtitle.id,
-        keywords: subtitle.text.split(' ').slice(0, 3), // 简单提取前3个词作为关键词
-        suggestions: [] // 基础版暂时为空，后续通过AI服务填充
+        keywords: subtitle.text.split(' ').slice(0, 3),
+        suggestions: []
       }));
       
       set((state) => {
@@ -228,32 +274,27 @@ export const useBrollStore = create<BrollStore>()(
       });
     },
     
-    // 清除推荐
     clearRecommendations: () => 
       set((state) => {
         state.recommendations = [];
       }),
     
-    // 添加到搜索历史
     addToHistory: (query) => 
       set((state) => {
         const trimmed = query.trim();
         if (trimmed && !state.searchHistory.includes(trimmed)) {
           state.searchHistory.unshift(trimmed);
-          // 保持历史记录最多10条
           if (state.searchHistory.length > 10) {
             state.searchHistory = state.searchHistory.slice(0, 10);
           }
         }
       }),
     
-    // 清除搜索历史
     clearHistory: () => 
       set((state) => {
         state.searchHistory = [];
       }),
     
-    // 获取指定时间的B-roll
     getBrollAtTime: (time) => {
       const { placedBrolls } = get();
       return placedBrolls.filter(item => 
@@ -272,6 +313,16 @@ export const useSelectedBroll = () =>
 
 export const useSelectedSubtitle = () => 
   useBrollStore((state) => state.selectedSubtitle);
+
+// 🆕 弹窗状态选择器
+export const useSelectedVideo = () => 
+  useBrollStore((state) => state.selectedVideo);
+
+export const useSelectedTransition = () => 
+  useBrollStore((state) => state.selectedTransition);
+
+export const useDialogView = () => 
+  useBrollStore((state) => state.dialogView);
 
 export const usePlacedBrolls = () => 
   useBrollStore((state) => state.placedBrolls);
