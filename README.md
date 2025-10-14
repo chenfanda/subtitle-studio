@@ -16,8 +16,8 @@ ubtitle-studio/
 │   │   ├── video/                      # ✅ 已实现 - 视频相关组件
 │   │   │   ├── VideoPlayer.tsx         # ✅ 视频播放器组件
 │   │   │   ├── VideoControls.tsx       # ✅ 播放控制栏
-│   │   │   ├── SubtitleOverlay.tsx     # ✅ 字幕叠加层 (已支持富文本渲染和快速工具栏)
-│   │   │   ├── SubtitleQuickToolbar.tsx # ✅ 快速编辑工具栏 (发光颜色+亮度控制)
+│   │   │   ├── SubtitleOverlay.tsx     # ✅ 字幕叠加层 (已支持富文本渲染、快速工具栏、缩放控制)
+│   │   │   ├── SubtitleQuickToolbar.tsx # ✅ 快速编辑工具栏 (发光颜色+亮度控制、字体选择) 🔧 已修复
 │   │   │   ├── MediaOverlay.tsx        # ✅ 媒体叠加层 (贴纸+GIF叠加)
 │   │   │   └── EffectOverlay.tsx       # ❌ 待开发 - 特效叠加层
 │   │   │
@@ -72,7 +72,7 @@ ubtitle-studio/
 │   │   │   ├── GifCard.tsx             # ✅ GIF卡片组件 (点击应用到视频画面)
 │   │   │   ├── MediaSearch.tsx         # ✅ 媒体搜索组件 (搜索历史+关键词)
 │   │   │   ├── MediaUpload.tsx         # ✅ 媒体上传组件 (拖拽+文件选择)
-│   │   │   └── MediaElement.tsx        # ✅ 视频画面媒体元素 (拖拽+选中+删除)
+│   │   │   └── MediaElement.tsx        # ✅ 视频画面媒体元素 (拖拽+缩放+旋转+删除) 🆕 已集成TransformBorder
 │   │   │
 │   │   ├── broll/                      # ✅ 已实现 - B-roll相关组件 🆕
 │   │   │   ├── BrollPanel.tsx          # ✅ B-roll面板容器 (字幕列表展示)
@@ -88,7 +88,8 @@ ubtitle-studio/
 │   │   ├── sidebar/                    # ✅ 已实现 - 侧边栏组件
 │   │   │   └── SidebarTabs.tsx         # ✅ 工具栏 (已支持7个工具图标)
 │   │   │
-│   │   ├── common/                     # ⚠️ 部分实现 - 通用组件
+│   │   ├── common/                     # ✅ 已实现 - 通用组件 🆕
+│   │   │   ├── TransformBorder.tsx     # ✅ 变换控制边框 (缩放+旋转控制点) 🆕 核心组件
 │   │   │   ├── Watermark.tsx           # ✅ 水印组件
 │   │   │   ├── LoadingSpinner.tsx      # ❌ 加载动画
 │   │   │   ├── SearchInput.tsx         # ❌ 搜索输入框
@@ -103,14 +104,14 @@ ubtitle-studio/
 │   │       └── MediaIcons.tsx          # ❌ 媒体相关图标
 │   │
 │   ├── stores/                         # ✅ 状态管理层 - 应用状态协调
-│   │   ├── useProjectStore.ts          # ✅ 项目状态 (已扩展B-roll管理)
-│   │   ├── useUIStore.ts               # ✅ UI状态管理
+│   │   ├── useProjectStore.ts          # ✅ 项目状态 (已扩展B-roll管理、字幕缩放、容器宽度) 🔧 已扩展
+│   │   ├── useUIStore.ts               # ✅ UI状态管理 (富文本选择、面板控制)
 │   │   ├── useTimelineStore.ts         # ✅ 时间轴状态
 │   │   ├── useSettingsStore.ts         # ✅ 用户设置
 │   │   ├── useTextStyleStore.ts        # ✅ 文字样式状态管理
 │   │   ├── useTemplateStore.ts         # ✅ 动效模板状态管理
 │   │   ├── useAudioStore.ts            # ✅ 音频素材状态管理 (完整音频播放控制)
-│   │   ├── useMediaStore.ts            # ✅ 媒体素材状态管理 (贴纸+GIF管理)
+│   │   ├── useMediaStore.ts            # ✅ 媒体素材状态管理 (贴纸+GIF管理、scaleX/scaleY) 🔧 已修改
 │   │   └── useBrollStore.ts            # ✅ B-roll素材状态管理 (搜索+选择+过渡+应用)
 │   │
 │   ├── utils/                          # ✅ 工具函数层 - 纯功能函数，无状态
@@ -118,7 +119,7 @@ ubtitle-studio/
 │   │   ├── videoUtils.ts               # ✅ 视频播放工具函数
 │   │   ├── subtitleParser.ts           # ✅ SRT字幕解析工具
 │   │   ├── timelineUtils.ts            # ✅ 时间轴工具函数
-│   │   ├── textStyleUtils.ts           # ✅ 文字样式+富文本处理工具
+│   │   ├── textStyleUtils.ts           # ✅ 文字样式+富文本处理工具 (shadow深度合并) 🔧 已修复
 │   │   ├── animationUtils.ts           # ✅ 动画效果工具
 │   │   ├── previewUtils.ts             # ✅ 预览渲染工具
 │   │   ├── audioUtils.ts               # ✅ 音频处理工具 (完整音频处理功能)
@@ -129,13 +130,13 @@ ubtitle-studio/
 │   │
 │   ├── types/                          # ✅ 类型定义
 │   │   ├── project.ts                  # ✅ 项目类型
-│   │   ├── subtitle.ts                 # ✅ 字幕类型 (已扩展brollVideo支持)
+│   │   ├── subtitle.ts                 # ✅ 字幕类型 (已扩展brollVideo、scale、width支持) 🔧 已扩展
 │   │   ├── timeline.ts                 # ✅ 时间轴类型
 │   │   ├── ui.ts                       # ✅ UI类型
 │   │   ├── textStyle.ts                # ✅ 文字样式类型定义
 │   │   ├── animation.ts                # ✅ 动画效果类型定义
 │   │   ├── audio.ts                    # ✅ 音频素材类型定义 (已扩展custom分类)
-│   │   ├── media.ts                    # ✅ 媒体素材类型定义 (扩展上传类型支持)
+│   │   ├── media.ts                    # ✅ 媒体素材类型定义 (scaleX/scaleY) 🔧 已修改
 │   │   └── broll.ts                    # ✅ B-roll类型定义 (已扩展BrollTransition和BrollVideoData)
 │   │
 │   ├── constants/                      # ✅ 常量配置
@@ -202,6 +203,7 @@ ubtitle-studio/
 - Giphy Sticker和GIFS集成
 - 搜索、预览、添加功能
 - 支持自定义上传
+- **支持缩放和旋转控制** 🆕
 
 ### 5. **B-roll (broll/)** - 视频画面替换 ✅ 已完成 🆕
 - 搜索B-roll视频素材
@@ -210,121 +212,26 @@ ubtitle-studio/
 - 视频画面替换字幕时段
 - 保持字幕和配音不变
 
+### 6. **变换控制 (TransformBorder)** - 通用变换组件 ✅ 已完成 🆕
+- **字幕模式**：6个控制点
+  - 4个角控制点：等比缩放字幕
+  - 2个边控制点（左/右）：调整容器宽度（文字居中，改变位置）
+- **媒体模式**：8个控制点
+  - 4个角控制点：等比缩放图片/GIF
+  - 4个边控制点（上下左右）：非等比缩放（拉伸变形）
+- **核心特性**：
+  - 边框跟随对象缩放
+  - 控制点实时响应
+  - 支持最小/最大缩放约束
+  - 统一的白色控制点样式
+
+### 7. **快速工具栏 (SubtitleQuickToolbar)** - 字幕快速编辑 ✅ 已完成 🔧
+- 发光颜色选择（7种预设颜色）
+- 发光亮度调节（5-30范围）
+- 字体选择（5种字体）
+- 字号调整（12-48px）
+- **已修复**：发光亮度调节问题
+
 ## 数据流架构
 
 ### 完整的状态管理体系
-useProjectStore (全局项目状态)
-├── 字幕数据 (支持位置、样式、动画、富文本、配音、B-roll)
-├── 项目配置和播放状态
-└── 数据持久化和同步
-功能模块状态管理：
-├── useTextStyleStore (文字样式选择) ✅ 已完成
-├── useTemplateStore (动效模板选择) ✅ 已完成
-├── useAudioStore (音频管理和播放) ✅ 已完成
-├── useMediaStore (媒体素材搜索和放置) ✅ 已完成
-└── useBrollStore (B-roll搜索选择和应用) ✅ 已完成
-UI状态管理：
-├── useUIStore (界面状态) ✅ 已完成
-├── useTimelineStore (时间轴状态) ✅ 已完成
-└── useSettingsStore (用户设置) ✅ 已完成
-
-### 用户操作数据流
-
-选择样式/效果/配音/B-roll → 功能Store状态更新 → 应用到项目数据
-项目数据变更 → 触发组件重新渲染 → 实时预览更新
-最终导出 → 收集所有数据 → 后端服务处理
-
-
-## B-roll功能实现细节 🆕
-
-### **核心交互流程**：
-
-用户点击左侧侧边栏B-roll图标
-↓
-进入BrollPanel，显示字幕列表
-↓
-点击字幕缩略图（无B-roll状态）
-↓
-打开BrollDialog弹窗
-
-第一层：搜索视图（素材库/本地标签）
-搜索或浏览B-roll视频
-↓
-
-
-点击视频卡片
-↓
-切换到第二层：编辑视图
-
-预览选中的视频
-选择过渡动画（无/淡入/光晕）
-点击应用按钮
-↓
-
-
-B-roll应用到字幕
-
-字幕缩略图更新为B-roll图片
-播放时视频画面替换为B-roll
-字幕文字和配音保持不变
-
-
-
-
-### **技术实现**：
-- **视频替换**: 主视频opacity:0，BrollVideoPlayer显示
-- **播放同步**: 根据字幕时间范围同步B-roll播放位置
-- **过渡效果**: CSS动画实现淡入淡出和光晕效果
-- **数据存储**: 存储在SubtitleItem.brollVideo字段
-
-### **已知问题** ⚠️：
-1. 修改VideoArea.tsx后视频播放控制按钮显示异常
-2. BrollPanel无法直接选择字幕，需要在字幕面板选择
-
-## 项目完成度评估
-
-### 整体项目完成度：约 98% (提升 3%)
-
-**核心架构层**：    100% ✅
-**状态管理层**：    100% ✅  
-**工具函数层**：    100% ✅ 
-**类型和配置**：    100% ✅ 
-**富文本编辑系统**：100% ✅ 
-**快速工具栏**：    100% ✅ 
-**文字样式模块**：  100% ✅ 
-**动态效果模块**：  100% ✅ 
-**视频交互功能**：  100% ✅ 
-**音频库模块**：    100% ✅
-**媒体素材模块**：  100% ✅
-**B-roll模块**：    100% ✅ (新完成) 🆕
-**集成和优化**：    95% ⚠️ (有已知问题待修复)
-
-## 🏆 项目里程碑
-
-### 已达成重要里程碑
-
-✅ **富文本编辑系统完全稳定** - 核心编辑问题全部解决
-✅ **文字和动效模板系统完成** - 两大主要功能模块100%完成
-✅ **音频配音系统完成** - 完整的音频库、播放预览、配音管理功能
-✅ **媒体素材系统完成** - Giphy集成、搜索、上传、叠加显示
-✅ **B-roll视频替换系统完成** - 搜索、上传、过渡效果、视频替换 🆕
-✅ **视频字幕交互完善** - 从选择到编辑到配音到B-roll的完整用户流程
-✅ **代码质量显著提升** - 通过问题修复提升了整体架构稳定性
-
-### 下一个里程碑目标
-
-🎯 **修复已知问题** - 视频控制按钮显示、B-roll面板字幕选择
-🎯 **导出功能开发** - 完整的项目导出能力
-🎯 **性能优化** - 大量素材加载和播放的性能优化
-🎯 **AI推荐功能** - B-roll智能推荐、字幕优化建议
-
-文档已更新完成！主要变更：
-
-✅ 添加完整的B-roll组件列表（9个组件）
-✅ 更新stores中useBrollStore状态
-✅ 更新utils中brollUtils工具函数
-✅ 更新types中broll类型定义
-✅ 标记VideoArea和LeftSidebar已集成
-✅ 添加B-roll功能实现细节章节
-✅ 记录已知问题
-✅ 更新项目完成度为98%

@@ -39,7 +39,12 @@ export function SubtitleQuickToolbar({ subtitleId, position, onClose }: Subtitle
   const [showBrightness, setShowBrightness] = useState(false);
   
   const subtitle = subtitles.find(s => s.id === subtitleId);
-  const currentStyle = subtitle?.style || DEFAULT_SUBTITLE_STYLE;
+  
+  // ✅ 修复：从正确的位置读取样式
+  const currentStyle = subtitle?.richText && subtitle.richText.length > 0
+    ? (subtitle.richText[0].style || subtitle.style || DEFAULT_SUBTITLE_STYLE)
+    : (subtitle?.style || DEFAULT_SUBTITLE_STYLE);
+  
   const currentGlowColor = currentStyle.shadow?.enabled ? currentStyle.shadow.color : null;
   const currentBrightness = currentStyle.shadow?.enabled ? currentStyle.shadow.blur : 15;
 

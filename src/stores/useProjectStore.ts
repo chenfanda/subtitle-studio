@@ -3,7 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { ProjectState } from '@/types/project';
 import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData } from '@/types/subtitle';
-import type { BrollVideoData } from '@/types/broll';  // 🆕 新增导入
+import type { BrollVideoData } from '@/types/broll';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import { APP_CONFIG } from '@/constants/config';
 import { 
@@ -41,7 +41,9 @@ interface ProjectStore extends ProjectState {
   duplicateSubtitle: (id: string) => void;
   updateSubtitles: (subtitles: SubtitleItem[]) => void;
   
+  updateSubtitleWidth: (id: string, width: number) => void;  // ✅ 新增
   updateSubtitlePosition: (id: string, x: number, y: number) => void;
+  updateSubtitleScale: (id: string, scale: number) => void;  // ✅ 新增
   getSubtitlePosition: (id: string) => SubtitlePosition;
   
   clearAllAnimations: (id: string) => void;
@@ -55,7 +57,6 @@ interface ProjectStore extends ProjectState {
   removeSubtitleAudio: (id: string) => void;
   getSubtitlesWithAudio: () => SubtitleItem[];
   
-  // 🆕 B-roll管理方法
   setSubtitleBroll: (id: string, brollData: BrollVideoData) => void;
   removeSubtitleBroll: (id: string) => void;
   
@@ -306,6 +307,28 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }),
       
+      updateSubtitleScale: (id, scale) =>  // ✅ 新增方法
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            if (!subtitle.position) {
+              subtitle.position = { ...DEFAULT_SUBTITLE_POSITION };
+            }
+            subtitle.position.scale = scale;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      updateSubtitleWidth: (id, width) =>
+        set((state) => {
+          const subtitle = state.subtitles.find(s => s.id === id);
+          if (subtitle) {
+            if (!subtitle.position) {
+              subtitle.position = { ...DEFAULT_SUBTITLE_POSITION };
+            }
+            subtitle.position.width = width;
+            state.saveStatus = 'unsaved';
+          }
+        }),
       getSubtitlePosition: (id) => {
         const subtitle = get().subtitles.find(s => s.id === id);
         return subtitle?.position || { ...DEFAULT_SUBTITLE_POSITION };
@@ -379,7 +402,6 @@ export const useProjectStore = create<ProjectStore>()(
         return get().subtitles.filter(subtitle => subtitle.audioTrack);
       },
       
-      // 🆕 设置字幕的B-roll
       setSubtitleBroll: (id, brollData) =>
         set((state) => {
           const subtitle = state.subtitles.find(s => s.id === id);
@@ -389,7 +411,6 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }),
       
-      // 🆕 移除字幕的B-roll
       removeSubtitleBroll: (id) =>
         set((state) => {
           const subtitle = state.subtitles.find(s => s.id === id);

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useMediaStore } from '@/stores/useMediaStore';
+import { TransformBorder } from '../common/TransformBorder';
 import type { PlacedMediaItem } from '@/types/media';
 
 interface MediaElementProps {
@@ -40,7 +41,14 @@ export function MediaElement({ item }: MediaElementProps) {
       const clampedX = Math.max(0, Math.min(100, newX));
       const clampedY = Math.max(0, Math.min(100, newY));
       
-      updateMediaPosition(item.media.id, clampedX, clampedY);
+      updateMediaPosition(
+        item.media.id, 
+        clampedX, 
+        clampedY, 
+        item.position.scaleX,
+        item.position.scaleY,
+        item.position.rotation
+      );
     };
 
     const handleMouseUp = () => {
@@ -68,36 +76,51 @@ export function MediaElement({ item }: MediaElementProps) {
       ref={elementRef}
       className={`
         absolute pointer-events-auto cursor-grab transition-all duration-200
-        ${isDragging ? 'cursor-grabbing scale-105' : ''}
-        ${isSelected ? 'ring-2 ring-accent-purple' : ''}
+        ${isDragging ? 'cursor-grabbing' : ''}
       `}
       style={{
         left: `${item.position.x}%`,
         top: `${item.position.y}%`,
-        transform: `translate(-50%, -50%) scale(${item.position.scale}) rotate(${item.position.rotation}deg)`,
+        transform: `translate(-50%, -50%) scale(${item.position.scaleX}, ${item.position.scaleY}) rotate(${item.position.rotation}deg)`,  // ✅ scale 应用在外层
         zIndex: isSelected ? 15 : 10
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
     >
-      <img 
-        src={item.media.url}
-        alt=""
-        className="max-w-24 max-h-24 object-contain"
-        draggable={false}
-      />
+      <TransformBorder
+        isSelected={isSelected}
+        position={{ x: item.position.x, y: item.position.y }}
+        scaleX={item.position.scaleX}
+        scaleY={item.position.scaleY}
+        mode="media"
+        onTransformChange={(scaleX, scaleY) => {
+          updateMediaPosition(
+            item.media.id,
+            item.position.x,
+            item.position.y,
+            scaleX,
+            scaleY,
+            item.position.rotation
+          );
+        }}
+        minScale={0.3}
+        maxScale={5.0}
+      >
+        <img 
+          src={item.media.url}
+          alt=""
+          className="w-24 h-24 object-contain"  // ✅ 不再单独应用 scale
+          draggable={false}
+        />
+      </TransformBorder>
       
       {isSelected && (
-        <>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-purple rounded-full border-2 border-white" />
-          
-          <button
-            onClick={handleDelete}
-            className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-colors"
-          >
-            ×
-          </button>
-        </>
+        <button
+          onClick={handleDelete}
+          className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-colors z-20"
+        >
+          ×
+        </button>
       )}
     </div>
   );

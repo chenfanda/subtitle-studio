@@ -1,9 +1,11 @@
 import type { AudioTrack } from './audio';
-import type { BrollVideoData } from './broll';  // 新增导入
+import type { BrollVideoData } from './broll';
 
 export interface SubtitlePosition {
   x: number;
   y: number;
+  scale: number;
+  width?: number;  // ✅ 新增：容器宽度（像素）
 }
 
 export interface SubtitleShadow {
@@ -49,12 +51,14 @@ export interface SubtitleItem {
   position?: SubtitlePosition;
   richText?: RichTextSegment[];
   audioTrack?: SubtitleAudioData;
-  brollVideo?: BrollVideoData;  // 新增字段
+  brollVideo?: BrollVideoData;
 }
 
 export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {
   x: 50,
   y: 85,
+  scale: 1.0,
+  width: undefined,  // ✅ 默认自动宽度
 };
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {

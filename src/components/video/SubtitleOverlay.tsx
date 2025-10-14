@@ -3,6 +3,7 @@ import { useProjectStore } from '../../stores/useProjectStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '../../types/subtitle';
 import { SubtitleQuickToolbar } from './SubtitleQuickToolbar';
+import { TransformBorder } from '../common/TransformBorder';
 import { convertToWebAnimation } from '../../utils/animationUtils';
 import { convertStyleToCSS } from '../../utils/textStyleUtils';
 import type { RichTextSegment } from '../../types/subtitle';
@@ -11,10 +12,12 @@ export function SubtitleOverlay() {
   const { 
     subtitles, 
     currentTime, 
-    updateSubtitlePosition, 
+    updateSubtitlePosition,
+    updateSubtitleScale,
+    updateSubtitleWidth,  // ✅ 新增导入
     getSubtitlePosition 
   } = useProjectStore();
-  const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
+  const { selectedSubtitleIds, setSelectedSubtitles } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickToolbar, setShowQuickToolbar] = useState(false);
@@ -33,7 +36,7 @@ export function SubtitleOverlay() {
 
   const isSelected = currentSubtitle ? selectedSubtitleIds.includes(currentSubtitle.id) : false;
   
-  const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85 };
+  const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85, scale: 1.0, width: undefined };
   
   const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
 
@@ -61,7 +64,6 @@ export function SubtitleOverlay() {
       ));
     }
     
-    // 回退到纯文本渲染
     return (
       <span style={convertStyleToCSS(subtitleStyle)}>
         {currentSubtitle.text}
@@ -73,7 +75,6 @@ export function SubtitleOverlay() {
   const playSegmentAnimations = () => {
     if (!currentSubtitle?.richText) return;
     
-    // 清除之前的动画
     stopAllAnimations();
     
     const newAnimations = new Map<number, Animation>();
@@ -96,11 +97,8 @@ export function SubtitleOverlay() {
       const animation = element.animate(keyframes, options);
       newAnimations.set(index, animation);
       
-      // 如果是入场动画，播放完成后保持状态
       if (segment.animation.type === 'entrance') {
-        animation.onfinish = () => {
-          // 动画完成后保持最终状态
-        };
+        animation.onfinish = () => {};
       }
     });
     
@@ -115,10 +113,8 @@ export function SubtitleOverlay() {
     setSegmentAnimations(new Map());
   };
 
-  // 当字幕变化时播放动效
   useEffect(() => {
     if (currentSubtitle && currentSubtitle.richText) {
-      // 延迟一下确保DOM元素已渲染
       setTimeout(() => {
         playSegmentAnimations();
       }, 50);
@@ -129,7 +125,6 @@ export function SubtitleOverlay() {
     return () => stopAllAnimations();
   }, [currentSubtitle?.id]);
 
-  // 清理函数
   useEffect(() => {
     return () => {
       stopAllAnimations();
@@ -180,6 +175,7 @@ export function SubtitleOverlay() {
 
   const handleDoubleClick = () => {
     if (currentSubtitle) {
+      const { setEditingSubtitle } = useUIStore.getState();
       setEditingSubtitle(currentSubtitle.id);
     }
   };
@@ -191,38 +187,58 @@ export function SubtitleOverlay() {
           ref={subtitleRef}
           className={`
             absolute pointer-events-auto transition-all duration-200 ease-in-out
-            ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:scale-102'}
-            ${isSelected ? 'ring-2 ring-accent-purple/50' : ''}
+            ${isDragging ? 'cursor-grabbing' : 'cursor-grab hover:scale-102'}
           `}
           style={{
             left: `${subtitlePosition.x}%`,
             top: `${subtitlePosition.y}%`,
-            transform: 'translate(-50%, -50%)',
+            transform: `translate(-50%, -50%) scale(${subtitlePosition.scale || 1.0})`,  // ✅ scale 应用在外层
           }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
         >
-          <div className={`
-            inline-block px-4 py-2 text-center transition-all rounded
-            ${isSelected 
-              ? 'border-2 border-accent-purple shadow-lg shadow-accent-purple/20' 
-              : 'border-2 border-transparent'
-            }
-          `}>
+          <TransformBorder
+            isSelected={isSelected}
+            position={{ x: subtitlePosition.x, y: subtitlePosition.y }}
+            scale={subtitlePosition.scale || 1.0}
+            width={subtitlePosition.width}  // ✅ 传递宽度
+            mode="subtitle"
+            onScaleChange={(scale) => {
+              if (currentSubtitle) {
+                updateSubtitleScale(currentSubtitle.id, scale);
+              }
+            }}
+            onWidthChange={(width) => {  // ✅ 宽度变化回调
+              if (currentSubtitle) {
+                updateSubtitleWidth(currentSubtitle.id, width);
+              }
+            }}
+            minScale={0.5}
+            maxScale={2.0}
+          >
             <div 
-              className="subtitle-content"
+              className={`
+                inline-block px-4 py-2 text-center transition-all rounded
+                ${isSelected 
+                  ? 'border-2 border-accent-purple shadow-lg shadow-accent-purple/20' 
+                  : 'border-2 border-transparent'
+                }
+              `}
               style={{
-                wordBreak: 'break-word',
-                textAlign: subtitleStyle.alignment,
+                width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',  // ✅ 应用容器宽度
               }}
             >
-              {renderRichTextContent()}
+              <div 
+                className="subtitle-content"
+                style={{
+                  wordBreak: 'break-word',
+                  textAlign: subtitleStyle.alignment,
+                }}
+              >
+                {renderRichTextContent()}
+              </div>
             </div>
-            
-            {isSelected && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-purple rounded-full border-2 border-white"></div>
-            )}
-          </div>
+          </TransformBorder>
         </div>
       )}
       

@@ -25,7 +25,6 @@ export const updateRichTextFromPlainText = (
 ): RichTextSegment[] => {
   if (!newPlainText) return [];
   
-  // 如果没有现有富文本结构，创建简单的单段结构
   if (!existingSegments || existingSegments.length === 0) {
     return [{
       text: newPlainText,
@@ -34,7 +33,6 @@ export const updateRichTextFromPlainText = (
     }];
   }
   
-  // 如果只有一个段落，直接更新文本内容，保持样式和动效
   if (existingSegments.length === 1) {
     return [{
       ...existingSegments[0],
@@ -42,13 +40,10 @@ export const updateRichTextFromPlainText = (
     }];
   }
   
-  // 多个段落的情况，尽量保持原有的样式结构
-  // 这里简化处理：如果文本长度变化不大，尝试按比例分配
   const originalLength = convertRichTextToPlainText(existingSegments).length;
   const newLength = newPlainText.length;
   
   if (Math.abs(originalLength - newLength) <= originalLength * 0.1) {
-    // 变化较小，尝试保持结构
     let currentIndex = 0;
     const result: RichTextSegment[] = [];
     
@@ -68,7 +63,6 @@ export const updateRichTextFromPlainText = (
     
     return result;
   } else {
-    // 变化较大，合并为单个段落，使用第一个段落的样式
     return [{
       text: newPlainText,
       style: existingSegments[0]?.style || { ...DEFAULT_SUBTITLE_STYLE },
@@ -87,12 +81,9 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     fontStyle: style.fontStyle,
     color: style.color,
     backgroundColor: style.backgroundColor,
-    borderColor: style.borderColor,
-    borderWidth: style.borderWidth ? `${style.borderWidth}px` : undefined,
-    borderStyle: style.borderWidth ? 'solid' : undefined,
     opacity: style.opacity,
     textAlign: style.alignment,
-    textShadow: style.shadow.enabled 
+    textShadow: style.shadow?.enabled 
       ? `${style.shadow.offsetX}px ${style.shadow.offsetY}px ${style.shadow.blur}px ${style.shadow.color}`
       : 'none'
   };
@@ -116,8 +107,17 @@ export const applyStyleToSegments = (
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
       result.push({
         ...segment,
-        style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
-        animation: segment.animation // 保留动效
+        style: {
+          ...DEFAULT_SUBTITLE_STYLE,
+          ...(segment.style || {}),  // ✅ 修复：防止 undefined
+          ...newStyle,
+          shadow: {  // ✅ 修复：深度合并 shadow
+            ...DEFAULT_SUBTITLE_STYLE.shadow,
+            ...(segment.style?.shadow || {}),
+            ...(newStyle.shadow || {})
+          }
+        },
+        animation: segment.animation
       });
     } else {
       const beforeText = segment.text.substring(0, Math.max(0, startIndex - segmentStart));
@@ -138,8 +138,17 @@ export const applyStyleToSegments = (
       if (selectedText) {
         result.push({
           text: selectedText,
-          style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
-          animation: segment.animation // 保留动效
+          style: {
+            ...DEFAULT_SUBTITLE_STYLE,
+            ...(segment.style || {}),  // ✅ 修复：防止 undefined
+            ...newStyle,
+            shadow: {  // ✅ 修复：深度合并 shadow
+              ...DEFAULT_SUBTITLE_STYLE.shadow,
+              ...(segment.style?.shadow || {}),
+              ...(newStyle.shadow || {})
+            }
+          },
+          animation: segment.animation
         });
       }
       
@@ -164,8 +173,17 @@ export const applyStyleToAllSegments = (
 ): RichTextSegment[] => {
   return segments.map(segment => ({
     ...segment,
-    style: { ...DEFAULT_SUBTITLE_STYLE, ...segment.style, ...newStyle },
-    animation: segment.animation // 保留动效
+    style: {
+      ...DEFAULT_SUBTITLE_STYLE,
+      ...(segment.style || {}),  // ✅ 修复：防止 undefined
+      ...newStyle,
+      shadow: {  // ✅ 修复：深度合并 shadow
+        ...DEFAULT_SUBTITLE_STYLE.shadow,
+        ...(segment.style?.shadow || {}),
+        ...(newStyle.shadow || {})
+      }
+    },
+    animation: segment.animation
   }));
 };
 
@@ -196,7 +214,7 @@ export const applyAnimationToSegments = (
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
       result.push({
         ...segment,
-        style: segment.style, // 保留样式
+        style: segment.style,
         animation: { ...animation }
       });
     } else {
@@ -218,7 +236,7 @@ export const applyAnimationToSegments = (
       if (selectedText) {
         result.push({
           text: selectedText,
-          style: segment.style, // 保留样式
+          style: segment.style,
           animation: { ...animation }
         });
       }

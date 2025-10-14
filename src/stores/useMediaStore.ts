@@ -37,7 +37,7 @@ interface MediaStore {
   getUploadedMedia: () => UploadedMediaItem[];
   
   placeOnTimeline: (media: MediaItem, startTime: number, endTime: number, x?: number, y?: number) => void;
-  updateMediaPosition: (mediaId: string, x: number, y: number, scale?: number, rotation?: number) => void;
+  updateMediaPosition: (mediaId: string, x: number, y: number, scaleX?: number, scaleY?: number, rotation?: number) => void;  // ✅ 修改签名
   updateMediaTiming: (mediaId: string, startTime: number, endTime: number) => void;
   removeMedia: (mediaId: string) => void;
   
@@ -186,7 +186,8 @@ export const useMediaStore = create<MediaStore>()(
         position: {
           x,
           y,
-          scale: 1,
+          scaleX: 1,      // ✅ 修改：使用 scaleX
+          scaleY: 1,      // ✅ 修改：使用 scaleY
           rotation: 0,
           startTime,
           endTime
@@ -200,13 +201,14 @@ export const useMediaStore = create<MediaStore>()(
       useProjectStore.getState().markUnsaved();
     },
     
-    updateMediaPosition: (mediaId, x, y, scale, rotation) => 
+    updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation) =>  // ✅ 修改参数
       set((state) => {
         const media = state.placedMedia.find(item => item.media.id === mediaId);
         if (media) {
           media.position.x = x;
           media.position.y = y;
-          if (scale !== undefined) media.position.scale = scale;
+          if (scaleX !== undefined) media.position.scaleX = scaleX;  // ✅ 修改
+          if (scaleY !== undefined) media.position.scaleY = scaleY;  // ✅ 修改
           if (rotation !== undefined) media.position.rotation = rotation;
         }
       }),

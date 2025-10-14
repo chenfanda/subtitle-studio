@@ -35,7 +35,8 @@ export type UploadedMediaItem = UploadedStickerItem | UploadedGifItem;
 export interface MediaPosition {
   x: number;
   y: number;
-  scale: number;
+  scaleX: number;     // ✅ 修改：从 scale 拆分为 scaleX
+  scaleY: number;     // ✅ 新增：独立的纵向缩放
   rotation: number;
   startTime: number;
   endTime: number;
