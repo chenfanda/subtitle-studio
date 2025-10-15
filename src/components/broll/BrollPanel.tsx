@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
 import { BrollDialog } from './BrollDialog';
-import { formatTimeCode } from '@/utils/timelineUtils';
+import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 
 export function BrollPanel() {
   const [showDialog, setShowDialog] = useState(false);
   const [targetSubtitleId, setTargetSubtitleId] = useState<string>('');
   
-  const { subtitles, removeSubtitleBroll } = useProjectStore();
+  const { subtitles, removeSubtitleBroll, setCurrentTime } = useProjectStore();
   const selectedSubtitleIds = useSelectedSubtitles();
   const { setSelectedSubtitles } = useUIStore();
 
@@ -18,6 +18,9 @@ export function BrollPanel() {
 
     // 选中该字幕
     setSelectedSubtitles([subtitleId]);
+    
+    // 跳转视频到该字幕时间
+    setCurrentTime(subtitle.startTime / 1000);
 
     if (subtitle.brollVideo) {
       // 已有B-roll → 直接删除
@@ -108,7 +111,7 @@ export function BrollPanel() {
                       {subtitle.text}
                     </div>
                     <div className="text-xs text-text-secondary">
-                      {formatTimeCode(subtitle.startTime / 1000)} - {formatTimeCode(subtitle.endTime / 1000)}
+                      {formatMillisecondsToTime(subtitle.startTime)} - {formatMillisecondsToTime(subtitle.endTime)}
                     </div>
                     {hasBroll && (
                       <div className="text-xs text-orange-500 mt-1">

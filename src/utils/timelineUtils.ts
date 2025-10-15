@@ -18,6 +18,38 @@ export function formatTimeCode(timeInSeconds: number): string {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+/**
+ * 格式化毫秒为显示用时间码（用于 UI 展示）
+ * @param ms 毫秒数
+ * @returns HH:MM:SS 或 MM:SS 格式
+ */
+export function formatMillisecondsToTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * 格式化毫秒为 FFmpeg 时间格式（用于视频导出）
+ * @param ms 毫秒数
+ * @returns HH:MM:SS.mmm 格式
+ */
+export function formatMillisecondsToFFmpeg(ms: number): string {
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const milliseconds = ms % 1000;
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+}
+
 export function generateTimeMarks(duration: number, pixelsPerSecond: number, containerWidth: number): TimeMarkData[] {
   const visibleDuration = containerWidth / pixelsPerSecond;
   const markInterval = calculateOptimalInterval(visibleDuration);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { msToSRTTime } from '@/utils/subtitleParser';
+import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 
 export function SubtitleList() {
   const { subtitles, currentTime, setCurrentTime } = useProjectStore();
@@ -93,10 +93,10 @@ export function SubtitleList() {
                   {/* 时间码区域 */}
                   <div className="flex-shrink-0 w-20">
                     <div className="text-xs text-text-tertiary font-mono leading-tight">
-                      {msToSRTTime(subtitle.startTime).substring(0, 8)}
+                      {formatMillisecondsToTime(subtitle.startTime)}
                     </div>
                     <div className="text-xs text-text-disabled font-mono mt-0.5">
-                      {msToSRTTime(subtitle.endTime).substring(0, 8)}
+                      {formatMillisecondsToTime(subtitle.endTime)}
                     </div>
                     <div className="text-xs text-accent-blue mt-0.5">
                       {Math.round((subtitle.endTime - subtitle.startTime) / 100) / 10}s
@@ -105,12 +105,6 @@ export function SubtitleList() {
 
                   {/* 内容区域 */}
                   <div className="flex-1 min-w-0">
-                    {subtitle.speaker && (
-                      <div className="text-xs text-accent-blue mb-1 font-medium">
-                        [{subtitle.speaker}]
-                      </div>
-                    )}
-                    
                     <div className={`
                       text-sm leading-relaxed break-words
                       ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}
