@@ -2,7 +2,6 @@ import { HeaderBar } from '../layout/HeaderBar';
 import { LeftSidebar } from '../layout/LeftSidebar';
 import { VideoArea } from '../layout/VideoArea';
 import { TimelineArea } from '../layout/TimelineArea';
-import { AudioPlayer } from '../audio/AudioPlayer';
 import { useLeftPanelCollapsed } from '@/stores/useUIStore';
 
 export function EditingStage() {
@@ -34,9 +33,6 @@ export function EditingStage() {
           </div>
         </div>
       </div>
-      
-      {/* 音频播放服务组件 - 隐藏的音频控制器 */}
-      <AudioPlayer />
     </div>
   );
 }

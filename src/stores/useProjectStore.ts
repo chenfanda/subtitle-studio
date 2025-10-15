@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { ProjectState } from '@/types/project';
-import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData } from '@/types/subtitle';
+import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData, SubtitleStyle } from '@/types/subtitle';
+import type { TextElement } from '@/types/textElement';
 import type { BrollVideoData } from '@/types/broll';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
+import { DEFAULT_TEXT_ELEMENT_POSITION } from '@/types/textElement';
 import { APP_CONFIG } from '@/constants/config';
 import { 
   convertRichTextToPlainText, 
@@ -20,6 +22,7 @@ interface ProjectStore extends ProjectState {
   setAppStage: (stage: AppStage) => void;
   
   subtitles: SubtitleItem[];
+  textElements: TextElement[];
   
   setVideoUrl: (url: string) => void;
   setDuration: (duration: number) => void;
@@ -41,9 +44,9 @@ interface ProjectStore extends ProjectState {
   duplicateSubtitle: (id: string) => void;
   updateSubtitles: (subtitles: SubtitleItem[]) => void;
   
-  updateSubtitleWidth: (id: string, width: number) => void;  // ✅ 新增
+  updateSubtitleWidth: (id: string, width: number) => void;
   updateSubtitlePosition: (id: string, x: number, y: number) => void;
-  updateSubtitleScale: (id: string, scale: number) => void;  // ✅ 新增
+  updateSubtitleScale: (id: string, scale: number) => void;
   getSubtitlePosition: (id: string) => SubtitlePosition;
   
   clearAllAnimations: (id: string) => void;
@@ -59,6 +62,17 @@ interface ProjectStore extends ProjectState {
   
   setSubtitleBroll: (id: string, brollData: BrollVideoData) => void;
   removeSubtitleBroll: (id: string) => void;
+  
+  addTextElement: (element: Omit<TextElement, 'id'>) => string;
+  updateTextElement: (id: string, updates: Partial<TextElement>) => void;
+  updateTextElementText: (id: string, text: string) => void;
+  deleteTextElement: (id: string) => void;
+  updateTextElementPosition: (id: string, x: number, y: number) => void;
+  updateTextElementTransform: (id: string, scaleX: number, scaleY: number, rotation: number) => void;
+  
+  applyStyleToAllSubtitles: (style: SubtitleStyle) => void;
+  applyStyleToAllTextElementsOfType: (type: string, style: SubtitleStyle) => void;
+  getTextElementType: (id: string) => string;
   
   markUnsaved: () => void;
   markSaved: () => void;
@@ -93,6 +107,7 @@ export const useProjectStore = create<ProjectStore>()(
     immer((set, get) => ({
       ...initialState,
       subtitles: [],
+      textElements: [],
       appStage: 'upload' as AppStage,
       
       setAppStage: (stage) => 
@@ -307,7 +322,7 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }),
       
-      updateSubtitleScale: (id, scale) =>  // ✅ 新增方法
+      updateSubtitleScale: (id, scale) =>
         set((state) => {
           const subtitle = state.subtitles.find(s => s.id === id);
           if (subtitle) {
@@ -318,6 +333,7 @@ export const useProjectStore = create<ProjectStore>()(
             state.saveStatus = 'unsaved';
           }
         }),
+      
       updateSubtitleWidth: (id, width) =>
         set((state) => {
           const subtitle = state.subtitles.find(s => s.id === id);
@@ -329,6 +345,7 @@ export const useProjectStore = create<ProjectStore>()(
             state.saveStatus = 'unsaved';
           }
         }),
+      
       getSubtitlePosition: (id) => {
         const subtitle = get().subtitles.find(s => s.id === id);
         return subtitle?.position || { ...DEFAULT_SUBTITLE_POSITION };
@@ -420,6 +437,104 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }),
       
+      addTextElement: (element) => {
+        const id = generateId();
+        set((state) => {
+          state.textElements.push({ ...element, id });
+          state.saveStatus = 'unsaved';
+        });
+        return id;
+      },
+      
+      updateTextElement: (id, updates) =>
+        set((state) => {
+          const element = state.textElements.find(e => e.id === id);
+          if (element) {
+            Object.assign(element, updates);
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      updateTextElementText: (id, text) =>
+        set((state) => {
+          const element = state.textElements.find(e => e.id === id);
+          if (element) {
+            element.text = text;
+            
+            if (element.richText && element.richText.length > 0) {
+              element.richText[0].text = text;
+            }
+            
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      deleteTextElement: (id) =>
+        set((state) => {
+          state.textElements = state.textElements.filter(e => e.id !== id);
+          state.saveStatus = 'unsaved';
+        }),
+      
+      updateTextElementPosition: (id, x, y) =>
+        set((state) => {
+          const element = state.textElements.find(e => e.id === id);
+          if (element) {
+            element.position.x = x;
+            element.position.y = y;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      updateTextElementTransform: (id, scaleX, scaleY, rotation) =>
+        set((state) => {
+          const element = state.textElements.find(e => e.id === id);
+          if (element) {
+            element.position.scaleX = scaleX;
+            element.position.scaleY = scaleY;
+            element.position.rotation = rotation;
+            state.saveStatus = 'unsaved';
+          }
+        }),
+      
+      applyStyleToAllSubtitles: (style) =>
+        set((state) => {
+          state.subtitles.forEach(subtitle => {
+            subtitle.style = { ...subtitle.style, ...style };
+            
+            if (subtitle.richText) {
+              subtitle.richText = subtitle.richText.map(segment => ({
+                ...segment,
+                style: { ...segment.style, ...style }
+              }));
+            }
+          });
+          
+          state.saveStatus = 'unsaved';
+        }),
+      
+      applyStyleToAllTextElementsOfType: (type, style) =>
+        set((state) => {
+          state.textElements.forEach(element => {
+            if (element.type === type) {
+              element.style = { ...element.style, ...style };
+              
+              if (element.richText) {
+                element.richText = element.richText.map(segment => ({
+                  ...segment,
+                  style: { ...segment.style, ...style }
+                }));
+              }
+            }
+          });
+          
+          state.saveStatus = 'unsaved';
+        }),
+      
+      getTextElementType: (id) => {
+        const element = get().textElements.find(e => e.id === id);
+        return element?.type || 'unknown';
+      },
+      
       markUnsaved: () => 
         set((state) => {
           state.saveStatus = 'unsaved';
@@ -495,6 +610,7 @@ export const useProjectStore = create<ProjectStore>()(
           ...initialState,
           id: generateId(),
           subtitles: [],
+          textElements: [],
           appStage: 'upload' as AppStage,
         })),
     }))

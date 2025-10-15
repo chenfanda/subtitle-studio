@@ -5,18 +5,15 @@ import type { UIState, PanelType, RichTextSelection } from '@/types/ui';
 import { APP_CONFIG } from '@/constants/config';
 
 interface UIStore extends UIState {
-  // 富文本选中状态
   richTextSelection: RichTextSelection | null;
   setRichTextSelection: (selection: RichTextSelection | null) => void;
   clearRichTextSelection: () => void;
   
-  // 面板控制
   setActivePanel: (panel: PanelType) => void;
   toggleLeftPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
   setLeftPanelCollapsed: (collapsed: boolean) => void;
   
-  // 字幕选择和编辑
   setSelectedSubtitles: (ids: string[]) => void;
   addSelectedSubtitle: (id: string) => void;
   removeSelectedSubtitle: (id: string) => void;
@@ -24,27 +21,39 @@ interface UIStore extends UIState {
   toggleSubtitleSelection: (id: string) => void;
   setEditingSubtitle: (id: string | null) => void;
   
-  // 时间轴控制
+  selectedTextElementIds: string[];
+  editingTextElementId: string | null;
+  setSelectedTextElements: (ids: string[]) => void;
+  addSelectedTextElement: (id: string) => void;
+  removeSelectedTextElement: (id: string) => void;
+  clearSelectedTextElements: () => void;
+  toggleTextElementSelection: (id: string) => void;
+  setEditingTextElement: (id: string | null) => void;
+  
+  showRichTextEditor: boolean;
+  richTextEditorTarget: {
+    type: 'subtitle' | 'textElement';
+    id: string;
+  } | null;
+  setShowRichTextEditor: (show: boolean) => void;
+  setRichTextEditorTarget: (target: { type: 'subtitle' | 'textElement'; id: string } | null) => void;
+  
   setTimelineZoom: (zoom: number) => void;
   adjustTimelineZoom: (delta: number) => void;
   setTimelineScroll: (scrollLeft: number) => void;
   
-  // 模态框控制
   setShowSettingsModal: (show: boolean) => void;
   setShowExportModal: (show: boolean) => void;
   setShowHelpModal: (show: boolean) => void;
   closeAllModals: () => void;
   
-  // 拖拽状态
   setDragState: (isDragging: boolean, dragType?: UIState['dragType']) => void;
   clearDragState: () => void;
   
-  // 快捷操作
   focusNextSubtitle: () => void;
   focusPrevSubtitle: () => void;
   selectAllSubtitles: () => void;
   
-  // UI状态重置
   resetUIState: () => void;
 }
 
@@ -66,11 +75,13 @@ const initialState: UIState = {
 export const useUIStore = create<UIStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
-      // 初始状态
       ...initialState,
       richTextSelection: null,
+      selectedTextElementIds: [],
+      editingTextElementId: null,
+      showRichTextEditor: false,
+      richTextEditorTarget: null,
       
-      // 富文本选中状态
       setRichTextSelection: (selection) =>
         set((state) => {
           state.richTextSelection = selection;
@@ -81,7 +92,6 @@ export const useUIStore = create<UIStore>()(
           state.richTextSelection = null;
         }),
       
-      // 面板控制
       setActivePanel: (panel) => 
         set((state) => {
           state.activePanel = panel;
@@ -105,7 +115,6 @@ export const useUIStore = create<UIStore>()(
           state.leftPanelCollapsed = collapsed;
         }),
       
-      // 字幕选择
       setSelectedSubtitles: (ids) => 
         set((state) => {
           state.selectedSubtitleIds = [...new Set(ids)];
@@ -155,7 +164,63 @@ export const useUIStore = create<UIStore>()(
           }
         }),
       
-      // 时间轴控制
+      setSelectedTextElements: (ids) =>
+        set((state) => {
+          state.selectedTextElementIds = [...new Set(ids)];
+        }),
+      
+      addSelectedTextElement: (id) =>
+        set((state) => {
+          if (!state.selectedTextElementIds.includes(id)) {
+            state.selectedTextElementIds.push(id);
+          }
+        }),
+      
+      removeSelectedTextElement: (id) =>
+        set((state) => {
+          state.selectedTextElementIds = state.selectedTextElementIds.filter(
+            selectedId => selectedId !== id
+          );
+        }),
+      
+      clearSelectedTextElements: () =>
+        set((state) => {
+          state.selectedTextElementIds = [];
+          state.editingTextElementId = null;
+        }),
+      
+      toggleTextElementSelection: (id) =>
+        set((state) => {
+          const index = state.selectedTextElementIds.indexOf(id);
+          if (index === -1) {
+            state.selectedTextElementIds.push(id);
+          } else {
+            state.selectedTextElementIds.splice(index, 1);
+          }
+        }),
+      
+      setEditingTextElement: (id) =>
+        set((state) => {
+          state.editingTextElementId = id;
+          
+          if (id && !state.selectedTextElementIds.includes(id)) {
+            state.selectedTextElementIds = [id];
+          }
+        }),
+      
+      setShowRichTextEditor: (show) =>
+        set((state) => {
+          state.showRichTextEditor = show;
+          if (!show) {
+            state.richTextEditorTarget = null;
+          }
+        }),
+      
+      setRichTextEditorTarget: (target) =>
+        set((state) => {
+          state.richTextEditorTarget = target;
+        }),
+      
       setTimelineZoom: (zoom) => 
         set((state) => {
           state.timelineZoom = Math.max(
@@ -178,7 +243,6 @@ export const useUIStore = create<UIStore>()(
           state.timelineScrollLeft = Math.max(0, scrollLeft);
         }),
       
-      // 模态框控制
       setShowSettingsModal: (show) => 
         set((state) => {
           if (show) {
@@ -213,7 +277,6 @@ export const useUIStore = create<UIStore>()(
           state.showHelpModal = false;
         }),
       
-      // 拖拽状态
       setDragState: (isDragging, dragType = null) => 
         set((state) => {
           state.isDragging = isDragging;
@@ -226,7 +289,6 @@ export const useUIStore = create<UIStore>()(
           state.dragType = null;
         }),
       
-      // 快捷操作
       focusNextSubtitle: () => {
         const { editingSubtitleId } = get();
         console.log('Focus next subtitle from:', editingSubtitleId);
@@ -241,11 +303,14 @@ export const useUIStore = create<UIStore>()(
         console.log('Select all subtitles');
       },
       
-      // 重置
       resetUIState: () => 
         set(() => ({ 
           ...initialState,
-          richTextSelection: null
+          richTextSelection: null,
+          selectedTextElementIds: [],
+          editingTextElementId: null,
+          showRichTextEditor: false,
+          richTextEditorTarget: null,
         })),
     }))
   )

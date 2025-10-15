@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '../../types/subtitle';
-import { SubtitleQuickToolbar } from './SubtitleQuickToolbar';
+import { QuickToolbar } from './QuickToolbar';
 import { TransformBorder } from '../common/TransformBorder';
 import { convertToWebAnimation } from '../../utils/animationUtils';
 import { convertStyleToCSS } from '../../utils/textStyleUtils';
@@ -14,10 +14,10 @@ export function SubtitleOverlay() {
     currentTime, 
     updateSubtitlePosition,
     updateSubtitleScale,
-    updateSubtitleWidth,  // ✅ 新增导入
+    updateSubtitleWidth,
     getSubtitlePosition 
   } = useProjectStore();
-  const { selectedSubtitleIds, setSelectedSubtitles } = useUIStore();
+  const { selectedSubtitleIds, setSelectedSubtitles, setRichTextEditorTarget, setShowRichTextEditor } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickToolbar, setShowQuickToolbar] = useState(false);
@@ -40,7 +40,6 @@ export function SubtitleOverlay() {
   
   const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
 
-  // 渲染富文本内容
   const renderRichTextContent = () => {
     if (!currentSubtitle) return null;
     
@@ -71,7 +70,6 @@ export function SubtitleOverlay() {
     );
   };
 
-  // 播放片段动效
   const playSegmentAnimations = () => {
     if (!currentSubtitle?.richText) return;
     
@@ -105,7 +103,6 @@ export function SubtitleOverlay() {
     setSegmentAnimations(newAnimations);
   };
 
-  // 停止所有动画
   const stopAllAnimations = () => {
     segmentAnimations.forEach(animation => {
       animation.cancel();
@@ -192,23 +189,22 @@ export function SubtitleOverlay() {
           style={{
             left: `${subtitlePosition.x}%`,
             top: `${subtitlePosition.y}%`,
-            transform: `translate(-50%, -50%) scale(${subtitlePosition.scale || 1.0})`,  // ✅ scale 应用在外层
+            transform: `translate(-50%, -50%) scale(${subtitlePosition.scale || 1.0})`,
           }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
         >
           <TransformBorder
             isSelected={isSelected}
-            position={{ x: subtitlePosition.x, y: subtitlePosition.y }}
-            scale={subtitlePosition.scale || 1.0}
-            width={subtitlePosition.width}  // ✅ 传递宽度
+            position={{ x: subtitlePosition.x, y: subtitlePosition.y, scale: subtitlePosition.scale || 1.0 }}
+            width={subtitlePosition.width}
             mode="subtitle"
             onScaleChange={(scale) => {
               if (currentSubtitle) {
                 updateSubtitleScale(currentSubtitle.id, scale);
               }
             }}
-            onWidthChange={(width) => {  // ✅ 宽度变化回调
+            onWidthChange={(width) => {
               if (currentSubtitle) {
                 updateSubtitleWidth(currentSubtitle.id, width);
               }
@@ -225,7 +221,7 @@ export function SubtitleOverlay() {
                 }
               `}
               style={{
-                width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',  // ✅ 应用容器宽度
+                width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',
               }}
             >
               <div 
@@ -245,8 +241,9 @@ export function SubtitleOverlay() {
       {showQuickToolbar && currentSubtitle && isSelected && (
         <div className="absolute inset-0 pointer-events-none z-30">
           <div className="pointer-events-auto">
-            <SubtitleQuickToolbar
-              subtitleId={currentSubtitle.id}
+            <QuickToolbar
+              targetType="subtitle"
+              targetId={currentSubtitle.id}
               position={subtitlePosition}
               onClose={() => setShowQuickToolbar(false)}
             />

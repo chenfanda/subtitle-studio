@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { SubtitleOverlay } from '../video/SubtitleOverlay';
+import { TextElementOverlay } from '../video/TextElementOverlay';
 import { MediaOverlay } from '../video/MediaOverlay';
 import { VideoControls } from '../video/VideoControls';
 import { Watermark } from '../common/Watermark';
@@ -12,7 +13,6 @@ export function VideoArea() {
   const { videoUrl, appStage, subtitles, currentTime } = useProjectStore();
   const { watermark } = useSettingsStore();
 
-  // 检测当前时间的字幕及其B-roll
   const currentSubtitle = useMemo(() => {
     const currentTimeMs = currentTime * 1000;
     return subtitles.find(s => 
@@ -38,26 +38,24 @@ export function VideoArea() {
     <div className="h-full flex flex-col bg-gray-900">
       <div className="flex-1 flex items-center justify-center p-6 min-h-0">
         <div 
-          className="relative w-full" 
+          className="relative w-full video-container" 
           style={{ 
             aspectRatio: '16/9',
             maxWidth: '100%',
             maxHeight: '100%'
           }}
         >
-          {/* 主视频播放器 - 有B-roll时隐藏 */}
           <div 
             className="absolute inset-0"
             style={{ 
               opacity: hasBroll ? 0 : 1, 
               transition: 'opacity 0.3s',
-              pointerEvents: hasBroll ? 'none' : 'auto'  // ✅ 关键修复：有B-roll时禁用交互
+              pointerEvents: hasBroll ? 'none' : 'auto'
             }}
           >
             <VideoPlayer />
           </div>
           
-          {/* B-roll视频播放器 - 有B-roll时显示 */}
           {hasBroll && currentSubtitle?.brollVideo && (
             <BrollVideoPlayer 
               brollData={currentSubtitle.brollVideo}
@@ -65,10 +63,10 @@ export function VideoArea() {
             />
           )}
           
-          {/* 字幕叠加层 - 始终显示 */}
           <SubtitleOverlay />
           
-          {/* 媒体叠加层 - 始终显示 */}
+          <TextElementOverlay />
+          
           <MediaOverlay />
           
           <Watermark config={watermark} />

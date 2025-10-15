@@ -2,16 +2,13 @@ import { useRef } from 'react';
 
 interface TransformBorderProps {
   isSelected: boolean;
-  position: { x: number; y: number };
-  scale?: number;
-  scaleX?: number;
-  scaleY?: number;
-  width?: number;  // ✅ 新增：字幕容器宽度
-  mode: 'subtitle' | 'media';
+  position: { x: number; y: number; scaleX?: number; scaleY?: number; scale?: number; rotation?: number };
+  width?: number;
+  mode: 'subtitle' | 'media' | 'textElement';
   onPositionChange?: (x: number, y: number) => void;
   onScaleChange?: (scale: number) => void;
-  onWidthChange?: (width: number) => void;  // ✅ 新增：宽度变化回调
-  onTransformChange?: (scaleX: number, scaleY: number) => void;
+  onWidthChange?: (width: number) => void;
+  onTransformChange?: (scaleX: number, scaleY: number, rotation?: number) => void;
   minScale?: number;
   maxScale?: number;
   children: React.ReactNode;
@@ -22,9 +19,6 @@ type HandleType = 'nw' | 'ne' | 'sw' | 'se' | 'left' | 'right' | 'top' | 'bottom
 export function TransformBorder({
   isSelected,
   position,
-  scale = 1.0,
-  scaleX = 1.0,
-  scaleY = 1.0,
   width,
   mode,
   onPositionChange,
@@ -41,19 +35,16 @@ export function TransformBorder({
     e.stopPropagation();
     e.preventDefault();
 
-    // 捕获当前值作为常量
     const startX = e.clientX;
     const startY = e.clientY;
-    const startScale = scale;
-    const startScaleX = scaleX;
-    const startScaleY = scaleY;
-    const startWidth = width || (containerRef.current?.offsetWidth || 200);  // ✅ 获取当前宽度
+    const startScale = position.scale || 1.0;
+    const startScaleX = position.scaleX || 1.0;
+    const startScaleY = position.scaleY || 1.0;
+    const startWidth = width || (containerRef.current?.offsetWidth || 200);
 
-    // 角控制点拖拽处理
     const handleCornerDrag = (deltaX: number, deltaY: number) => {
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-      // 确定放大还是缩小
       let direction = 1;
       if (handle === 'nw') direction = (deltaX < 0 && deltaY < 0) ? 1 : -1;
       if (handle === 'ne') direction = (deltaX > 0 && deltaY < 0) ? 1 : -1;
@@ -71,19 +62,16 @@ export function TransformBorder({
       }
     };
 
-    // 边控制点拖拽处理
     const handleEdgeDrag = (deltaX: number, deltaY: number) => {
       if (mode === 'subtitle') {
-        // ✅ 字幕模式：边控制点改变容器宽度
         if (handle === 'left') {
-          const newWidth = Math.max(100, startWidth - deltaX * 2);  // 左边往左拉 = 变宽
+          const newWidth = Math.max(100, startWidth - deltaX * 2);
           onWidthChange?.(newWidth);
         } else if (handle === 'right') {
-          const newWidth = Math.max(100, startWidth + deltaX * 2);  // 右边往右拉 = 变宽
+          const newWidth = Math.max(100, startWidth + deltaX * 2);
           onWidthChange?.(newWidth);
         }
       } else {
-        // 媒体模式：边控制点缩放
         if (handle === 'left' || handle === 'right') {
           const scaleChange = deltaX / 100;
           const newScaleX = Math.max(minScale, Math.min(maxScale, startScaleX + scaleChange));
@@ -96,7 +84,6 @@ export function TransformBorder({
       }
     };
 
-    // 鼠标移动处理
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
@@ -108,13 +95,11 @@ export function TransformBorder({
       }
     };
 
-    // 鼠标释放处理
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
 
-    // 绑定事件
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -152,22 +137,18 @@ export function TransformBorder({
     <div ref={containerRef} className="relative inline-block">
       {children}
       
-      {/* 4个角控制点 */}
       {renderHandle('corner', 'nw')}
       {renderHandle('corner', 'ne')}
       {renderHandle('corner', 'sw')}
       {renderHandle('corner', 'se')}
       
-      {/* 边控制点 */}
       {mode === 'subtitle' ? (
         <>
-          {/* 字幕：只有左右两个边 */}
           {renderHandle('edge', 'left')}
           {renderHandle('edge', 'right')}
         </>
       ) : (
         <>
-          {/* 媒体：4个边 */}
           {renderHandle('edge', 'left')}
           {renderHandle('edge', 'right')}
           {renderHandle('edge', 'top')}
