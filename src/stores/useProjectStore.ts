@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { ProjectState } from '@/types/project';
+import type { ProjectState, ProjectExport } from '@/types/project';
 import type { SubtitleItem, SubtitlePosition, RichTextSegment, SubtitleAudioData, SubtitleStyle } from '@/types/subtitle';
 import type { TextElement } from '@/types/textElement';
 import type { BrollVideoData } from '@/types/broll';
+import type { ProjectSnapshot } from '@/types/history';
 import { DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
-import { DEFAULT_TEXT_ELEMENT_POSITION } from '@/types/textElement';
 import { APP_CONFIG } from '@/constants/config';
 import { 
   convertRichTextToPlainText, 
@@ -14,6 +14,20 @@ import {
   hasAnyAnimation,
   getSegmentAnimations
 } from '@/utils/textStyleUtils';
+import { 
+  findById, 
+  sortByTime, 
+  findInsertIndex, 
+  generateId,
+  deepClone,
+  findItemAtTime,
+  removeByIds
+} from '@/utils/storeUtils';
+import { useHistoryStore } from './useHistoryStore';
+import { useMediaStore } from './useMediaStore';
+import { useBrollStore } from './useBrollStore';
+import { useAudioStore } from './useAudioStore';
+import { useSettingsStore } from './useSettingsStore';
 
 export type AppStage = 'upload' | 'processing' | 'editing';
 
@@ -44,9 +58,6 @@ interface ProjectStore extends ProjectState {
   duplicateSubtitle: (id: string) => void;
   updateSubtitles: (subtitles: SubtitleItem[]) => void;
   
-  updateSubtitleWidth: (id: string, width: number) => void;
-  updateSubtitlePosition: (id: string, x: number, y: number) => void;
-  updateSubtitleScale: (id: string, scale: number) => void;
   getSubtitlePosition: (id: string) => SubtitlePosition;
   
   clearAllAnimations: (id: string) => void;
@@ -67,12 +78,16 @@ interface ProjectStore extends ProjectState {
   updateTextElement: (id: string, updates: Partial<TextElement>) => void;
   updateTextElementText: (id: string, text: string) => void;
   deleteTextElement: (id: string) => void;
-  updateTextElementPosition: (id: string, x: number, y: number) => void;
-  updateTextElementTransform: (id: string, scaleX: number, scaleY: number, rotation: number) => void;
   
   applyStyleToAllSubtitles: (style: SubtitleStyle) => void;
   applyStyleToAllTextElementsOfType: (type: string, style: SubtitleStyle) => void;
   getTextElementType: (id: string) => string;
+  
+  toSnapshot: () => ProjectSnapshot;
+  fromSnapshot: (snapshot: ProjectSnapshot) => void;
+  
+  exportProject: () => ProjectExport;
+  loadProject: (project: ProjectExport) => void;
   
   markUnsaved: () => void;
   markSaved: () => void;
@@ -86,8 +101,6 @@ interface ProjectStore extends ProjectState {
   
   resetProject: () => void;
 }
-
-const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const initialState: ProjectState = {
   id: generateId(),
@@ -110,57 +123,66 @@ export const useProjectStore = create<ProjectStore>()(
       textElements: [],
       appStage: 'upload' as AppStage,
       
-      setAppStage: (stage) => 
+      setAppStage: (stage) => {
         set((state) => {
           state.appStage = stage;
-        }),
+        });
+      },
       
-      setVideoUrl: (url) => 
+      setVideoUrl: (url) => {
         set((state) => {
           state.videoUrl = url;
           state.saveStatus = 'unsaved';
           if (url) {
             state.appStage = 'processing';
           }
-        }),
+        });
+      },
       
-      setDuration: (duration) => 
+      setDuration: (duration) => {
         set((state) => {
           state.duration = duration;
-        }),
+        });
+      },
       
-      updateProjectTitle: (title) => 
+      updateProjectTitle: (title) => {
         set((state) => {
           state.title = title;
           state.saveStatus = 'unsaved';
-        }),
+        });
+      },
       
-      setCurrentTime: (time) => 
+      setCurrentTime: (time) => {
         set((state) => {
           state.currentTime = Math.max(0, Math.min(time, state.duration));
-        }),
+        });
+      },
       
-      setIsPlaying: (isPlaying) => 
+      setIsPlaying: (isPlaying) => {
         set((state) => {
           state.isPlaying = isPlaying;
-        }),
+        });
+      },
       
-      togglePlayback: () => 
+      togglePlayback: () => {
         set((state) => {
           state.isPlaying = !state.isPlaying;
-        }),
+        });
+      },
       
-      setVolume: (volume) => 
+      setVolume: (volume) => {
         set((state) => {
           state.volume = Math.max(0, Math.min(100, volume));
-        }),
+        });
+      },
       
-      setPlaybackRate: (rate) => 
+      setPlaybackRate: (rate) => {
         set((state) => {
           state.playbackRate = rate;
-        }),
+        });
+      },
       
-      addSubtitle: (subtitleData) => 
+      addSubtitle: (subtitleData) => {
         set((state) => {
           const subtitle: SubtitleItem = {
             ...subtitleData,
@@ -168,9 +190,7 @@ export const useProjectStore = create<ProjectStore>()(
             position: subtitleData.position || { ...DEFAULT_SUBTITLE_POSITION },
           };
           
-          const insertIndex = state.subtitles.findIndex(
-            s => s.startTime > subtitle.startTime
-          );
+          const insertIndex = findInsertIndex(state.subtitles, subtitle.startTime);
           
           if (insertIndex === -1) {
             state.subtitles.push(subtitle);
@@ -179,47 +199,61 @@ export const useProjectStore = create<ProjectStore>()(
           }
           
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      updateSubtitle: (id, updates) => 
+      updateSubtitle: (id, updates) => {
         set((state) => {
-          const index = state.subtitles.findIndex(s => s.id === id);
-          if (index !== -1) {
-            const subtitle = state.subtitles[index];
-            
-            if (updates.richText) {
-              updates.text = convertRichTextToPlainText(updates.richText);
-            }
-            
-            Object.assign(subtitle, updates);
-            state.saveStatus = 'unsaved';
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          if (updates.richText) {
+            updates.text = convertRichTextToPlainText(updates.richText);
           }
-        }),
+          
+          Object.assign(subtitle, updates);
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      updateSubtitleRichText: (id, richText) => 
+      updateSubtitleRichText: (id, richText) => {
         set((state) => {
-          const index = state.subtitles.findIndex(s => s.id === id);
-          if (index !== -1) {
-            const subtitle = state.subtitles[index];
-            subtitle.richText = richText;
-            subtitle.text = convertRichTextToPlainText(richText);
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.richText = richText;
+          subtitle.text = convertRichTextToPlainText(richText);
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      deleteSubtitle: (id) => 
+      deleteSubtitle: (id) => {
         set((state) => {
           state.subtitles = state.subtitles.filter(s => s.id !== id);
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      deleteSubtitles: (ids) => 
+      deleteSubtitles: (ids) => {
+        useHistoryStore.getState().startBatch();
+        
         set((state) => {
-          state.subtitles = state.subtitles.filter(s => !ids.includes(s.id));
+          state.subtitles = removeByIds(state.subtitles, ids);
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().endBatch(get().toSnapshot());
+      },
       
-      splitSubtitle: (id, splitTime) => 
+      splitSubtitle: (id, splitTime) => {
         set((state) => {
           const index = state.subtitles.findIndex(s => s.id === id);
           if (index === -1) return;
@@ -232,18 +266,23 @@ export const useProjectStore = create<ProjectStore>()(
             id: generateId(),
             startTime: splitTime,
             text: original.text,
-            richText: original.richText ? [...original.richText] : undefined,
+            richText: original.richText ? deepClone(original.richText) : undefined,
           };
           
           state.subtitles[index].endTime = splitTime;
           state.subtitles.splice(index + 1, 0, secondPart);
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      mergeSubtitles: (ids) => 
+      mergeSubtitles: (ids) => {
+        if (ids.length < 2) return;
+        
+        useHistoryStore.getState().startBatch();
+        
         set((state) => {
-          if (ids.length < 2) return;
-          
           const subtitlesToMerge = state.subtitles
             .filter(s => ids.includes(s.id))
             .sort((a, b) => a.startTime - b.startTime);
@@ -257,16 +296,15 @@ export const useProjectStore = create<ProjectStore>()(
           
           const merged: SubtitleItem = {
             ...subtitlesToMerge[0],
+            id: generateId(),
             endTime: subtitlesToMerge[subtitlesToMerge.length - 1].endTime,
             text: mergedText,
             richText: mergedRichText,
           };
           
-          state.subtitles = state.subtitles.filter(s => !ids.includes(s.id));
+          state.subtitles = removeByIds(state.subtitles, ids);
           
-          const insertIndex = state.subtitles.findIndex(
-            s => s.startTime > merged.startTime
-          );
+          const insertIndex = findInsertIndex(state.subtitles, merged.startTime);
           
           if (insertIndex === -1) {
             state.subtitles.push(merged);
@@ -275,11 +313,14 @@ export const useProjectStore = create<ProjectStore>()(
           }
           
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().endBatch(get().toSnapshot());
+      },
       
-      duplicateSubtitle: (id) => 
+      duplicateSubtitle: (id) => {
         set((state) => {
-          const original = state.subtitles.find(s => s.id === id);
+          const original = findById(state.subtitles, id);
           if (!original) return;
           
           const duplicate: SubtitleItem = {
@@ -287,12 +328,10 @@ export const useProjectStore = create<ProjectStore>()(
             id: generateId(),
             startTime: original.endTime + 100,
             endTime: original.endTime + 100 + (original.endTime - original.startTime),
-            richText: original.richText ? [...original.richText] : undefined,
+            richText: original.richText ? deepClone(original.richText) : undefined,
           };
           
-          const insertIndex = state.subtitles.findIndex(
-            s => s.startTime > duplicate.startTime
-          );
+          const insertIndex = findInsertIndex(state.subtitles, duplicate.startTime);
           
           if (insertIndex === -1) {
             state.subtitles.push(duplicate);
@@ -301,78 +340,48 @@ export const useProjectStore = create<ProjectStore>()(
           }
           
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      updateSubtitles: (subtitles) => 
+      updateSubtitles: (subtitles) => {
         set((state) => {
-          state.subtitles = subtitles.sort((a, b) => a.startTime - b.startTime);
+          state.subtitles = sortByTime(subtitles);
           state.saveStatus = 'unsaved';
-        }),
-      
-      updateSubtitlePosition: (id, x, y) =>
-        set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            if (!subtitle.position) {
-              subtitle.position = { ...DEFAULT_SUBTITLE_POSITION };
-            }
-            subtitle.position.x = x;
-            subtitle.position.y = y;
-            state.saveStatus = 'unsaved';
-          }
-        }),
-      
-      updateSubtitleScale: (id, scale) =>
-        set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            if (!subtitle.position) {
-              subtitle.position = { ...DEFAULT_SUBTITLE_POSITION };
-            }
-            subtitle.position.scale = scale;
-            state.saveStatus = 'unsaved';
-          }
-        }),
-      
-      updateSubtitleWidth: (id, width) =>
-        set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            if (!subtitle.position) {
-              subtitle.position = { ...DEFAULT_SUBTITLE_POSITION };
-            }
-            subtitle.position.width = width;
-            state.saveStatus = 'unsaved';
-          }
-        }),
+        });
+      },
       
       getSubtitlePosition: (id) => {
-        const subtitle = get().subtitles.find(s => s.id === id);
+        const subtitle = findById(get().subtitles, id);
         return subtitle?.position || { ...DEFAULT_SUBTITLE_POSITION };
       },
       
-      clearAllAnimations: (id) =>
+      clearAllAnimations: (id) => {
         set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle?.richText) {
-            subtitle.richText.forEach(segment => {
-              segment.animation = undefined;
-            });
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle?.richText) return;
+          
+          subtitle.richText.forEach(segment => {
+            segment.animation = undefined;
+          });
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
       hasSubtitleAnimations: (id) => {
-        const subtitle = get().subtitles.find(s => s.id === id);
+        const subtitle = findById(get().subtitles, id);
         return subtitle?.richText ? hasAnyAnimation(subtitle.richText) : false;
       },
       
       getSubtitleAnimations: (id) => {
-        const subtitle = get().subtitles.find(s => s.id === id);
+        const subtitle = findById(get().subtitles, id);
         return subtitle?.richText ? getSegmentAnimations(subtitle.richText) : [];
       },
       
-      moveSubtitles: (ids, deltaTime) => 
+      moveSubtitles: (ids, deltaTime) => {
         set((state) => {
           state.subtitles.forEach(subtitle => {
             if (ids.includes(subtitle.id)) {
@@ -381,122 +390,134 @@ export const useProjectStore = create<ProjectStore>()(
             }
           });
           
-          state.subtitles.sort((a, b) => a.startTime - b.startTime);
+          state.subtitles = sortByTime(state.subtitles);
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      adjustSubtitleTiming: (id, startTime, endTime) => 
+      adjustSubtitleTiming: (id, startTime, endTime) => {
         set((state) => {
-          const index = state.subtitles.findIndex(s => s.id === id);
-          if (index !== -1) {
-            state.subtitles[index].startTime = Math.max(0, startTime);
-            state.subtitles[index].endTime = Math.max(startTime + APP_CONFIG.MIN_SUBTITLE_DURATION, endTime);
-            
-            state.subtitles.sort((a, b) => a.startTime - b.startTime);
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.startTime = Math.max(0, startTime);
+          subtitle.endTime = Math.max(startTime + APP_CONFIG.MIN_SUBTITLE_DURATION, endTime);
+          
+          state.subtitles = sortByTime(state.subtitles);
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      setSubtitleAudio: (id, audioData) =>
+      setSubtitleAudio: (id, audioData) => {
         set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            subtitle.audioTrack = audioData;
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.audioTrack = audioData;
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      removeSubtitleAudio: (id) =>
+      removeSubtitleAudio: (id) => {
         set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            subtitle.audioTrack = undefined;
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.audioTrack = undefined;
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
       getSubtitlesWithAudio: () => {
         return get().subtitles.filter(subtitle => subtitle.audioTrack);
       },
       
-      setSubtitleBroll: (id, brollData) =>
+      setSubtitleBroll: (id, brollData) => {
         set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            subtitle.brollVideo = brollData;
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.brollVideo = brollData;
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      removeSubtitleBroll: (id) =>
+      removeSubtitleBroll: (id) => {
         set((state) => {
-          const subtitle = state.subtitles.find(s => s.id === id);
-          if (subtitle) {
-            subtitle.brollVideo = undefined;
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          subtitle.brollVideo = undefined;
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
       addTextElement: (element) => {
         const id = generateId();
+        
         set((state) => {
           state.textElements.push({ ...element, id });
           state.saveStatus = 'unsaved';
         });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+        
         return id;
       },
       
-      updateTextElement: (id, updates) =>
+      updateTextElement: (id, updates) => {
         set((state) => {
-          const element = state.textElements.find(e => e.id === id);
-          if (element) {
-            Object.assign(element, updates);
-            state.saveStatus = 'unsaved';
-          }
-        }),
+          const element = findById(state.textElements, id);
+          if (!element) return;
+          
+          Object.assign(element, updates);
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      updateTextElementText: (id, text) =>
+      updateTextElementText: (id, text) => {
         set((state) => {
-          const element = state.textElements.find(e => e.id === id);
-          if (element) {
-            element.text = text;
-            
-            if (element.richText && element.richText.length > 0) {
-              element.richText[0].text = text;
-            }
-            
-            state.saveStatus = 'unsaved';
+          const element = findById(state.textElements, id);
+          if (!element) return;
+          
+          element.text = text;
+          
+          if (element.richText && element.richText.length > 0) {
+            element.richText[0].text = text;
           }
-        }),
+          
+          state.saveStatus = 'unsaved';
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      deleteTextElement: (id) =>
+      deleteTextElement: (id) => {
         set((state) => {
           state.textElements = state.textElements.filter(e => e.id !== id);
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().pushState(get().toSnapshot());
+      },
       
-      updateTextElementPosition: (id, x, y) =>
-        set((state) => {
-          const element = state.textElements.find(e => e.id === id);
-          if (element) {
-            element.position.x = x;
-            element.position.y = y;
-            state.saveStatus = 'unsaved';
-          }
-        }),
-      
-      updateTextElementTransform: (id, scaleX, scaleY, rotation) =>
-        set((state) => {
-          const element = state.textElements.find(e => e.id === id);
-          if (element) {
-            element.position.scaleX = scaleX;
-            element.position.scaleY = scaleY;
-            element.position.rotation = rotation;
-            state.saveStatus = 'unsaved';
-          }
-        }),
-      
-      applyStyleToAllSubtitles: (style) =>
+      applyStyleToAllSubtitles: (style) => {
+        useHistoryStore.getState().startBatch();
+        
         set((state) => {
           state.subtitles.forEach(subtitle => {
             subtitle.style = { ...subtitle.style, ...style };
@@ -510,9 +531,14 @@ export const useProjectStore = create<ProjectStore>()(
           });
           
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().endBatch(get().toSnapshot());
+      },
       
-      applyStyleToAllTextElementsOfType: (type, style) =>
+      applyStyleToAllTextElementsOfType: (type, style) => {
+        useHistoryStore.getState().startBatch();
+        
         set((state) => {
           state.textElements.forEach(element => {
             if (element.type === type) {
@@ -528,34 +554,113 @@ export const useProjectStore = create<ProjectStore>()(
           });
           
           state.saveStatus = 'unsaved';
-        }),
+        });
+        
+        useHistoryStore.getState().endBatch(get().toSnapshot());
+      },
       
       getTextElementType: (id) => {
-        const element = get().textElements.find(e => e.id === id);
+        const element = findById(get().textElements, id);
         return element?.type || 'unknown';
       },
       
-      markUnsaved: () => 
+      toSnapshot: () => {
+        const state = get();
+        const mediaStore = useMediaStore.getState();
+        const brollStore = useBrollStore.getState();
+        const audioStore = useAudioStore.getState();
+        
+        return {
+          subtitles: deepClone(state.subtitles),
+          textElements: deepClone(state.textElements),
+          placedMedia: deepClone(mediaStore.placedMedia),
+          placedBrolls: deepClone(brollStore.placedBrolls),
+          backgroundMusic: deepClone(audioStore.backgroundMusic),
+          timestamp: Date.now()
+        };
+      },
+      
+      fromSnapshot: (snapshot) => {
+        set((state) => {
+          state.subtitles = snapshot.subtitles;
+          state.textElements = snapshot.textElements;
+        });
+        
+        useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
+        useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
+        useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
+      },
+      
+      exportProject: () => {
+        const state = get();
+        const settingsStore = useSettingsStore.getState();
+        const mediaStore = useMediaStore.getState();
+        const brollStore = useBrollStore.getState();
+        const audioStore = useAudioStore.getState();
+        
+        return {
+          version: '1.0.0',
+          metadata: {
+            title: state.title,
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString()
+          },
+          video: {
+            url: state.videoUrl,
+            duration: state.duration
+          },
+          content: {
+            subtitles: state.subtitles,
+            textElements: state.textElements,
+            placedMedia: mediaStore.placedMedia,
+            placedBrolls: brollStore.placedBrolls,
+            backgroundMusic: audioStore.backgroundMusic
+          },
+          settings: {
+            watermark: settingsStore.watermark
+          }
+        };
+      },
+      
+      loadProject: (project) => {
+        set((state) => {
+          state.title = project.metadata.title;
+          state.videoUrl = project.video.url;
+          state.duration = project.video.duration;
+          state.subtitles = project.content.subtitles;
+          state.textElements = project.content.textElements;
+          state.saveStatus = 'saved';
+        });
+        
+        useMediaStore.getState().restorePlacedMedia(project.content.placedMedia);
+        useBrollStore.getState().restorePlacedBrolls(project.content.placedBrolls);
+        useAudioStore.getState().restoreBackgroundMusic(project.content.backgroundMusic);
+        useSettingsStore.getState().updateWatermark(project.settings.watermark);
+        
+        useHistoryStore.getState().clearHistory();
+      },
+      
+      markUnsaved: () => {
         set((state) => {
           state.saveStatus = 'unsaved';
-        }),
+        });
+      },
       
-      markSaved: () => 
+      markSaved: () => {
         set((state) => {
           state.saveStatus = 'saved';
           state.lastSaved = new Date();
-        }),
+        });
+      },
       
-      setSaveStatus: (status) => 
+      setSaveStatus: (status) => {
         set((state) => {
           state.saveStatus = status;
-        }),
+        });
+      },
       
       findSubtitleAtTime: (time) => {
-        const { subtitles } = get();
-        return subtitles.find(
-          s => time >= s.startTime && time <= s.endTime
-        ) || null;
+        return findItemAtTime(get().subtitles, time);
       },
       
       getNextSubtitle: (currentId) => {
@@ -605,14 +710,15 @@ export const useProjectStore = create<ProjectStore>()(
         return errors;
       },
       
-      resetProject: () => 
+      resetProject: () => {
         set(() => ({
           ...initialState,
           id: generateId(),
           subtitles: [],
           textElements: [],
           appStage: 'upload' as AppStage,
-        })),
+        }));
+      },
     }))
   )
 );

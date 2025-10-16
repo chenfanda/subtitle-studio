@@ -37,9 +37,11 @@ interface MediaStore {
   getUploadedMedia: () => UploadedMediaItem[];
   
   placeOnTimeline: (media: MediaItem, startTime: number, endTime: number, x?: number, y?: number) => void;
-  updateMediaPosition: (mediaId: string, x: number, y: number, scaleX?: number, scaleY?: number, rotation?: number) => void;  // ✅ 修改签名
+  updateMediaPosition: (mediaId: string, x: number, y: number, scaleX?: number, scaleY?: number, rotation?: number) => void;
   updateMediaTiming: (mediaId: string, startTime: number, endTime: number) => void;
   removeMedia: (mediaId: string) => void;
+  
+  restorePlacedMedia: (media: PlacedMediaItem[]) => void;
   
   addToHistory: (query: string) => void;
   clearHistory: () => void;
@@ -186,8 +188,8 @@ export const useMediaStore = create<MediaStore>()(
         position: {
           x,
           y,
-          scaleX: 1,      // ✅ 修改：使用 scaleX
-          scaleY: 1,      // ✅ 修改：使用 scaleY
+          scaleX: 1,
+          scaleY: 1,
           rotation: 0,
           startTime,
           endTime
@@ -201,14 +203,14 @@ export const useMediaStore = create<MediaStore>()(
       useProjectStore.getState().markUnsaved();
     },
     
-    updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation) =>  // ✅ 修改参数
+    updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation) =>
       set((state) => {
         const media = state.placedMedia.find(item => item.media.id === mediaId);
         if (media) {
           media.position.x = x;
           media.position.y = y;
-          if (scaleX !== undefined) media.position.scaleX = scaleX;  // ✅ 修改
-          if (scaleY !== undefined) media.position.scaleY = scaleY;  // ✅ 修改
+          if (scaleX !== undefined) media.position.scaleX = scaleX;
+          if (scaleY !== undefined) media.position.scaleY = scaleY;
           if (rotation !== undefined) media.position.rotation = rotation;
         }
       }),
@@ -225,6 +227,11 @@ export const useMediaStore = create<MediaStore>()(
     removeMedia: (mediaId) => 
       set((state) => {
         state.placedMedia = state.placedMedia.filter(item => item.media.id !== mediaId);
+      }),
+    
+    restorePlacedMedia: (media) =>
+      set((state) => {
+        state.placedMedia = media || [];
       }),
     
     addToHistory: (query) => 
