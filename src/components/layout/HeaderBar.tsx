@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useHistoryStore } from '@/stores/useHistoryStore';
 
 export function HeaderBar() {
   const { title, saveStatus, updateProjectTitle } = useProjectStore();
   const { toggleLeftPanel } = useUIStore();
+  const { undo, redo, canUndo, canRedo } = useHistoryStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +18,37 @@ export function HeaderBar() {
       inputRef.current.select();
     }
   }, [isEditingTitle]);
+
+  // 🆕 全局快捷键监听
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果正在编辑标题，不处理快捷键
+      if (isEditingTitle) return;
+      
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo()) {
+          const snapshot = undo();
+          if (snapshot) {
+            useProjectStore.getState().fromSnapshot(snapshot);
+          }
+        }
+      }
+      
+      if ((e.ctrlKey && e.shiftKey && e.key === 'Z') || (e.ctrlKey && e.key === 'y')) {
+        e.preventDefault();
+        if (canRedo()) {
+          const snapshot = redo();
+          if (snapshot) {
+            useProjectStore.getState().fromSnapshot(snapshot);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEditingTitle, canUndo, canRedo, undo, redo]);
 
   const handleTitleSubmit = () => {
     const trimmedTitle = editingTitle.trim();
@@ -33,6 +66,26 @@ export function HeaderBar() {
     } else if (e.key === 'Escape') {
       setEditingTitle(title);
       setIsEditingTitle(false);
+    }
+  };
+
+  // 🆕 撤销按钮点击处理
+  const handleUndo = () => {
+    if (canUndo()) {
+      const snapshot = undo();
+      if (snapshot) {
+        useProjectStore.getState().fromSnapshot(snapshot);
+      }
+    }
+  };
+
+  // 🆕 重做按钮点击处理
+  const handleRedo = () => {
+    if (canRedo()) {
+      const snapshot = redo();
+      if (snapshot) {
+        useProjectStore.getState().fromSnapshot(snapshot);
+      }
     }
   };
 
@@ -125,6 +178,35 @@ export function HeaderBar() {
 
       {/* 右侧状态区 */}
       <div className="flex items-center space-x-4">
+        {/* 🆕 撤销/重做按钮 */}
+        <div className="flex items-center space-x-1">
+          <button 
+            onClick={handleUndo}
+            disabled={!canUndo()}
+            className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+              canUndo() 
+                ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary' 
+                : 'text-text-disabled cursor-not-allowed'
+            }`}
+            title="撤销 (Ctrl+Z)"
+          >
+            ←
+          </button>
+          
+          <button 
+            onClick={handleRedo}
+            disabled={!canRedo()}
+            className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+              canRedo() 
+                ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary' 
+                : 'text-text-disabled cursor-not-allowed'
+            }`}
+            title="重做 (Ctrl+Y)"
+          >
+            →
+          </button>
+        </div>
+
         {/* 保存状态指示 */}
         <div className={`flex items-center space-x-2 ${saveInfo.className}`}>
           <span className="text-sm">{saveInfo.icon}</span>

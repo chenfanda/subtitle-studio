@@ -38,6 +38,11 @@ interface UIStore extends UIState {
   setShowRichTextEditor: (show: boolean) => void;
   setRichTextEditorTarget: (target: { type: 'subtitle' | 'textElement'; id: string } | null) => void;
   
+  // 🆕 时间轴折叠状态
+  timelineCollapsed: boolean;
+  setTimelineCollapsed: (collapsed: boolean) => void;
+  toggleTimelineCollapsed: () => void;
+  
   setTimelineZoom: (zoom: number) => void;
   adjustTimelineZoom: (delta: number) => void;
   setTimelineScroll: (scrollLeft: number) => void;
@@ -81,6 +86,7 @@ export const useUIStore = create<UIStore>()(
       editingTextElementId: null,
       showRichTextEditor: false,
       richTextEditorTarget: null,
+      timelineCollapsed: false, // 🆕 初始状态
       
       setRichTextSelection: (selection) =>
         set((state) => {
@@ -221,6 +227,17 @@ export const useUIStore = create<UIStore>()(
           state.richTextEditorTarget = target;
         }),
       
+      // 🆕 时间轴折叠相关方法
+      setTimelineCollapsed: (collapsed) =>
+        set((state) => {
+          state.timelineCollapsed = collapsed;
+        }),
+      
+      toggleTimelineCollapsed: () =>
+        set((state) => {
+          state.timelineCollapsed = !state.timelineCollapsed;
+        }),
+      
       setTimelineZoom: (zoom) => 
         set((state) => {
           state.timelineZoom = Math.max(
@@ -311,6 +328,7 @@ export const useUIStore = create<UIStore>()(
           editingTextElementId: null,
           showRichTextEditor: false,
           richTextEditorTarget: null,
+          timelineCollapsed: false, // 🆕 重置状态
         })),
     }))
   )
@@ -339,3 +357,7 @@ export const useTimelineZoom = () =>
 
 export const useTimelineScrollLeft = () => 
   useUIStore((state) => state.timelineScrollLeft);
+
+// 🆕 时间轴折叠选择器
+export const useTimelineCollapsed = () =>
+  useUIStore((state) => state.timelineCollapsed);

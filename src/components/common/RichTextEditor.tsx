@@ -115,13 +115,13 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           </div>
         )}
         
-        {/* 模板区域 */}
-            {targetType === 'subtitle' && (
-            <TemplateQuickAccess 
-                targetType={targetType}
-                targetId={targetId}
-            />
-            )}
+        {/* 模板区域（仅字幕显示） */}
+        {targetType === 'subtitle' && (
+          <TemplateQuickAccess 
+            targetType={targetType}
+            targetId={targetId}
+          />
+        )}
         
         {/* 基本效果 */}
         <BasicEffectsSection 
@@ -169,9 +169,9 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         {/* 运用于全长视频 */}
         <button
           onClick={handleApplyToAll}
-          className="w-full py-3 bg-accent-purple hover:bg-accent-purple/90 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 bg-bg-tertiary hover:bg-accent-purple text-text-primary hover:text-white border border-border-secondary rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
         >
-          <span>✅</span>
+          <span>🎯</span>
           <span>运用于全长视频</span>
         </button>
       </div>

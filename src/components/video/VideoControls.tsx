@@ -12,11 +12,20 @@ import {
   ArrowsPointingInIcon
 } from '@heroicons/react/24/solid';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { useUIStore } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
 
 export function VideoControls() {
   const { isPlaying, volume, togglePlayback, setVolume } = useProjectStore();
   const { currentTime, duration, setCurrentTime } = useProjectStore();
+  const { deleteSubtitle, deleteTextElement } = useProjectStore();
+  const { 
+    toggleTimelineCollapsed, 
+    selectedSubtitleIds, 
+    selectedTextElementIds,
+    clearSelectedSubtitles,
+    clearSelectedTextElements 
+  } = useUIStore();
   
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -100,6 +109,30 @@ export function VideoControls() {
     }
   };
 
+  // 🆕 折叠时间轴处理
+  const handleToggleTimeline = () => {
+    toggleTimelineCollapsed();
+  };
+
+  // 🆕 删除选中元素处理
+  const handleDeleteSelected = () => {
+    // 优先删除字幕
+    if (selectedSubtitleIds.length > 0) {
+      const subtitleId = selectedSubtitleIds[0];
+      deleteSubtitle(subtitleId);
+      clearSelectedSubtitles();
+    } 
+    // 其次删除文字元素
+    else if (selectedTextElementIds.length > 0) {
+      const textElementId = selectedTextElementIds[0];
+      deleteTextElement(textElementId);
+      clearSelectedTextElements();
+    }
+  };
+
+  // 检查是否有选中的元素
+  const hasSelectedElements = selectedSubtitleIds.length > 0 || selectedTextElementIds.length > 0;
+
   // 监听全屏状态变化
   useState(() => {
     const handleFullscreenChange = () => {
@@ -161,6 +194,32 @@ export function VideoControls() {
             <ForwardIcon className="w-5 h-5" />
             <span className="text-sm">10</span>
           </button>
+
+          {/* 🆕 折叠和删除按钮 */}
+          <div className="flex items-center space-x-2 ml-4">
+            {/* 折叠时间轴按钮 */}
+            <button
+              onClick={handleToggleTimeline}
+              className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center transition-colors"
+              title="折叠/展开时间轴"
+            >
+              <span className="text-white text-sm">🔽</span>
+            </button>
+
+            {/* 删除按钮 */}
+            <button
+              onClick={handleDeleteSelected}
+              disabled={!hasSelectedElements}
+              className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                hasSelectedElements
+                  ? 'bg-white/10 hover:bg-white/20 text-white'
+                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+              }`}
+              title={hasSelectedElements ? "删除选中元素" : "未选中任何元素"}
+            >
+              <span className="text-sm">🗑️</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 text-white text-sm font-mono">

@@ -2,10 +2,25 @@ import { HeaderBar } from '../layout/HeaderBar';
 import { LeftSidebar } from '../layout/LeftSidebar';
 import { VideoArea } from '../layout/VideoArea';
 import { TimelineArea } from '../layout/TimelineArea';
-import { useLeftPanelCollapsed } from '@/stores/useUIStore';
+import { RichTextEditor } from '../common/RichTextEditor';
+import { useLeftPanelCollapsed, useTimelineCollapsed } from '@/stores/useUIStore';
+import { useUIStore } from '@/stores/useUIStore';
 
 export function EditingStage() {
   const collapsed = useLeftPanelCollapsed();
+  const timelineCollapsed = useTimelineCollapsed();
+  const { 
+    showRichTextEditor, 
+    richTextEditorTarget,
+    setShowRichTextEditor,
+    setRichTextEditorTarget 
+  } = useUIStore();
+
+  // 关闭富文本编辑器的处理方法
+  const handleCloseRichTextEditor = () => {
+    setShowRichTextEditor(false);
+    setRichTextEditorTarget(null);
+  };
 
   return (
     <div className="h-screen w-screen bg-bg-primary text-text-primary overflow-hidden flex flex-col">
@@ -17,20 +32,31 @@ export function EditingStage() {
         {/* 左侧边栏 */}
         {!collapsed && <LeftSidebar />}
         
-        {/* 主编辑区域 */}
+        {/* 中间区域：视频 + 时间轴 */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* 视频预览区域 - 只减去时间轴高度，让VideoArea自己管理控制栏 */}
-          <div 
-            className="overflow-hidden"
-            style={{ height: 'calc(100% - 180px)' }}
-          >
-            <VideoArea />
+          {/* 上方区域：视频 + 富文本编辑器（时间轴上方） */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* 视频区域 */}
+            <div className="flex-1 overflow-hidden">
+              <VideoArea />
+            </div>
+            
+            {/* 右侧富文本编辑器（与视频等高） */}
+            {showRichTextEditor && richTextEditorTarget && (
+              <RichTextEditor
+                targetType={richTextEditorTarget.type}
+                targetId={richTextEditorTarget.id}
+                onClose={handleCloseRichTextEditor}
+              />
+            )}
           </div>
           
-          {/* 时间轴区域 - 固定180px高度 */}
-          <div className="h-45 border-t border-border-primary flex-shrink-0">
-            <TimelineArea />
-          </div>
+          {/* 时间轴区域（可折叠） */}
+          {!timelineCollapsed && (
+            <div className="h-45 border-t border-border-primary flex-shrink-0">
+              <TimelineArea />
+            </div>
+          )}
         </div>
       </div>
     </div>
