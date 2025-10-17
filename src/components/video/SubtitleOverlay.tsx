@@ -1,22 +1,24 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useProjectStore } from '../../stores/useProjectStore';
-import { useUIStore } from '../../stores/useUIStore';
-import { DEFAULT_SUBTITLE_STYLE } from '../../types/subtitle';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { useUIStore } from '@/stores/useUIStore';
+import { useHistoryStore } from '@/stores/useHistoryStore';
+import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { QuickToolbar } from './QuickToolbar';
 import { TransformBorder } from '../common/TransformBorder';
-import { convertToWebAnimation } from '../../utils/animationUtils';
-import { convertStyleToCSS } from '../../utils/textStyleUtils';
-import type { RichTextSegment } from '../../types/subtitle';
+import { convertToWebAnimation } from '@/utils/animationUtils';
+import { convertStyleToCSS } from '@/utils/textStyleUtils';
+import type { RichTextSegment } from '@/types/subtitle';
 
 export function SubtitleOverlay() {
   const { 
     subtitles, 
-    currentTime, 
     updateSubtitlePosition,
     updateSubtitleScale,
     updateSubtitleWidth,
     getSubtitlePosition 
-  } = useProjectStore();
+  } = useSubtitleStore();
+  const { currentTime } = useProjectStore();
   const { selectedSubtitleIds, setSelectedSubtitles, setRichTextEditorTarget, setShowRichTextEditor } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
@@ -162,6 +164,7 @@ export function SubtitleOverlay() {
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      useHistoryStore.getState().pushState();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { useSelectedSubtitles } from '@/stores/useUIStore';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { formatDuration } from '@/utils/audioUtils';
 import type { AudioTrack } from '@/types/audio';
 
@@ -21,7 +21,7 @@ export function AudioCard({ track }: AudioCardProps) {
     pauseAudio 
   } = useAudioStore();
   const selectedSubtitleIds = useSelectedSubtitles();
-  const { subtitles, updateSubtitle } = useProjectStore();
+  const { subtitles, updateSubtitle } = useSubtitleStore();
   
   const hasSelectedSubtitles = selectedSubtitleIds.length > 0;
   const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying;

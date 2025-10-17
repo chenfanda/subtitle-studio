@@ -1,20 +1,20 @@
-// src/components/timeline/TimelineRuler.tsx
 import { useMemo } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 
 interface TimeMark {
-  time: number; // 毫秒
-  position: number; // 像素
+  time: number;
+  position: number;
   isMainMark: boolean;
   label: string;
 }
 
 export function TimelineRuler() {
-  const { duration, subtitles } = useProjectStore();
+  const { duration } = useProjectStore();
+  const { subtitles } = useSubtitleStore();
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   
-  // 时间格式化函数：输入毫秒，输出时间字符串
   const formatTime = (timeMs: number, showMilliseconds: boolean = false): string => {
     const totalMs = Math.floor(timeMs);
     const mins = Math.floor(totalMs / 60000);
@@ -30,7 +30,6 @@ export function TimelineRuler() {
     
     const marks: TimeMark[] = [];
     
-    // 根据缩放级别确定时间间隔（秒）
     let intervalSeconds: number;
     let showMilliseconds: boolean = false;
     
@@ -51,7 +50,6 @@ export function TimelineRuler() {
     const minorIntervalSeconds = intervalSeconds;
     const majorIntervalSeconds = intervalSeconds * 2;
     
-    // 生成时间刻度
     for (let timeSeconds = 0; timeSeconds <= duration; timeSeconds += minorIntervalSeconds) {
       const position = timeSeconds * pixelsPerSecond;
       const isMajor = (timeSeconds % majorIntervalSeconds) < 0.001;
@@ -64,7 +62,6 @@ export function TimelineRuler() {
       });
     }
     
-    // 添加字幕关键时间点
     const keyTimes = new Set<number>();
     subtitles.forEach(subtitle => {
       const startSeconds = subtitle.startTime / 1000;
@@ -95,7 +92,6 @@ export function TimelineRuler() {
 
   return (
     <div className="h-full bg-bg-tertiary relative overflow-hidden">
-      {/* 时间刻度区域 - 全宽显示 */}
       <div 
         className="relative h-full w-full"
         style={{ transform: `translateX(-${scrollPosition}px)` }}
@@ -106,7 +102,6 @@ export function TimelineRuler() {
             className="absolute top-0 flex flex-col items-center"
             style={{ left: mark.position }}
           >
-            {/* 动态高度的刻度线 */}
             <div 
               className={`w-px ${
                 mark.isMainMark 
@@ -115,13 +110,12 @@ export function TimelineRuler() {
               } mt-1`}
             />
             
-            {/* 只在主刻度显示时间标签 - 向上调整位置 */}
             {mark.isMainMark && mark.label && (
               <div 
                 className="text-xs text-text-secondary whitespace-nowrap font-mono absolute top-0"
                 style={{ 
                   transform: 'translateX(-50%)',
-                  marginTop: '-2px' // 向上偏移，避免被遮挡
+                  marginTop: '-2px'
                 }}
               >
                 {mark.label}

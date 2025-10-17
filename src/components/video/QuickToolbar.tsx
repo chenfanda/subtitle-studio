@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
+import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 
@@ -27,13 +28,13 @@ const GLOW_COLORS = [
 ];
 
 export function QuickToolbar({ targetType, targetId, position, onClose }: QuickToolbarProps) {
-  const { subtitles, textElements, updateSubtitle, updateTextElement } = useProjectStore();
+  const { subtitles, updateSubtitle } = useSubtitleStore();
+  const { textElements, updateTextElement } = useTextElementStore();
   const { setShowRichTextEditor, setRichTextEditorTarget } = useUIStore();
   
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBrightness, setShowBrightness] = useState(false);
   
-  // ✅ 获取当前对象
   const currentObject = targetType === 'subtitle'
     ? subtitles.find(s => s.id === targetId)
     : textElements.find(e => e.id === targetId);
@@ -44,7 +45,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   const currentGlowColor = currentStyle.shadow?.enabled ? currentStyle.shadow.color : null;
   const currentBrightness = currentStyle.shadow?.enabled ? currentStyle.shadow.blur : 15;
   
-  // ✅ 统一的样式更新方法
   const handleStyleUpdate = (updates: Partial<typeof currentStyle>) => {
     if (targetType === 'subtitle') {
       updateSubtitle(targetId, { style: { ...currentStyle, ...updates } });
@@ -102,7 +102,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   };
   
   const handleStyleClick = () => {
-    // ✅ 打开右侧富文本编辑器
     setRichTextEditorTarget({ type: targetType, id: targetId });
     setShowRichTextEditor(true);
     onClose();
@@ -119,7 +118,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* 发光颜色 */}
       <div className="relative">
         <button
           onClick={() => setShowColorPicker(!showColorPicker)}
@@ -150,7 +148,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         )}
       </div>
       
-      {/* 发光亮度 */}
       <div className="relative">
         <button
           onClick={() => setShowBrightness(!showBrightness)}
@@ -176,7 +173,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         )}
       </div>
       
-      {/* 字体选择 */}
       <select
         value={currentStyle.fontFamily}
         onChange={(e) => handleFontChange(e.target.value)}
@@ -187,7 +183,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         ))}
       </select>
       
-      {/* 字号 */}
       <select
         value={currentStyle.fontSize}
         onChange={(e) => handleFontSizeChange(Number(e.target.value))}
@@ -198,7 +193,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         ))}
       </select>
       
-      {/* ✅ 样式按钮（打开富文本编辑器） */}
       <button
         onClick={handleStyleClick}
         className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
@@ -207,7 +201,6 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         样式
       </button>
       
-      {/* 关闭按钮 */}
       <button
         onClick={onClose}
         className="w-5 h-5 text-gray-400 hover:text-white text-xs ml-1"

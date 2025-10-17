@@ -4,14 +4,13 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 
 export function HeaderBar() {
-  const { title, saveStatus, updateProjectTitle } = useProjectStore();
+  const { title, saveStatus, updateProjectTitle, toSnapshot, fromSnapshot } = useProjectStore();
   const { toggleLeftPanel } = useUIStore();
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 当编辑状态改变时，聚焦输入框
   useEffect(() => {
     if (isEditingTitle && inputRef.current) {
       inputRef.current.focus();
@@ -19,43 +18,31 @@ export function HeaderBar() {
     }
   }, [isEditingTitle]);
 
-  // 🆕 全局快捷键监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 如果正在编辑标题，不处理快捷键
       if (isEditingTitle) return;
       
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (canUndo()) {
-          const snapshot = undo();
-          if (snapshot) {
-            useProjectStore.getState().fromSnapshot(snapshot);
-          }
-        }
+        handleUndo();
       }
       
       if ((e.ctrlKey && e.shiftKey && e.key === 'Z') || (e.ctrlKey && e.key === 'y')) {
         e.preventDefault();
-        if (canRedo()) {
-          const snapshot = redo();
-          if (snapshot) {
-            useProjectStore.getState().fromSnapshot(snapshot);
-          }
-        }
+        handleRedo();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isEditingTitle, canUndo, canRedo, undo, redo]);
+  }, [isEditingTitle]);
 
   const handleTitleSubmit = () => {
     const trimmedTitle = editingTitle.trim();
     if (trimmedTitle && trimmedTitle !== title) {
       updateProjectTitle(trimmedTitle);
     } else {
-      setEditingTitle(title); // 恢复原标题
+      setEditingTitle(title);
     }
     setIsEditingTitle(false);
   };
@@ -69,22 +56,22 @@ export function HeaderBar() {
     }
   };
 
-  // 🆕 撤销按钮点击处理
   const handleUndo = () => {
     if (canUndo()) {
-      const snapshot = undo();
+      const currentSnapshot = toSnapshot();
+      const snapshot = undo(currentSnapshot);
       if (snapshot) {
-        useProjectStore.getState().fromSnapshot(snapshot);
+        fromSnapshot(snapshot);
       }
     }
   };
 
-  // 🆕 重做按钮点击处理
   const handleRedo = () => {
     if (canRedo()) {
-      const snapshot = redo();
+      const currentSnapshot = toSnapshot();
+      const snapshot = redo(currentSnapshot);
       if (snapshot) {
-        useProjectStore.getState().fromSnapshot(snapshot);
+        fromSnapshot(snapshot);
       }
     }
   };
@@ -128,9 +115,7 @@ export function HeaderBar() {
 
   return (
     <div className="h-12 bg-bg-secondary flex items-center px-4 border-b border-border-primary select-none">
-      {/* 左侧控制区 */}
       <div className="flex items-center space-x-4">
-        {/* 汉堡菜单按钮 */}
         <button 
           onClick={toggleLeftPanel}
           className="w-6 h-6 flex flex-col justify-center items-center hover:bg-bg-tertiary rounded transition-colors group"
@@ -141,7 +126,6 @@ export function HeaderBar() {
           <div className="w-4 h-0.5 bg-text-primary transition-colors group-hover:bg-white"></div>
         </button>
         
-        {/* 项目标题 */}
         <div className="flex items-center min-w-0">
           {isEditingTitle ? (
             <input
@@ -171,14 +155,10 @@ export function HeaderBar() {
         </div>
       </div>
 
-      {/* 中央区域 - 可扩展用于添加更多功能 */}
       <div className="flex-1 flex items-center justify-center">
-        {/* 这里可以添加播放控制按钮或其他功能 */}
       </div>
 
-      {/* 右侧状态区 */}
       <div className="flex items-center space-x-4">
-        {/* 🆕 撤销/重做按钮 */}
         <div className="flex items-center space-x-1">
           <button 
             onClick={handleUndo}
@@ -207,15 +187,12 @@ export function HeaderBar() {
           </button>
         </div>
 
-        {/* 保存状态指示 */}
         <div className={`flex items-center space-x-2 ${saveInfo.className}`}>
           <span className="text-sm">{saveInfo.icon}</span>
           <span className="text-sm font-medium">{saveInfo.text}</span>
         </div>
 
-        {/* 用户操作菜单 */}
         <div className="flex items-center space-x-2">
-          {/* 设置按钮 */}
           <button 
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
             title="设置"
@@ -224,7 +201,6 @@ export function HeaderBar() {
             ⚙️
           </button>
 
-          {/* 帮助按钮 */}
           <button 
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
             title="帮助"
@@ -233,7 +209,6 @@ export function HeaderBar() {
             ❓
           </button>
 
-          {/* 导出按钮 */}
           <button 
             className="px-3 py-1.5 bg-accent-purple hover:bg-purple-600 text-white text-sm font-medium rounded transition-colors"
             title="导出项目"

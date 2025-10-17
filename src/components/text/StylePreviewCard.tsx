@@ -1,3 +1,4 @@
+import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { convertStyleToCSS } from '@/utils/textStyleUtils';
@@ -10,7 +11,8 @@ interface StylePreviewCardProps {
 }
 
 export function StylePreviewCard({ template }: StylePreviewCardProps) {
-  const { addTextElement, currentTime } = useProjectStore();
+  const { addTextElement } = useTextElementStore();
+  const { currentTime } = useProjectStore();
   const { setSelectedTextElements } = useUIStore();
   
   const convertTemplateToSubtitleStyle = (templateStyle: any) => {

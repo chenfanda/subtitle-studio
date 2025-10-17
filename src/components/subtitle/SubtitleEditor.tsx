@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { msToSRTTime } from '@/utils/subtitleParser';
@@ -27,7 +27,7 @@ export function SubtitleEditor() {
     clearAllAnimations,
     getSubtitleAnimations,
     removeSubtitleAudio
-  } = useProjectStore();
+  } = useSubtitleStore();
   const { 
     editingSubtitleId, 
     setEditingSubtitle, 

@@ -1,14 +1,14 @@
-// src/components/timeline/AudioWaveform.tsx
 import { useMemo, useState, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 
 export function AudioWaveform() {
-  const { subtitles, duration, currentTime, isPlaying } = useProjectStore();
+  const { duration, currentTime, isPlaying } = useProjectStore();
+  const { subtitles } = useSubtitleStore();
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const [tick, setTick] = useState(0);
 
-  // 简单的动画计数器
   useEffect(() => {
     if (!isPlaying) return;
     
@@ -27,7 +27,6 @@ export function AudioWaveform() {
     const spacing = 1;
     const totalBars = Math.floor((duration * pixelsPerSecond) / (barWidth + spacing));
     
-    // 标记有字幕的时间段
     const hasAudioAt = new Array(totalBars).fill(false);
     
     subtitles.forEach(subtitle => {
@@ -39,7 +38,6 @@ export function AudioWaveform() {
       }
     });
     
-    // 生成波形条
     for (let i = 0; i < totalBars; i++) {
       const x = i * (barWidth + spacing);
       const hasAudio = hasAudioAt[i];
@@ -64,22 +62,20 @@ export function AudioWaveform() {
           const timeAtBar = bar.x / pixelsPerSecond;
           const isPlayed = timeAtBar < currentTime;
           const distanceFromPlayhead = Math.abs(timeAtBar - currentTime);
-          const isNearPlayhead = distanceFromPlayhead < 2; // 2秒范围内
+          const isNearPlayhead = distanceFromPlayhead < 2;
           
-          // 动态高度：播放时播放头附近有轻微波动
           let height = bar.baseHeight;
           if (isPlaying && isNearPlayhead && bar.hasAudio) {
             const wave = Math.sin((tick * 0.3) + (index * 0.1)) * 2;
             height = Math.max(3, bar.baseHeight + wave);
           }
           
-          // 颜色状态
-          let color = '#6b7280'; // 默认灰色
+          let color = '#6b7280';
           let opacity = 0.6;
           
           if (bar.hasAudio) {
             if (isPlayed) {
-              color = '#3b82f6'; // 蓝色
+              color = '#3b82f6';
               opacity = isNearPlayhead && isPlaying ? 0.9 : 0.7;
             } else {
               color = '#9ca3af';
@@ -110,7 +106,6 @@ export function AudioWaveform() {
           );
         })}
         
-        {/* 播放头光效 - 简单版本 */}
         {isPlaying && (
           <>
             <div

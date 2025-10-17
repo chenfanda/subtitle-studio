@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { TextStyleCategory, TextStyleTemplate, TextStyleConfig } from '@/types/textStyle';
 import { TEXT_STYLE_TEMPLATES } from '@/constants/textStyleTemplates';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { 
   applyStyleToAllSegments, 
   applyStyleToSegments, 
@@ -17,6 +17,19 @@ const convertToSubtitleShadow = (textShadow?: TextStyleConfig['shadow']) => ({
   offsetY: textShadow?.offsetY || 2,
   blur: textShadow?.blur || 0,
 });
+
+const convertFontWeight = (weight: string | number): number => {
+  if (typeof weight === 'number') return weight;
+  
+  const weightMap: Record<string, number> = {
+    'normal': 400,
+    'bold': 700,
+    'bolder': 900,
+    'lighter': 300
+  };
+  
+  return weightMap[weight] || 400;
+};
 
 interface TextStyleStore {
   activeCategory: TextStyleCategory;
@@ -57,28 +70,25 @@ export const useTextStyleStore = create<TextStyleStore>()(
       const subtitleStyle = {
         fontSize: selectedTemplate.style.fontSize,
         fontFamily: selectedTemplate.style.fontFamily,
-        fontWeight: selectedTemplate.style.fontWeight,
+        fontWeight: convertFontWeight(selectedTemplate.style.fontWeight),
         fontStyle: selectedTemplate.style.fontStyle,
         color: selectedTemplate.style.color,
-        backgroundColor: selectedTemplate.style.backgroundColor,
+        backgroundColor: selectedTemplate.style.backgroundColor || 'transparent',
         position: 'bottom' as const,
         alignment: selectedTemplate.style.textAlign || 'center' as const,
         opacity: 1,
         shadow: convertToSubtitleShadow(selectedTemplate.style.shadow),
       };
       
-      const projectStore = useProjectStore.getState();
-      const subtitle = projectStore.subtitles.find(s => s.id === subtitleId);
+      const subtitleStore = useSubtitleStore.getState();
+      const subtitle = subtitleStore.subtitles.find(s => s.id === subtitleId);
       
       if (!subtitle) return;
       
-      // 统一范围应用逻辑
       if (startIndex !== undefined && endIndex !== undefined) {
-        // 应用到指定范围
         let richTextSegments = subtitle.richText;
         
         if (!richTextSegments) {
-          // 创建富文本数据
           richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
         }
         
@@ -90,17 +100,14 @@ export const useTextStyleStore = create<TextStyleStore>()(
         );
         
         const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-        projectStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+        subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
         
       } else {
-        // 应用到整个字幕
         if (subtitle.richText) {
-          // 有富文本数据，应用到所有片段
           const updatedSegments = applyStyleToAllSegments(subtitle.richText, subtitleStyle);
-          projectStore.updateSubtitleRichText(subtitleId, updatedSegments);
+          subtitleStore.updateSubtitleRichText(subtitleId, updatedSegments);
         } else {
-          // 没有富文本数据，直接更新字幕样式
-          projectStore.updateSubtitle(subtitleId, { style: subtitleStyle });
+          subtitleStore.updateSubtitle(subtitleId, { style: subtitleStyle });
         }
       }
     },

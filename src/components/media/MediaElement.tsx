@@ -74,14 +74,13 @@ export function MediaElement({ item }: MediaElementProps) {
   return (
     <div 
       ref={elementRef}
-      className={`
-        absolute pointer-events-auto cursor-grab transition-all duration-200
-        ${isDragging ? 'cursor-grabbing' : ''}
-      `}
+      className={`absolute pointer-events-auto cursor-grab transition-all duration-200 ${
+        isDragging ? 'cursor-grabbing' : ''
+      }`}
       style={{
         left: `${item.position.x}%`,
         top: `${item.position.y}%`,
-        transform: `translate(-50%, -50%) scale(${item.position.scaleX}, ${item.position.scaleY}) rotate(${item.position.rotation}deg)`,  // ✅ scale 应用在外层
+        transform: `translate(-50%, -50%) scale(${item.position.scaleX}, ${item.position.scaleY}) rotate(${item.position.rotation}deg)`,
         zIndex: isSelected ? 15 : 10
       }}
       onMouseDown={handleMouseDown}
@@ -89,9 +88,12 @@ export function MediaElement({ item }: MediaElementProps) {
     >
       <TransformBorder
         isSelected={isSelected}
-        position={{ x: item.position.x, y: item.position.y }}
-        scaleX={item.position.scaleX}
-        scaleY={item.position.scaleY}
+        position={{ 
+          x: item.position.x, 
+          y: item.position.y,
+          scaleX: item.position.scaleX,
+          scaleY: item.position.scaleY
+        }}
         mode="media"
         onTransformChange={(scaleX, scaleY) => {
           updateMediaPosition(
@@ -109,7 +111,7 @@ export function MediaElement({ item }: MediaElementProps) {
         <img 
           src={item.media.url}
           alt=""
-          className="w-24 h-24 object-contain"  // ✅ 不再单独应用 scale
+          className="w-24 h-24 object-contain"
           draggable={false}
         />
       </TransformBorder>

@@ -1,6 +1,7 @@
 import { HeaderBar } from '../layout/HeaderBar';
 import { LeftSidebar } from '../layout/LeftSidebar';
 import { VideoArea } from '../layout/VideoArea';
+import { VideoControls } from '../video/VideoControls';
 import { TimelineArea } from '../layout/TimelineArea';
 import { RichTextEditor } from '../common/RichTextEditor';
 import { useLeftPanelCollapsed, useTimelineCollapsed } from '@/stores/useUIStore';
@@ -16,7 +17,6 @@ export function EditingStage() {
     setRichTextEditorTarget 
   } = useUIStore();
 
-  // 关闭富文本编辑器的处理方法
   const handleCloseRichTextEditor = () => {
     setShowRichTextEditor(false);
     setRichTextEditorTarget(null);
@@ -32,16 +32,16 @@ export function EditingStage() {
         {/* 左侧边栏 */}
         {!collapsed && <LeftSidebar />}
         
-        {/* 中间区域：视频 + 时间轴 */}
+        {/* 中间区域：视频 + 控制栏 + 时间轴 */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* 上方区域：视频 + 富文本编辑器（时间轴上方） */}
+          {/* 上方区域：视频画面 + 富文本编辑器（与视频画面等高） */}
           <div className="flex-1 flex overflow-hidden">
-            {/* 视频区域 */}
+            {/* 视频画面区域 */}
             <div className="flex-1 overflow-hidden">
               <VideoArea />
             </div>
             
-            {/* 右侧富文本编辑器（与视频等高） */}
+            {/* 右侧富文本编辑器（与视频画面等高） */}
             {showRichTextEditor && richTextEditorTarget && (
               <RichTextEditor
                 targetType={richTextEditorTarget.type}
@@ -49,6 +49,11 @@ export function EditingStage() {
                 onClose={handleCloseRichTextEditor}
               />
             )}
+          </div>
+          
+          {/* 播放控制栏（固定在视频下方、时间轴上方） */}
+          <div className="h-20 bg-gray-800 flex-shrink-0 border-t-2 border-gray-600">
+            <VideoControls />
           </div>
           
           {/* 时间轴区域（可折叠） */}

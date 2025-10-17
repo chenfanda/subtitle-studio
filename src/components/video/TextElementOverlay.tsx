@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useHistoryStore } from '@/stores/useHistoryStore';
 import { TransformBorder } from '../common/TransformBorder';
 import { QuickToolbar } from './QuickToolbar';
 import { convertStyleToCSS } from '@/utils/textStyleUtils';
@@ -9,11 +11,10 @@ import type { TextElement } from '@/types/textElement';
 export function TextElementOverlay() {
   const { 
     textElements, 
-    currentTime, 
     updateTextElementPosition,
     updateTextElementTransform
-  } = useProjectStore();
-  
+  } = useTextElementStore();
+  const { currentTime } = useProjectStore();
   const { selectedTextElementIds, setSelectedTextElements } = useUIStore();
   const [showQuickToolbar, setShowQuickToolbar] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -42,9 +43,14 @@ export function TextElementOverlay() {
     
     const rect = container.getBoundingClientRect();
     
+    const targetElement = e.currentTarget as HTMLElement;
+    const targetRect = targetElement.getBoundingClientRect();
+    const offsetX = e.clientX - targetRect.left;
+    const offsetY = e.clientY - targetRect.top;
+    
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const newX = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-      const newY = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      const newX = ((moveEvent.clientX - offsetX - rect.left) / rect.width) * 100;
+      const newY = ((moveEvent.clientY - offsetY - rect.top) / rect.height) * 100;
       
       const clampedX = Math.max(0, Math.min(100, newX));
       const clampedY = Math.max(0, Math.min(100, newY));
@@ -54,6 +60,7 @@ export function TextElementOverlay() {
     
     const handleMouseUp = () => {
       setIsDragging(false);
+      useHistoryStore.getState().pushState();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -117,12 +124,16 @@ export function TextElementOverlay() {
       })}
       
       {showQuickToolbar && (
-        <QuickToolbar
-          targetType="textElement"
-          targetId={showQuickToolbar}
-          position={getElementPosition(showQuickToolbar)}
-          onClose={() => setShowQuickToolbar(null)}
-        />
+        <div className="absolute inset-0 pointer-events-none z-30">
+          <div className="pointer-events-auto">
+            <QuickToolbar
+              targetType="textElement"
+              targetId={showQuickToolbar}
+              position={getElementPosition(showQuickToolbar)}
+              onClose={() => setShowQuickToolbar(null)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTemplateStore, useSelectedTemplate } from '@/stores/useTemplateStore';
 import { useSelectedSubtitles, useRichTextSelection } from '@/stores/useUIStore';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { convertToWebAnimation } from '@/utils/animationUtils';
 import { convertRichTextToPlainText } from '@/utils/textStyleUtils';
 import type { AnimationTemplate } from '@/types/animation';
@@ -16,7 +16,7 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
   const applyAnimationToRange = useTemplateStore((state) => state.applyAnimationToRange);
   const selectedSubtitleIds = useSelectedSubtitles();
   const richTextSelection = useRichTextSelection();
-  const { subtitles, updateSubtitleRichText } = useProjectStore();
+  const { subtitles, updateSubtitleRichText } = useSubtitleStore();
   
   const previewRef = useRef<HTMLDivElement>(null);
   const [animation, setAnimation] = useState<Animation | null>(null);
@@ -31,7 +31,6 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
     ? subtitles.find(s => s.id === selectedSubtitleIds[0])
     : null;
   
-  // 显示选中片段的文字，而不是整个句子
   const getPreviewText = () => {
     if (hasRichTextSelection && selectedSubtitle) {
       if (selectedSubtitle.richText) {
@@ -47,7 +46,6 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
   const previewText = getPreviewText();
   const previewStyle = selectedSubtitle?.style;
 
-  // 检查当前字幕是否已有此动效
   useEffect(() => {
     if (selectedSubtitle?.richText && template.effects.length > 0) {
       const hasEffect = selectedSubtitle.richText.some(segment => 
@@ -116,7 +114,6 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
     const primaryEffect = template.effects[0];
     
     if (!hasThisEffect) {
-      // 应用动效
       if (hasRichTextSelection) {
         applyAnimationToRange(
           richTextSelection.subtitleId,
@@ -130,11 +127,9 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
         });
       }
       
-      // 应用成功反馈
       setIsApplied(true);
       setTimeout(() => setIsApplied(false), 1500);
     } else {
-      // 移除动效
       handleRemoveEffect();
     }
   };
@@ -144,7 +139,7 @@ export function EffectPreviewCard({ template }: EffectPreviewCardProps) {
     
     const updatedSegments = selectedSubtitle.richText.map(segment => ({
       ...segment,
-      style: segment.style, // 保留样式
+      style: segment.style,
       animation: segment.animation?.name === template.effects[0].name ? undefined : segment.animation
     }));
     

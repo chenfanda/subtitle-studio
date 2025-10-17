@@ -1,10 +1,11 @@
-// src/components/timeline/SubtitleTrack.tsx
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 import { useUIStore } from '@/stores/useUIStore';
 
 export function SubtitleTrack() {
-  const { subtitles, currentTime } = useProjectStore();
+  const { subtitles } = useSubtitleStore();
+  const { currentTime } = useProjectStore();
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
 
@@ -18,18 +19,15 @@ export function SubtitleTrack() {
 
   return (
     <div className="h-full bg-bg-primary relative overflow-hidden">
-      {/* 字幕块区域 - 全宽显示 */}
       <div 
         className="relative h-full w-full flex items-center"
         style={{ transform: `translateX(-${scrollPosition}px)` }}
       >
         {subtitles.map((subtitle) => {
-          // 字幕位置：字幕时间(毫秒) ÷ 1000 × 像素每秒
           const startPos = (subtitle.startTime / 1000) * pixelsPerSecond;
           const width = Math.max(((subtitle.endTime - subtitle.startTime) / 1000) * pixelsPerSecond, 40);
           const isSelected = selectedSubtitleIds.includes(subtitle.id);
           
-          // 时间比较：currentTime(秒) × 1000 与字幕时间(毫秒)比较
           const currentTimeMs = (currentTime || 0) * 1000;
           const isCurrent = currentTimeMs >= subtitle.startTime && currentTimeMs <= subtitle.endTime;
           

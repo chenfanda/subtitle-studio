@@ -1,10 +1,12 @@
 import React from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 
 export function SubtitleList() {
-  const { subtitles, currentTime, setCurrentTime } = useProjectStore();
+  const { currentTime, setCurrentTime } = useProjectStore();
+  const { subtitles } = useSubtitleStore();
   const { 
     selectedSubtitleIds, 
     editingSubtitleId,
@@ -42,7 +44,6 @@ export function SubtitleList() {
 
   return (
     <div className="h-full flex flex-col bg-bg-secondary">
-      {/* 头部 */}
       <div className="p-4 border-b border-border-secondary flex-shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="text-text-primary font-medium text-sm">字幕列表</h3>
@@ -57,7 +58,6 @@ export function SubtitleList() {
         </div>
       </div>
 
-      {/* 字幕列表 */}
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-px">
           {subtitles.map((subtitle, index) => {
@@ -81,7 +81,6 @@ export function SubtitleList() {
                 onClick={(e) => handleSubtitleClick(subtitle.id, subtitle.startTime, e)}
                 onDoubleClick={() => handleSubtitleDoubleClick(subtitle.id)}
               >
-                {/* 序号指示器 */}
                 <div className="absolute left-1 top-1/2 transform -translate-y-1/2">
                   <div className={`
                     w-1 h-8 rounded-full transition-colors
@@ -90,7 +89,6 @@ export function SubtitleList() {
                 </div>
 
                 <div className="flex gap-3">
-                  {/* 时间码区域 */}
                   <div className="flex-shrink-0 w-20">
                     <div className="text-xs text-text-tertiary font-mono leading-tight">
                       {formatMillisecondsToTime(subtitle.startTime)}
@@ -103,7 +101,6 @@ export function SubtitleList() {
                     </div>
                   </div>
 
-                  {/* 内容区域 */}
                   <div className="flex-1 min-w-0">
                     <div className={`
                       text-sm leading-relaxed break-words
@@ -112,7 +109,6 @@ export function SubtitleList() {
                       {subtitle.text}
                     </div>
 
-                    {/* 序号和动效状态 */}
                     <div className="flex items-center justify-between mt-1">
                       <div className="text-xs text-text-disabled">
                         #{index + 1}
@@ -128,7 +124,6 @@ export function SubtitleList() {
                     </div>
                   </div>
 
-                  {/* 状态指示器 */}
                   <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1">
                     {isCurrent && (
                       <div className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />

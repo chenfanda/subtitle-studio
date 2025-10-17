@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
+import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { TemplateQuickAccess } from './TemplateQuickAccess';
@@ -19,23 +20,24 @@ interface RichTextEditorProps {
 export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditorProps) {
   const { 
     subtitles, 
-    textElements, 
     updateSubtitle, 
+    applyStyleToAllSubtitles
+  } = useSubtitleStore();
+  
+  const { 
+    textElements, 
     updateTextElement,
     updateTextElementText,
-    applyStyleToAllSubtitles,
     applyStyleToAllTextElementsOfType,
     getTextElementType
-  } = useProjectStore();
+  } = useTextElementStore();
   
-  // ✅ 获取当前对象
   const currentObject = targetType === 'subtitle'
     ? subtitles.find(s => s.id === targetId)
     : textElements.find(e => e.id === targetId);
   
   const [localText, setLocalText] = useState(currentObject?.text || '');
   
-  // ✅ 同步文字内容
   useEffect(() => {
     if (currentObject) {
       setLocalText(currentObject.text);
@@ -46,7 +48,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
   
   const currentStyle = currentObject.style || DEFAULT_SUBTITLE_STYLE;
   
-  // ✅ 样式更新
   const handleStyleChange = (updates: Partial<typeof currentStyle>) => {
     if (targetType === 'subtitle') {
       updateSubtitle(targetId, { 
@@ -59,7 +60,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
     }
   };
   
-  // ✅ 文字更新（仅文字元素）
   const handleTextChange = (text: string) => {
     setLocalText(text);
   };
@@ -70,7 +70,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
     }
   };
   
-  // ✅ 运用于全长视频
   const handleApplyToAll = () => {
     if (targetType === 'subtitle') {
       applyStyleToAllSubtitles(currentStyle);
@@ -82,7 +81,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
   
   return (
     <div className="w-96 h-full bg-bg-secondary border-l border-border-primary overflow-y-auto flex flex-col">
-      {/* 标题栏 */}
       <div className="flex-shrink-0 p-4 border-b border-border-secondary flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">样式编辑</h2>
@@ -98,9 +96,7 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         </button>
       </div>
       
-      {/* 滚动内容区域 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* 🆕 文字输入框（仅文字元素显示） */}
         {targetType === 'textElement' && (
           <div className="space-y-2">
             <label className="text-xs font-medium text-text-secondary">文字内容</label>
@@ -115,7 +111,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           </div>
         )}
         
-        {/* 模板区域（仅字幕显示） */}
         {targetType === 'subtitle' && (
           <TemplateQuickAccess 
             targetType={targetType}
@@ -123,14 +118,12 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           />
         )}
         
-        {/* 基本效果 */}
         <BasicEffectsSection 
           targetType={targetType}
           style={currentStyle}
           onChange={handleStyleChange}
         />
         
-        {/* 对齐（仅字幕显示） */}
         {targetType === 'subtitle' && (
           <AlignmentSection 
             alignment={currentStyle.alignment}
@@ -138,7 +131,6 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           />
         )}
         
-        {/* 高亮色（仅字幕显示） */}
         {targetType === 'subtitle' && (
           <HighlightColorSection 
             color={currentStyle.highlightColor}
@@ -146,13 +138,11 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           />
         )}
         
-        {/* 描边（通用） */}
         <StrokeSection 
           stroke={currentStyle.stroke}
           onChange={(stroke) => handleStyleChange({ stroke })}
         />
         
-        {/* 阴影（仅字幕显示） */}
         {targetType === 'subtitle' && (
           <ShadowSection 
             shadow={currentStyle.shadow}
@@ -160,13 +150,11 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
           />
         )}
         
-        {/* 背景（通用） */}
         <BackgroundSection 
           backgroundColor={currentStyle.backgroundColor}
           onChange={(backgroundColor) => handleStyleChange({ backgroundColor })}
         />
         
-        {/* 运用于全长视频 */}
         <button
           onClick={handleApplyToAll}
           className="w-full py-3 bg-bg-tertiary hover:bg-accent-purple text-text-primary hover:text-white border border-border-secondary rounded-lg font-medium transition-colors flex items-center justify-center gap-2"

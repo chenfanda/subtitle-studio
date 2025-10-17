@@ -1,4 +1,3 @@
-// src/components/video/VideoControls.tsx
 import { useState, useRef } from 'react';
 import { 
   PlayIcon, 
@@ -12,13 +11,15 @@ import {
   ArrowsPointingInIcon
 } from '@heroicons/react/24/solid';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { useSubtitleStore } from '../../stores/useSubtitleStore';
+import { useTextElementStore } from '../../stores/useTextElementStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
 
 export function VideoControls() {
-  const { isPlaying, volume, togglePlayback, setVolume } = useProjectStore();
-  const { currentTime, duration, setCurrentTime } = useProjectStore();
-  const { deleteSubtitle, deleteTextElement } = useProjectStore();
+  const { isPlaying, volume, togglePlayback, setVolume, currentTime, duration, setCurrentTime } = useProjectStore();
+  const { deleteSubtitle } = useSubtitleStore();
+  const { deleteTextElement } = useTextElementStore();
   const { 
     toggleTimelineCollapsed, 
     selectedSubtitleIds, 
@@ -96,11 +97,9 @@ export function VideoControls() {
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
-        // 进入全屏
         await document.documentElement.requestFullscreen();
         setIsFullscreen(true);
       } else {
-        // 退出全屏
         await document.exitFullscreen();
         setIsFullscreen(false);
       }
@@ -109,20 +108,16 @@ export function VideoControls() {
     }
   };
 
-  // 🆕 折叠时间轴处理
   const handleToggleTimeline = () => {
     toggleTimelineCollapsed();
   };
 
-  // 🆕 删除选中元素处理
   const handleDeleteSelected = () => {
-    // 优先删除字幕
     if (selectedSubtitleIds.length > 0) {
       const subtitleId = selectedSubtitleIds[0];
       deleteSubtitle(subtitleId);
       clearSelectedSubtitles();
     } 
-    // 其次删除文字元素
     else if (selectedTextElementIds.length > 0) {
       const textElementId = selectedTextElementIds[0];
       deleteTextElement(textElementId);
@@ -130,10 +125,8 @@ export function VideoControls() {
     }
   };
 
-  // 检查是否有选中的元素
   const hasSelectedElements = selectedSubtitleIds.length > 0 || selectedTextElementIds.length > 0;
 
-  // 监听全屏状态变化
   useState(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -147,7 +140,6 @@ export function VideoControls() {
 
   return (
     <div className="w-full bg-transparent">
-      {/* 进度条 */}
       <div 
         ref={progressRef}
         className="w-full h-1.5 bg-white/20 cursor-pointer relative group"
@@ -165,7 +157,6 @@ export function VideoControls() {
         />
       </div>
 
-      {/* 控制栏 */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-t from-black/80 to-transparent">
         <div className="flex items-center space-x-4">
           <button
@@ -195,9 +186,7 @@ export function VideoControls() {
             <span className="text-sm">10</span>
           </button>
 
-          {/* 🆕 折叠和删除按钮 */}
           <div className="flex items-center space-x-2 ml-4">
-            {/* 折叠时间轴按钮 */}
             <button
               onClick={handleToggleTimeline}
               className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center transition-colors"
@@ -206,7 +195,6 @@ export function VideoControls() {
               <span className="text-white text-sm">🔽</span>
             </button>
 
-            {/* 删除按钮 */}
             <button
               onClick={handleDeleteSelected}
               disabled={!hasSelectedElements}

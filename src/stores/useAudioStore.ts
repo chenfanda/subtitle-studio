@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { AudioCategory, AudioTrack, AudioState } from '@/types/audio';
 import { AUDIO_LIBRARY } from '@/constants/audioCategories';
-import { useProjectStore } from './useProjectStore';
+import { useSubtitleStore } from './useSubtitleStore';
 
 interface AudioStore extends AudioState {
   activeCategory: AudioCategory;
@@ -121,8 +121,8 @@ export const useAudioStore = create<AudioStore>()(
       const { selectedTrack } = get();
       if (!selectedTrack) return;
       
-      const projectStore = useProjectStore.getState();
-      projectStore.setSubtitleAudio(subtitleId, {
+      const subtitleStore = useSubtitleStore.getState();
+      subtitleStore.setSubtitleAudio(subtitleId, {
         track: selectedTrack,
         volume: 70,
         fadeIn: 1,
@@ -139,7 +139,6 @@ export const useAudioStore = create<AudioStore>()(
       const userTracksInCategory = uploadedTracks.filter(track => track.category === category);
       return [...libraryTracks, ...userTracksInCategory];
     },
-    
     uploadAudio: async (file) => {
       try {
         const audio = new Audio();
@@ -151,7 +150,7 @@ export const useAudioStore = create<AudioStore>()(
               id: `uploaded_${Date.now()}`,
               name: file.name.replace(/\.[^/.]+$/, ""),
               category: get().activeCategory,
-              url,
+              url,  // 保留这个 URL，不立即释放
               duration: Math.floor(audio.duration),
               volume: 0.7,
               fadeIn: 1,
@@ -163,12 +162,13 @@ export const useAudioStore = create<AudioStore>()(
               state.selectedTrack = newTrack;
             });
             
-            URL.revokeObjectURL(url);
+            // ✅ 不要在这里释放 URL
+            // URL.revokeObjectURL(url);
             resolve();
           };
           
           audio.onerror = () => {
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(url);  // 只在错误时释放
             reject(new Error('Failed to load audio file'));
           };
           
@@ -180,24 +180,30 @@ export const useAudioStore = create<AudioStore>()(
       }
     },
     
-    deleteUploadedTrack: (trackId) => 
-      set((state) => {
-        state.uploadedTracks = state.uploadedTracks.filter(track => track.id !== trackId);
-        
-        if (state.selectedTrack?.id === trackId) {
-          state.selectedTrack = null;
-        }
-        
-        if (state.backgroundMusic?.id === trackId) {
-          state.backgroundMusic = null;
-        }
-        
-        if (state.currentTrack?.id === trackId) {
-          state.isPlaying = false;
-          state.currentTrack = null;
-          state.currentTime = 0;
-        }
-      }),
+ deleteUploadedTrack: (trackId) => 
+  set((state) => {
+    // ✅ 找到要删除的 track 并释放其 URL
+    const trackToDelete = state.uploadedTracks.find(track => track.id === trackId);
+    if (trackToDelete && trackToDelete.url.startsWith('blob:')) {
+      URL.revokeObjectURL(trackToDelete.url);
+    }
+    
+    state.uploadedTracks = state.uploadedTracks.filter(track => track.id !== trackId);
+    
+    if (state.selectedTrack?.id === trackId) {
+      state.selectedTrack = null;
+    }
+    
+    if (state.backgroundMusic?.id === trackId) {
+      state.backgroundMusic = null;
+    }
+    
+    if (state.currentTrack?.id === trackId) {
+      state.isPlaying = false;
+      state.currentTrack = null;
+      state.currentTime = 0;
+    }
+  }),
   }))
 );
 

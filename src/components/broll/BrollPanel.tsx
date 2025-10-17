@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
 import { BrollDialog } from './BrollDialog';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
@@ -8,7 +9,8 @@ export function BrollPanel() {
   const [showDialog, setShowDialog] = useState(false);
   const [targetSubtitleId, setTargetSubtitleId] = useState<string>('');
   
-  const { subtitles, removeSubtitleBroll, setCurrentTime } = useProjectStore();
+  const { setCurrentTime } = useProjectStore();
+  const { subtitles, removeSubtitleBroll } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
   const { setSelectedSubtitles } = useUIStore();
 
@@ -16,17 +18,12 @@ export function BrollPanel() {
     const subtitle = subtitles.find(s => s.id === subtitleId);
     if (!subtitle) return;
 
-    // 选中该字幕
     setSelectedSubtitles([subtitleId]);
-    
-    // 跳转视频到该字幕时间
     setCurrentTime(subtitle.startTime / 1000);
 
     if (subtitle.brollVideo) {
-      // 已有B-roll → 直接删除
       removeSubtitleBroll(subtitleId);
     } else {
-      // 无B-roll → 打开弹窗
       setTargetSubtitleId(subtitleId);
       setShowDialog(true);
     }
@@ -34,7 +31,6 @@ export function BrollPanel() {
 
   return (
     <div className="h-full flex flex-col bg-bg-secondary">
-      {/* 头部 */}
       <div className="p-4 border-b border-border-secondary">
         <h3 className="text-lg font-semibold text-text-primary mb-1">B-roll</h3>
         <p className="text-xs text-text-secondary">
@@ -42,7 +38,6 @@ export function BrollPanel() {
         </p>
       </div>
 
-      {/* 字幕列表 */}
       <div className="flex-1 overflow-y-auto">
         {subtitles.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary">
@@ -60,25 +55,19 @@ export function BrollPanel() {
               return (
                 <div
                   key={subtitle.id}
-                  className={`
-                    flex gap-3 p-2 rounded-lg border-2 transition-all
-                    ${isSelected
+                  className={`flex gap-3 p-2 rounded-lg border-2 transition-all ${
+                    isSelected
                       ? 'border-accent-purple bg-accent-purple/5'
                       : 'border-transparent hover:border-border-primary'
-                    }
-                  `}
+                  }`}
                 >
-                  {/* 缩略图 */}
                   <button
                     onClick={() => handleThumbnailClick(subtitle.id)}
-                    className={`
-                      flex-shrink-0 w-16 h-16 rounded overflow-hidden
-                      border-2 transition-all
-                      ${hasBroll
+                    className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
+                      hasBroll
                         ? 'border-orange-500 shadow-lg shadow-orange-500/20 hover:border-red-500'
                         : 'border-border-secondary hover:border-accent-purple'
-                      }
-                    `}
+                    }`}
                     title={hasBroll ? '点击删除 B-roll' : '点击添加 B-roll'}
                   >
                     {hasBroll && subtitle.brollVideo ? (
@@ -88,10 +77,7 @@ export function BrollPanel() {
                           alt="B-roll"
                           className="w-full h-full object-cover"
                         />
-                        {/* B-roll标记 */}
                         <div className="absolute top-1 left-1 w-2 h-2 bg-orange-500 rounded-full" />
-                        
-                        {/* 悬停显示删除提示 */}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex items-center justify-center">
                           <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-xs">
                             删除
@@ -105,7 +91,6 @@ export function BrollPanel() {
                     )}
                   </button>
 
-                  {/* 字幕信息 */}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-text-primary truncate mb-1">
                       {subtitle.text}
@@ -126,7 +111,6 @@ export function BrollPanel() {
         )}
       </div>
 
-      {/* B-roll弹窗 */}
       <BrollDialog
         open={showDialog}
         onClose={() => setShowDialog(false)}

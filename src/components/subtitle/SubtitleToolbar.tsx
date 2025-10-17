@@ -1,14 +1,15 @@
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
 
 export function SubtitleToolbar() {
+  const { currentTime } = useProjectStore();
   const { 
     deleteSubtitles,
     duplicateSubtitle,
     splitSubtitle,
-    mergeSubtitles,
-    currentTime
-  } = useProjectStore();
+    mergeSubtitles
+  } = useSubtitleStore();
   
   const { 
     selectedSubtitleIds,

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { AnimationCategory, AnimationTemplate, AnimationEffect } from '@/types/animation';
 import { ANIMATION_TEMPLATES } from '@/constants/animationTemplates';
-import { useProjectStore } from '@/stores/useProjectStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { 
   applyAnimationToSegments,
   createRichTextFromPlainText,
@@ -42,18 +42,15 @@ export const useTemplateStore = create<TemplateStore>()(
       }),
     
     applyAnimationToRange: (subtitleId, animationEffect, startIndex?, endIndex?) => {
-      const projectStore = useProjectStore.getState();
-      const subtitle = projectStore.subtitles.find(s => s.id === subtitleId);
+      const subtitleStore = useSubtitleStore.getState();
+      const subtitle = subtitleStore.subtitles.find(s => s.id === subtitleId);
       
       if (!subtitle) return;
       
-      // 统一范围应用逻辑
       if (startIndex !== undefined && endIndex !== undefined) {
-        // 应用到指定范围
         let richTextSegments = subtitle.richText;
         
         if (!richTextSegments) {
-          // 创建富文本数据
           richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
         }
         
@@ -65,26 +62,23 @@ export const useTemplateStore = create<TemplateStore>()(
         );
         
         const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-        projectStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+        subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
         
       } else {
-        // 应用到整个字幕
         let richTextSegments = subtitle.richText;
         
         if (!richTextSegments) {
-          // 创建富文本数据
           richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
         }
         
-        // 应用动效到所有片段，保留各片段的样式
         const updatedSegments = richTextSegments.map(segment => ({
           ...segment,
-          style: segment.style, // 保留原有样式
+          style: segment.style,
           animation: { ...animationEffect }
         }));
         
         const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-        projectStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+        subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
       }
     },
     

@@ -9,6 +9,7 @@ import {
   filterBrollByDuration 
 } from '@/utils/brollUtils';
 import { useProjectStore } from './useProjectStore';
+import { useSubtitleStore } from './useSubtitleStore';
 
 interface SearchState {
   query: string;
@@ -151,8 +152,8 @@ export const useBrollStore = create<BrollStore>()(
       const { selectedVideo, selectedTransition } = get();
       if (!selectedVideo) return;
       
-      const projectStore = useProjectStore.getState();
-      projectStore.setSubtitleBroll(subtitleId, {
+      const subtitleStore = useSubtitleStore.getState();
+      subtitleStore.setSubtitleBroll(subtitleId, {
         video: selectedVideo,
         volume: 50,
         startOffset: 0,
@@ -191,8 +192,8 @@ export const useBrollStore = create<BrollStore>()(
       const { selectedBroll } = get();
       if (!selectedBroll) return;
       
-      const projectStore = useProjectStore.getState();
-      const subtitle = projectStore.subtitles.find(s => s.id === subtitleId);
+      const subtitleStore = useSubtitleStore.getState();
+      const subtitle = subtitleStore.subtitles.find(s => s.id === subtitleId);
       if (!subtitle) return;
       
       const placement = optimizeBrollForSubtitle(
@@ -206,7 +207,7 @@ export const useBrollStore = create<BrollStore>()(
         state.placedBrolls.push(placement);
       });
       
-      projectStore.markUnsaved();
+      useProjectStore.getState().markUnsaved();
     },
     
     updateBrollTiming: (brollId, startTime, endTime) => 
