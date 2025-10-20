@@ -8,11 +8,20 @@ import { BrollVideoPlayer } from '../broll/BrollVideoPlayer';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { useUIStore } from '../../stores/useUIStore';
 
 export function VideoArea() {
   const { videoUrl, appStage, currentTime } = useProjectStore();
   const { subtitles } = useSubtitleStore();
   const { watermark } = useSettingsStore();
+  const { 
+    clearSelectedSubtitles, 
+    clearSelectedTextElements, 
+    clearVideoToolbar,
+    setShowRichTextEditor,
+    setEditingSubtitle,
+    setEditingTextElement
+  } = useUIStore();
 
   const currentSubtitle = useMemo(() => {
     const currentTimeMs = currentTime * 1000;
@@ -22,6 +31,17 @@ export function VideoArea() {
   }, [subtitles, currentTime]);
 
   const hasBroll = !!currentSubtitle?.brollVideo;
+
+  const handleClickOutside = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      clearSelectedSubtitles();
+      clearSelectedTextElements();
+      clearVideoToolbar();
+      setShowRichTextEditor(false);
+      setEditingSubtitle(null);
+      setEditingTextElement(null);
+    }
+  };
 
   if (appStage !== 'editing' || !videoUrl) {
     return (
@@ -44,6 +64,7 @@ export function VideoArea() {
           maxWidth: '100%',
           maxHeight: '100%'
         }}
+        onClick={handleClickOutside}
       >
         <div 
           className="absolute inset-0"

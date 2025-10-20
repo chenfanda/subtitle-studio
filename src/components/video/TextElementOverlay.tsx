@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -15,9 +15,18 @@ export function TextElementOverlay() {
     updateTextElementTransform
   } = useTextElementStore();
   const { currentTime } = useProjectStore();
-  const { selectedTextElementIds, setSelectedTextElements } = useUIStore();
-  const [showQuickToolbar, setShowQuickToolbar] = useState<string | null>(null);
+  const { 
+    selectedTextElementIds, 
+    setSelectedTextElements,
+    clearSelectedSubtitles,
+    videoToolbar,
+    setVideoToolbar,
+    setVideoToolbarVisible,
+    showRichTextEditor
+  } = useUIStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [hasMoved, setHasMoved] = useState(false);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   
   const visibleElements = textElements.filter(el => {
     const currentTimeMs = currentTime * 1000;
@@ -27,13 +36,21 @@ export function TextElementOverlay() {
   const handleElementClick = (element: TextElement, e: React.MouseEvent) => {
     if (e.detail === 2) return;
     
+    e.preventDefault();
+    
     setSelectedTextElements([element.id]);
-    setShowQuickToolbar(element.id);
+    clearSelectedSubtitles();
+    setVideoToolbar({
+      visible: true,
+      targetType: 'textElement',
+      targetId: element.id
+    });
   };
   
   const handleElementDrag = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
+    setHasMoved(false);
     
     const element = textElements.find(el => el.id === id);
     if (!element) return;
@@ -48,7 +65,22 @@ export function TextElementOverlay() {
     const offsetX = e.clientX - targetRect.left;
     const offsetY = e.clientY - targetRect.top;
     
+    dragStartPos.current = {
+      x: e.clientX,
+      y: e.clientY
+    };
+    
     const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!hasMoved && dragStartPos.current) {
+        const deltaX = Math.abs(moveEvent.clientX - dragStartPos.current.x);
+        const deltaY = Math.abs(moveEvent.clientY - dragStartPos.current.y);
+        
+        if (deltaX > 5 || deltaY > 5) {
+          setHasMoved(true);
+          useHistoryStore.getState().pushState();
+        }
+      }
+      
       const newX = ((moveEvent.clientX - offsetX - rect.left) / rect.width) * 100;
       const newY = ((moveEvent.clientY - offsetY - rect.top) / rect.height) * 100;
       
@@ -60,7 +92,8 @@ export function TextElementOverlay() {
     
     const handleMouseUp = () => {
       setIsDragging(false);
-      useHistoryStore.getState().pushState();
+      setHasMoved(false);
+      dragStartPos.current = null;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -69,15 +102,27 @@ export function TextElementOverlay() {
     document.addEventListener('mouseup', handleMouseUp);
   };
   
-  const getElementPosition = (id: string) => {
-    const element = textElements.find(el => el.id === id);
-    return element ? element.position : { x: 50, y: 50 };
+  const handleCloseToolbar = () => {
+    if (showRichTextEditor) {
+      setVideoToolbarVisible(false);
+    } else {
+      setVideoToolbar({
+        visible: false,
+        targetType: null,
+        targetId: null
+      });
+    }
   };
+  
+  const currentToolbarElement = visibleElements.find(
+    el => videoToolbar.targetType === 'textElement' && videoToolbar.targetId === el.id
+  );
   
   return (
     <div className="absolute inset-0 pointer-events-none z-25">
       {visibleElements.map(element => {
-        const isSelected = selectedTextElementIds.includes(element.id);
+        const isSelected = videoToolbar.targetType === 'textElement' && 
+                          videoToolbar.targetId === element.id;
         
         return (
           <div
@@ -123,14 +168,14 @@ export function TextElementOverlay() {
         );
       })}
       
-      {showQuickToolbar && (
+      {videoToolbar.visible && videoToolbar.targetType === 'textElement' && currentToolbarElement && (
         <div className="absolute inset-0 pointer-events-none z-30">
           <div className="pointer-events-auto">
             <QuickToolbar
               targetType="textElement"
-              targetId={showQuickToolbar}
-              position={getElementPosition(showQuickToolbar)}
-              onClose={() => setShowQuickToolbar(null)}
+              targetId={currentToolbarElement.id}
+              position={currentToolbarElement.position}
+              onClose={handleCloseToolbar}
             />
           </div>
         </div>

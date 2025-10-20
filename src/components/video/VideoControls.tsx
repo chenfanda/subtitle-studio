@@ -22,10 +22,10 @@ export function VideoControls() {
   const { deleteTextElement } = useTextElementStore();
   const { 
     toggleTimelineCollapsed, 
-    selectedSubtitleIds, 
-    selectedTextElementIds,
+    videoToolbar,
     clearSelectedSubtitles,
-    clearSelectedTextElements 
+    clearSelectedTextElements,
+    clearVideoToolbar
   } = useUIStore();
   
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
@@ -113,19 +113,18 @@ export function VideoControls() {
   };
 
   const handleDeleteSelected = () => {
-    if (selectedSubtitleIds.length > 0) {
-      const subtitleId = selectedSubtitleIds[0];
-      deleteSubtitle(subtitleId);
+    if (videoToolbar.targetType === 'subtitle' && videoToolbar.targetId) {
+      deleteSubtitle(videoToolbar.targetId);
       clearSelectedSubtitles();
-    } 
-    else if (selectedTextElementIds.length > 0) {
-      const textElementId = selectedTextElementIds[0];
-      deleteTextElement(textElementId);
+      clearVideoToolbar();
+    } else if (videoToolbar.targetType === 'textElement' && videoToolbar.targetId) {
+      deleteTextElement(videoToolbar.targetId);
       clearSelectedTextElements();
+      clearVideoToolbar();
     }
   };
 
-  const hasSelectedElements = selectedSubtitleIds.length > 0 || selectedTextElementIds.length > 0;
+  const canDelete = videoToolbar.visible && videoToolbar.targetId !== null;
 
   useState(() => {
     const handleFullscreenChange = () => {
@@ -197,13 +196,13 @@ export function VideoControls() {
 
             <button
               onClick={handleDeleteSelected}
-              disabled={!hasSelectedElements}
+              disabled={!canDelete}
               className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
-                hasSelectedElements
+                canDelete
                   ? 'bg-white/10 hover:bg-white/20 text-white'
                   : 'bg-white/5 text-white/30 cursor-not-allowed'
               }`}
-              title={hasSelectedElements ? "删除选中元素" : "未选中任何元素"}
+              title={canDelete ? "删除选中元素" : "未选中任何元素"}
             >
               <span className="text-sm">🗑️</span>
             </button>

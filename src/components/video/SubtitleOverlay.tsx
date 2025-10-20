@@ -19,13 +19,22 @@ export function SubtitleOverlay() {
     getSubtitlePosition 
   } = useSubtitleStore();
   const { currentTime } = useProjectStore();
-  const { selectedSubtitleIds, setSelectedSubtitles, setRichTextEditorTarget, setShowRichTextEditor } = useUIStore();
+  const { 
+    selectedSubtitleIds, 
+    setSelectedSubtitles, 
+    clearSelectedTextElements,
+    videoToolbar,
+    setVideoToolbar,
+    setVideoToolbarVisible,
+    showRichTextEditor
+  } = useUIStore();
   
   const [isDragging, setIsDragging] = useState(false);
-  const [showQuickToolbar, setShowQuickToolbar] = useState(false);
+  const [hasMoved, setHasMoved] = useState(false);
   const [segmentAnimations, setSegmentAnimations] = useState<Map<number, Animation>>(new Map());
   const subtitleRef = useRef<HTMLDivElement>(null);
   const segmentRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const currentSubtitle = useMemo(() => {
     if (!subtitles || !currentTime) return null;
@@ -36,7 +45,10 @@ export function SubtitleOverlay() {
     });
   }, [subtitles, currentTime]);
 
-  const isSelected = currentSubtitle ? selectedSubtitleIds.includes(currentSubtitle.id) : false;
+  const isSelected = videoToolbar.targetType === 'subtitle' && 
+                     videoToolbar.targetId === currentSubtitle?.id;
+  
+  const shouldShowToolbar = isSelected && videoToolbar.visible;
   
   const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85, scale: 1.0, width: undefined };
   
@@ -138,15 +150,35 @@ export function SubtitleOverlay() {
     if (!subtitleRef.current || !currentSubtitle) return;
 
     setSelectedSubtitles([currentSubtitle.id]);
-    setShowQuickToolbar(true);
+    clearSelectedTextElements();
+    setVideoToolbar({
+      visible: true,
+      targetType: 'subtitle',
+      targetId: currentSubtitle.id
+    });
     setIsDragging(true);
+    setHasMoved(false);
     
     const rect = subtitleRef.current.getBoundingClientRect();
+    dragStartPos.current = {
+      x: e.clientX,
+      y: e.clientY
+    };
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!subtitleRef.current || !currentSubtitle) return;
+      
+      if (!hasMoved && dragStartPos.current) {
+        const deltaX = Math.abs(moveEvent.clientX - dragStartPos.current.x);
+        const deltaY = Math.abs(moveEvent.clientY - dragStartPos.current.y);
+        
+        if (deltaX > 5 || deltaY > 5) {
+          setHasMoved(true);
+          useHistoryStore.getState().pushState();
+        }
+      }
       
       const parent = subtitleRef.current.parentElement;
       if (!parent) return;
@@ -164,7 +196,8 @@ export function SubtitleOverlay() {
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      useHistoryStore.getState().pushState();
+      setHasMoved(false);
+      dragStartPos.current = null;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -177,6 +210,18 @@ export function SubtitleOverlay() {
     if (currentSubtitle) {
       const { setEditingSubtitle } = useUIStore.getState();
       setEditingSubtitle(currentSubtitle.id);
+    }
+  };
+
+  const handleCloseToolbar = () => {
+    if (showRichTextEditor) {
+      setVideoToolbarVisible(false);
+    } else {
+      setVideoToolbar({
+        visible: false,
+        targetType: null,
+        targetId: null
+      });
     }
   };
 
@@ -241,14 +286,14 @@ export function SubtitleOverlay() {
         </div>
       )}
       
-      {showQuickToolbar && currentSubtitle && isSelected && (
+      {shouldShowToolbar && currentSubtitle && (
         <div className="absolute inset-0 pointer-events-none z-30">
           <div className="pointer-events-auto">
             <QuickToolbar
               targetType="subtitle"
               targetId={currentSubtitle.id}
               position={subtitlePosition}
-              onClose={() => setShowQuickToolbar(false)}
+              onClose={handleCloseToolbar}
             />
           </div>
         </div>

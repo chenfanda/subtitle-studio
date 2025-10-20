@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { ProjectSnapshot, HistoryState } from '@/types/history';
+import { useSubtitleStore } from './useSubtitleStore';
+import { useTextElementStore } from './useTextElementStore';
+import { useMediaStore } from './useMediaStore';
+import { useBrollStore } from './useBrollStore';
+import { useAudioStore } from './useAudioStore';
+import { useUIStore } from './useUIStore';
 import { useProjectStore } from './useProjectStore';
 
 interface HistoryStore extends HistoryState {
+  isRestoring: boolean;
+  
   pushState: () => void;
-  undo: (currentSnapshot: ProjectSnapshot) => ProjectSnapshot | null;
-  redo: (currentSnapshot: ProjectSnapshot) => ProjectSnapshot | null;
+  undo: () => void;
+  redo: () => void;
   
   canUndo: () => boolean;
   canRedo: () => boolean;
@@ -23,7 +31,33 @@ interface HistoryStore extends HistoryState {
   };
 }
 
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 5;
+
+const collectCurrentSnapshot = (): ProjectSnapshot => {
+  return structuredClone({
+    subtitles: useSubtitleStore.getState().subtitles,
+    textElements: useTextElementStore.getState().textElements,
+    placedMedia: useMediaStore.getState().placedMedia,
+    placedBrolls: useBrollStore.getState().placedBrolls,
+    backgroundMusic: useAudioStore.getState().backgroundMusic,
+    timestamp: Date.now()
+  });
+};
+
+const restoreSnapshot = (snapshot: ProjectSnapshot, isRestoring: boolean) => {
+  if (!isRestoring) return;
+  
+  useSubtitleStore.getState().restoreSubtitles(snapshot.subtitles);
+  useTextElementStore.getState().restoreTextElements(snapshot.textElements);
+  useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
+  useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
+  useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
+  
+  useUIStore.getState().clearSelectedSubtitles();
+  useUIStore.getState().clearSelectedTextElements();
+  
+  useProjectStore.getState().markUnsaved();
+};
 
 export const useHistoryStore = create<HistoryStore>()(
   immer((set, get) => ({
@@ -32,13 +66,14 @@ export const useHistoryStore = create<HistoryStore>()(
     maxHistory: MAX_HISTORY,
     isBatching: false,
     batchStartSnapshot: null,
+    isRestoring: false,
     
     pushState: () => {
-      const { isBatching, past, maxHistory } = get();
+      const { isBatching, isRestoring, past, maxHistory } = get();
       
-      if (isBatching) return;
+      if (isBatching || isRestoring) return;
       
-      const snapshot = useProjectStore.getState().toSnapshot();
+      const snapshot = collectCurrentSnapshot();
       
       set((state) => {
         state.past.push(snapshot);
@@ -51,46 +86,56 @@ export const useHistoryStore = create<HistoryStore>()(
       });
     },
     
-    undo: (currentSnapshot) => {
-      const { past } = get();
+    undo: () => {
+      const { past, future } = get();
       
-      if (past.length === 0) {
-        return null;
-      }
-      
-      let undoSnapshot: ProjectSnapshot | null = null;
+      if (past.length === 0) return;
       
       set((state) => {
-        const lastSnapshot = state.past.pop();
-        
-        if (lastSnapshot) {
-          state.future.push(currentSnapshot);
-          undoSnapshot = lastSnapshot;
-        }
+        state.isRestoring = true;
       });
       
-      return undoSnapshot;
+      const currentSnapshot = collectCurrentSnapshot();
+      const previousSnapshot = past[past.length - 1];
+      
+      set((state) => {
+        state.past.pop();
+        state.future.push(currentSnapshot);
+      });
+      
+      restoreSnapshot(previousSnapshot, true);
+      
+      set((state) => {
+        state.isRestoring = false;
+      });
     },
     
-    redo: (currentSnapshot) => {
-      const { future } = get();
+    redo: () => {
+      const { past, future, maxHistory } = get();
       
-      if (future.length === 0) {
-        return null;
-      }
-      
-      let redoSnapshot: ProjectSnapshot | null = null;
+      if (future.length === 0) return;
       
       set((state) => {
-        const nextSnapshot = state.future.pop();
+        state.isRestoring = true;
+      });
+      
+      const currentSnapshot = collectCurrentSnapshot();
+      const nextSnapshot = future[future.length - 1];
+      
+      set((state) => {
+        state.future.pop();
+        state.past.push(currentSnapshot);
         
-        if (nextSnapshot) {
-          state.past.push(currentSnapshot);
-          redoSnapshot = nextSnapshot;
+        if (state.past.length > maxHistory) {
+          state.past.shift();
         }
       });
       
-      return redoSnapshot;
+      restoreSnapshot(nextSnapshot, true);
+      
+      set((state) => {
+        state.isRestoring = false;
+      });
     },
     
     canUndo: () => {

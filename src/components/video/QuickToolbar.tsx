@@ -112,7 +112,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       className="absolute z-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1"
       style={{
         left: `${position.x}%`,
-        top: `calc(${position.y}% + 60px)`,
+        top: `calc(${position.y}% + 50px)`,
         transform: 'translateX(-50%)'
       }}
       onMouseDown={(e) => e.stopPropagation()}
@@ -195,12 +195,12 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       
       <button
         onClick={handleStyleClick}
-        className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
+        className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white whitespace-nowrap min-w-[52px] flex items-center justify-center"
         title="样式"
       >
         样式
       </button>
-      
+        
       <button
         onClick={onClose}
         className="w-5 h-5 text-gray-400 hover:text-white text-xs ml-1"

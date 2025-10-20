@@ -10,6 +10,7 @@ import {
 } from '@/utils/brollUtils';
 import { useProjectStore } from './useProjectStore';
 import { useSubtitleStore } from './useSubtitleStore';
+import { useHistoryStore } from './useHistoryStore';
 
 interface SearchState {
   query: string;
@@ -186,6 +187,7 @@ export const useBrollStore = create<BrollStore>()(
       });
       
       useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
     },
     
     placeBesideSubtitle: (subtitleId, paddingBefore = 500, paddingAfter = 500) => {
@@ -208,16 +210,21 @@ export const useBrollStore = create<BrollStore>()(
       });
       
       useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
     },
     
-    updateBrollTiming: (brollId, startTime, endTime) => 
+    updateBrollTiming: (brollId, startTime, endTime) => {
       set((state) => {
         const broll = state.placedBrolls.find(item => item.brollVideo.id === brollId);
         if (broll) {
           broll.startTime = startTime;
           broll.endTime = endTime;
         }
-      }),
+      });
+      
+      useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
+    },
     
     updateBrollVolume: (brollId, volume) => 
       set((state) => {
@@ -227,10 +234,14 @@ export const useBrollStore = create<BrollStore>()(
         }
       }),
     
-    removeBroll: (brollId) => 
+    removeBroll: (brollId) => {
       set((state) => {
         state.placedBrolls = state.placedBrolls.filter(item => item.brollVideo.id !== brollId);
-      }),
+      });
+      
+      useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
+    },
     
     restorePlacedBrolls: (brolls) =>
       set((state) => {

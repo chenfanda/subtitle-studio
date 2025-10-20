@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ArrowUturnLeftIcon, ArrowUturnRightIcon } from '@heroicons/react/24/outline';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 
 export function HeaderBar() {
-  const { title, saveStatus, updateProjectTitle, toSnapshot, fromSnapshot } = useProjectStore();
+  const { title, saveStatus, updateProjectTitle } = useProjectStore();
   const { toggleLeftPanel } = useUIStore();
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -57,23 +58,11 @@ export function HeaderBar() {
   };
 
   const handleUndo = () => {
-    if (canUndo()) {
-      const currentSnapshot = toSnapshot();
-      const snapshot = undo(currentSnapshot);
-      if (snapshot) {
-        fromSnapshot(snapshot);
-      }
-    }
+    undo();
   };
 
   const handleRedo = () => {
-    if (canRedo()) {
-      const currentSnapshot = toSnapshot();
-      const snapshot = redo(currentSnapshot);
-      if (snapshot) {
-        fromSnapshot(snapshot);
-      }
-    }
+    redo();
   };
 
   const getSaveStatusInfo = () => {
@@ -170,7 +159,7 @@ export function HeaderBar() {
             }`}
             title="撤销 (Ctrl+Z)"
           >
-            ←
+            <ArrowUturnLeftIcon className="w-5 h-5" />
           </button>
           
           <button 
@@ -183,7 +172,7 @@ export function HeaderBar() {
             }`}
             title="重做 (Ctrl+Y)"
           >
-            →
+            <ArrowUturnRightIcon className="w-5 h-5" />
           </button>
         </div>
 

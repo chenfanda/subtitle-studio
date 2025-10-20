@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { MediaItem, PlacedMediaItem, UploadedMediaItem } from '@/types/media';
 import { searchStickers, searchGifs, getTrendingStickers, getTrendingGifs } from '@/utils/giphyApi';
 import { useProjectStore } from './useProjectStore';
+import { useHistoryStore } from './useHistoryStore';
 
 interface SearchState {
   query: string;
@@ -201,6 +202,7 @@ export const useMediaStore = create<MediaStore>()(
       });
       
       useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
     },
     
     updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation) =>
@@ -215,19 +217,27 @@ export const useMediaStore = create<MediaStore>()(
         }
       }),
     
-    updateMediaTiming: (mediaId, startTime, endTime) => 
+    updateMediaTiming: (mediaId, startTime, endTime) => {
       set((state) => {
         const media = state.placedMedia.find(item => item.media.id === mediaId);
         if (media) {
           media.position.startTime = startTime;
           media.position.endTime = endTime;
         }
-      }),
+      });
+      
+      useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
+    },
     
-    removeMedia: (mediaId) => 
+    removeMedia: (mediaId) => {
       set((state) => {
         state.placedMedia = state.placedMedia.filter(item => item.media.id !== mediaId);
-      }),
+      });
+      
+      useProjectStore.getState().markUnsaved();
+      useHistoryStore.getState().pushState();
+    },
     
     restorePlacedMedia: (media) =>
       set((state) => {

@@ -4,6 +4,12 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { UIState, PanelType, RichTextSelection } from '@/types/ui';
 import { APP_CONFIG } from '@/constants/config';
 
+interface VideoToolbarState {
+  visible: boolean;
+  targetType: 'subtitle' | 'textElement' | null;
+  targetId: string | null;
+}
+
 interface UIStore extends UIState {
   richTextSelection: RichTextSelection | null;
   setRichTextSelection: (selection: RichTextSelection | null) => void;
@@ -38,7 +44,11 @@ interface UIStore extends UIState {
   setShowRichTextEditor: (show: boolean) => void;
   setRichTextEditorTarget: (target: { type: 'subtitle' | 'textElement'; id: string } | null) => void;
   
-  // 🆕 时间轴折叠状态
+  videoToolbar: VideoToolbarState;
+  setVideoToolbar: (state: VideoToolbarState) => void;
+  setVideoToolbarVisible: (visible: boolean) => void;
+  clearVideoToolbar: () => void;
+  
   timelineCollapsed: boolean;
   setTimelineCollapsed: (collapsed: boolean) => void;
   toggleTimelineCollapsed: () => void;
@@ -86,7 +96,12 @@ export const useUIStore = create<UIStore>()(
       editingTextElementId: null,
       showRichTextEditor: false,
       richTextEditorTarget: null,
-      timelineCollapsed: false, // 🆕 初始状态
+      timelineCollapsed: false,
+      videoToolbar: {
+        visible: false,
+        targetType: null,
+        targetId: null,
+      },
       
       setRichTextSelection: (selection) =>
         set((state) => {
@@ -227,7 +242,25 @@ export const useUIStore = create<UIStore>()(
           state.richTextEditorTarget = target;
         }),
       
-      // 🆕 时间轴折叠相关方法
+      setVideoToolbar: (toolbarState) =>
+        set((state) => {
+          state.videoToolbar = toolbarState;
+        }),
+      
+      setVideoToolbarVisible: (visible) =>
+        set((state) => {
+          state.videoToolbar.visible = visible;
+        }),
+      
+      clearVideoToolbar: () =>
+        set((state) => {
+          state.videoToolbar = {
+            visible: false,
+            targetType: null,
+            targetId: null,
+          };
+        }),
+      
       setTimelineCollapsed: (collapsed) =>
         set((state) => {
           state.timelineCollapsed = collapsed;
@@ -328,7 +361,12 @@ export const useUIStore = create<UIStore>()(
           editingTextElementId: null,
           showRichTextEditor: false,
           richTextEditorTarget: null,
-          timelineCollapsed: false, // 🆕 重置状态
+          timelineCollapsed: false,
+          videoToolbar: {
+            visible: false,
+            targetType: null,
+            targetId: null,
+          },
         })),
     }))
   )
@@ -358,6 +396,8 @@ export const useTimelineZoom = () =>
 export const useTimelineScrollLeft = () => 
   useUIStore((state) => state.timelineScrollLeft);
 
-// 🆕 时间轴折叠选择器
 export const useTimelineCollapsed = () =>
   useUIStore((state) => state.timelineCollapsed);
+
+export const useVideoToolbar = () =>
+  useUIStore((state) => state.videoToolbar);
