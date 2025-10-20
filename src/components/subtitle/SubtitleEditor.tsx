@@ -243,7 +243,7 @@ export function SubtitleEditor() {
 
   if (!currentSubtitle) {
     return (
-      <div className="p-4 bg-bg-secondary border-t border-border-secondary">
+      <div className="p-4 bg-bg-primary border-t border-border-secondary">
         <div className="text-center text-text-tertiary">
           <div className="text-sm">双击字幕开始编辑</div>
         </div>
@@ -263,7 +263,7 @@ export function SubtitleEditor() {
   });
 
   return (
-    <div className="p-4 bg-bg-secondary border-t border-border-secondary space-y-4">
+    <div className="p-4 bg-bg-primary border-t border-border-secondary space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-text-primary font-medium">编辑字幕</h4>
         <button

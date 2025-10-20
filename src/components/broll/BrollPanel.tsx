@@ -30,7 +30,7 @@ export function BrollPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-bg-secondary">
+    <div className="h-full flex flex-col bg-bg-primary">
       <div className="p-4 border-b border-border-secondary">
         <h3 className="text-lg font-semibold text-text-primary mb-1">B-roll</h3>
         <p className="text-xs text-text-secondary">

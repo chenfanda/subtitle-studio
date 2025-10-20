@@ -81,17 +81,13 @@ export function AudioCard({ track }: AudioCardProps) {
     }
   };
 
-  const getCardStyle = () => {
-    if (hasThisAudio) {
-      return 'border-orange-500 shadow-lg shadow-orange-500/20';
-    }
-    if (isApplied) {
-      return 'border-green-500 shadow-lg shadow-green-500/20';
-    }
-    if (isHovering) {
-      return 'border-accent-purple';
-    }
-    return 'border-border-secondary hover:border-border-primary';
+  const showBorder = isHovering || hasThisAudio || isApplied;
+
+  const getBorderColor = () => {
+    if (hasThisAudio) return 'border-orange-500';
+    if (isApplied) return 'border-green-500';
+    if (isHovering) return 'border-accent-purple';
+    return '';
   };
 
   return (
@@ -100,40 +96,36 @@ export function AudioCard({ track }: AudioCardProps) {
       onMouseLeave={handleMouseLeave}
       onClick={handleCardClick}
       className={`
-        relative w-full h-20 rounded-lg border-2 transition-all duration-200
-        hover:scale-105 overflow-hidden group bg-bg-secondary
-        ${getCardStyle()}
+        relative w-full rounded-lg transition-all duration-200
+        overflow-hidden group p-2 flex items-center gap-3
+        ${showBorder ? `border-2 ${getBorderColor()}` : 'border-0'}
         ${!hasSelectedSubtitles ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
       `}
       disabled={!hasSelectedSubtitles}
     >
-      <div className="absolute inset-0 p-3 flex items-center">
-        <div className="flex-1 text-left">
-          <div className="text-sm font-medium text-text-primary truncate mb-1">
-            {track.name}
-          </div>
-          <div className="text-xs text-text-secondary">
-            {formatDuration(track.duration)}
-          </div>
+      <div className="flex-shrink-0 w-16 h-16 rounded bg-bg-tertiary flex items-center justify-center overflow-hidden">
+        <div className="text-2xl">🎵</div>
+      </div>
+      
+      <div className="flex-1 text-left min-w-0">
+        <div className="text-sm font-medium text-text-primary truncate">
+          {track.name}
         </div>
-        
-        {isCurrentlyPlaying && (
-          <div className="flex-shrink-0 ml-2 text-accent-purple">
-            🎵
-          </div>
-        )}
+        <div className="text-xs text-text-secondary mt-0.5">
+          {formatDuration(track.duration)}
+        </div>
       </div>
       
       {hasThisAudio && (
-        <div className="absolute top-1 left-1 w-3 h-3 bg-orange-500 rounded-full" />
+        <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full" />
       )}
 
       {isApplied && (
-        <div className="absolute top-1 left-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+        <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
       )}
       
       {!hasSelectedSubtitles && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
           <span className="text-xs text-white">请先选择字幕</span>
         </div>
       )}

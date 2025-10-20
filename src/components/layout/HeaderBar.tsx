@@ -103,7 +103,7 @@ export function HeaderBar() {
   const saveInfo = getSaveStatusInfo();
 
   return (
-    <div className="h-12 bg-bg-secondary flex items-center px-4 border-b border-border-primary select-none">
+    <div className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none">
       <div className="flex items-center space-x-4">
         <button 
           onClick={toggleLeftPanel}

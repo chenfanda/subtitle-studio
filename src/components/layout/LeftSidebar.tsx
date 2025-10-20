@@ -16,7 +16,7 @@ export function LeftSidebar() {
 
   return (
     <div 
-      className="bg-bg-secondary flex border-r border-border-primary overflow-hidden"
+      className="bg-bg-primary flex border-r border-border-primary overflow-hidden"
       style={{ width: leftPanelWidth }}
     >
       <VerticalToolbar />

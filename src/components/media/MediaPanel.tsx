@@ -21,7 +21,7 @@ export function MediaPanel() {
   })();
 
   return (
-    <div className="h-full flex flex-col bg-bg-secondary">
+    <div className="h-full flex flex-col bg-bg-primary">
       <div className="p-4">
         <MediaUpload />
       </div>

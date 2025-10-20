@@ -23,7 +23,7 @@ export function VerticalToolbar() {
   const { setActivePanel } = useUIStore();
 
   return (
-    <div className="w-15 bg-bg-tertiary flex flex-col items-center py-4 space-y-2 border-r border-border-secondary">
+    <div className="w-15 bg-bg-primary flex flex-col items-center py-4 space-y-2 border-r border-border-secondary">
       {TOOLS.map((tool) => {
         const isActive = activePanel === tool.id;
         
@@ -44,10 +44,6 @@ export function VerticalToolbar() {
             aria-pressed={isActive}
           >
             <span className="select-none">{tool.icon}</span>
-            
-            {isActive && (
-              <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-full" />
-            )}
             
             {!isActive && (
               <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-10 bg-white transition-opacity duration-normal" />
