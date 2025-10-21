@@ -1,3 +1,5 @@
+import { useState, useRef } from 'react';
+import { ColorPicker } from './ColorPicker';
 import type { SubtitleShadow } from '@/types/subtitle';
 
 interface ShadowSectionProps {
@@ -11,9 +13,32 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
   const offsetX = shadow?.offsetX || 2;
   const offsetY = shadow?.offsetY || 2;
   const blur = shadow?.blur || 4;
+  const [showPicker, setShowPicker] = useState(false);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
   
   const handleToggle = (checked: boolean) => {
     onChange({ enabled: checked, color, offsetX, offsetY, blur });
+    if (!checked) {
+      setShowPicker(false);
+    }
+  };
+  
+  const handleColorChange = (newColor: string) => {
+    if (newColor === 'transparent') {
+      onChange({ enabled: false, color, offsetX, offsetY, blur });
+      setShowPicker(false);
+    } else {
+      onChange({ enabled, color: newColor, offsetX, offsetY, blur });
+    }
+  };
+
+  const getPickerPosition = () => {
+    if (!colorButtonRef.current) return undefined;
+    const rect = colorButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      left: rect.left
+    };
   };
   
   return (
@@ -34,20 +59,23 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
       {enabled && (
         <>
           <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => onChange({ enabled, color: e.target.value, offsetX, offsetY, blur })}
-              className="w-12 h-10 rounded cursor-pointer border border-border-secondary"
-            />
-            <input
-              type="text"
-              value={color}
-              onChange={(e) => onChange({ enabled, color: e.target.value, offsetX, offsetY, blur })}
-              className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary font-mono"
-              placeholder="#000000"
+            <button
+              ref={colorButtonRef}
+              onClick={() => setShowPicker(!showPicker)}
+              className="w-10 h-10-full rounded border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              style={{ backgroundColor: color }}
             />
           </div>
+
+          {showPicker && (
+            <ColorPicker
+              value={color}
+              onChange={handleColorChange}
+              onClose={() => setShowPicker(false)}
+              position={getPickerPosition()}
+              allowTransparent={true}
+            />
+          )}
           
           <div className="grid grid-cols-2 gap-3">
             <div>

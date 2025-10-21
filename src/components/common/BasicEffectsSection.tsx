@@ -1,3 +1,5 @@
+import { useState, useRef } from 'react';
+import { ColorPicker } from './ColorPicker';
 import type { SubtitleStyle } from '@/types/subtitle';
 
 interface BasicEffectsSectionProps {
@@ -15,11 +17,22 @@ const FONT_OPTIONS = [
 ];
 
 export function BasicEffectsSection({ targetType, style, onChange }: BasicEffectsSectionProps) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
+
+  const getPickerPosition = () => {
+    if (!colorButtonRef.current) return undefined;
+    const rect = colorButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      left: rect.left
+    };
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-text-primary">基本效果</h3>
       
-      {/* 文字字体 */}
       <div>
         <label className="text-xs text-text-secondary mb-2 block">文字字体</label>
         <select
@@ -35,7 +48,6 @@ export function BasicEffectsSection({ targetType, style, onChange }: BasicEffect
         </select>
       </div>
       
-      {/* 🆕 文字间距（仅字幕显示） */}
       {targetType === 'subtitle' && (
         <div>
           <label className="text-xs text-text-secondary mb-2 block">文字间距</label>
@@ -56,7 +68,6 @@ export function BasicEffectsSection({ targetType, style, onChange }: BasicEffect
         </div>
       )}
       
-      {/* 字体大小 */}
       <div>
         <label className="text-xs text-text-secondary mb-2 block">字体大小</label>
         <input
@@ -69,27 +80,31 @@ export function BasicEffectsSection({ targetType, style, onChange }: BasicEffect
         />
       </div>
       
-      {/* 填充色 */}
       <div>
         <label className="text-xs text-text-secondary mb-2 block">填充</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={style.color}
-            onChange={(e) => onChange({ color: e.target.value })}
-            className="w-12 h-10 rounded cursor-pointer border border-border-secondary"
+        <div className="relative">
+          <button
+            ref={colorButtonRef}
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+            style={{ backgroundColor: style.color }}
           />
-          <input
-            type="text"
-            value={style.color}
-            onChange={(e) => onChange({ color: e.target.value })}
-            className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary font-mono"
-            placeholder="#FFFFFF"
-          />
+          
+          {showColorPicker && (
+            <ColorPicker
+              value={style.color}
+              onChange={(color) => {
+                onChange({ color });
+                setShowColorPicker(false);
+              }}
+              onClose={() => setShowColorPicker(false)}
+              position={getPickerPosition()}
+              allowTransparent={false}
+            />
+          )}
         </div>
       </div>
       
-      {/* 文字格式 B/I/U/S */}
       <div>
         <label className="text-xs text-text-secondary mb-2 block">格式</label>
         <div className="grid grid-cols-4 gap-2">

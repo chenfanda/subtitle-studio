@@ -4,7 +4,7 @@ import { TextPanel } from '@/components/text/TextPanel';
 import { TemplatePanel } from '@/components/templates/TemplatePanel';
 import { AudioPanel } from '@/components/audio/AudioPanel';
 import { MediaPanel } from '@/components/media/MediaPanel';
-import { BrollPanel } from '@/components/broll/BrollPanel';  // 🆕 新增导入
+import { BrollPanel } from '@/components/broll/BrollPanel'; 
 import { useUIStore } from '@/stores/useUIStore';
 
 export function LeftSidebar() {
@@ -28,7 +28,7 @@ export function LeftSidebar() {
         {activePanel === 'templates' && <TemplatePanel />}
         {activePanel === 'media' && <MediaPanel />}
         {activePanel === 'audio' && <AudioPanel />}
-        {activePanel === 'broll' && <BrollPanel />}  {/* 🆕 修改：使用真正的 BrollPanel */}
+        {activePanel === 'broll' && <BrollPanel />}  
       </div>
     </div>
   );

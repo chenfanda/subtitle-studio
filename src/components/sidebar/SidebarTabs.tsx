@@ -11,11 +11,11 @@ interface ToolItem {
 const TOOLS: ToolItem[] = [
   { id: 'clips', icon: '✂️', label: '剪辑工具', shortcut: 'C' },
   { id: 'subtitles', icon: '💬', label: '字幕编辑', shortcut: 'U' },
-  { id: 'text', icon: 'T', label: '文字样式', shortcut: 'T' },
-  { id: 'templates', icon: '⭕', label: '动态模板', shortcut: 'E' },
+  { id: 'text', icon: 'T', label: '文字元素', shortcut: 'T' },
+  { id: 'templates', icon: '✨', label: '文字模板', shortcut: 'E' },
   { id: 'media', icon: '🖼️', label: '媒体素材', shortcut: 'M' },
   { id: 'audio', icon: '🎵', label: '音频工具', shortcut: 'A' },
-  { id: 'broll', icon: '🎬', label: 'B-roll素材', shortcut: 'B' }
+  { id: 'broll', icon: '📽️', label: 'B-roll素材', shortcut: 'B' }
 ];
 
 export function VerticalToolbar() {

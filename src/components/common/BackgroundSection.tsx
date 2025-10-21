@@ -1,18 +1,48 @@
+import { useState, useRef } from 'react';
+import { ColorPicker } from './ColorPicker';
+
 interface BackgroundSectionProps {
   backgroundColor?: string;
-  onChange: (backgroundColor: string | undefined) => void;
+  backgroundShape?: number;
+  onChange: (updates: { 
+    backgroundColor?: string; 
+    backgroundShape?: number;
+  }) => void;
 }
 
-export function BackgroundSection({ backgroundColor, onChange }: BackgroundSectionProps) {
+export function BackgroundSection({ 
+  backgroundColor, 
+  backgroundShape = 0,
+  onChange 
+}: BackgroundSectionProps) {
   const enabled = !!backgroundColor && backgroundColor !== 'transparent';
   const color = backgroundColor && backgroundColor !== 'transparent' ? backgroundColor : '#000000';
+  const [showPicker, setShowPicker] = useState(false);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
   
   const handleToggle = (checked: boolean) => {
     if (!checked) {
-      onChange('transparent');
+      onChange({ backgroundColor: 'transparent' });
+      setShowPicker(false);
     } else {
-      onChange(color);
+      onChange({ backgroundColor: color });
     }
+  };
+  
+  const handleColorChange = (newColor: string) => {
+    onChange({ backgroundColor: newColor });
+    if (newColor === 'transparent') {
+      setShowPicker(false);
+    }
+  };
+
+  const getPickerPosition = () => {
+    if (!colorButtonRef.current) return undefined;
+    const rect = colorButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      left: rect.left
+    };
   };
   
   return (
@@ -31,21 +61,46 @@ export function BackgroundSection({ backgroundColor, onChange }: BackgroundSecti
       </div>
       
       {enabled && (
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-12 h-10 rounded cursor-pointer border border-border-secondary"
-          />
-          <input
-            type="text"
-            value={color}
-            onChange={(e) => onChange(e.target.value)}
-            className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary font-mono"
-            placeholder="#000000"
-          />
-        </div>
+        <>
+          <div className="flex items-center gap-2">
+            <button
+              ref={colorButtonRef}
+              onClick={() => setShowPicker(!showPicker)}
+              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              style={{ backgroundColor: color }}
+            />
+          </div>
+
+          {showPicker && (
+            <ColorPicker
+              value={color}
+              onChange={handleColorChange}
+              onClose={() => setShowPicker(false)}
+              position={getPickerPosition()}
+              allowTransparent={true}
+            />
+          )}
+          
+          <div>
+            <label className="text-xs text-text-secondary mb-2 block">背景形状</label>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-text-secondary">▢</span>
+              <input
+                type="range"
+                min="0"
+                max="9"
+                step="3"
+                value={backgroundShape}
+                onChange={(e) => onChange({ backgroundShape: Number(e.target.value) })}
+                className="flex-1 accent-accent-purple"
+              />
+              <span className="text-xs text-text-secondary">○</span>
+            </div>
+            <div className="text-xs text-text-tertiary text-center mt-1">
+              {backgroundShape === 0 ? '方形' : backgroundShape === 50 ? '椭圆' : '圆角'}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

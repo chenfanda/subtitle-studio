@@ -134,7 +134,11 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         {targetType === 'subtitle' && (
           <HighlightColorSection 
             color={currentStyle.highlightColor}
-            onChange={(highlightColor) => handleStyleChange({ highlightColor })}
+            intensity={currentStyle.highlightIntensity}
+            onChange={(updates) => handleStyleChange({ 
+              highlightColor: updates.color,
+              highlightIntensity: updates.intensity
+            })}
           />
         )}
         
@@ -152,7 +156,8 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         
         <BackgroundSection 
           backgroundColor={currentStyle.backgroundColor}
-          onChange={(backgroundColor) => handleStyleChange({ backgroundColor })}
+          backgroundShape={currentStyle.backgroundShape}
+          onChange={(updates) => handleStyleChange(updates)}
         />
         
         <button

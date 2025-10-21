@@ -1,31 +1,60 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { ColorPicker } from './ColorPicker';
 
 interface HighlightColorSectionProps {
   color?: string;
-  onChange: (color: string | undefined) => void;
+  intensity?: number;
+  onChange: (updates: { 
+    color?: string; 
+    intensity?: number;
+  }) => void;
 }
 
-const PRESET_COLORS = [
-  '#FFFF00', '#00FF00', '#00FFFF', '#FF00FF',
-  '#FFA500', '#FF69B4', '#98FB98', '#DDA0DD'
-];
-
-export function HighlightColorSection({ color, onChange }: HighlightColorSectionProps) {
+export function HighlightColorSection({ 
+  color, 
+  intensity = 15,
+  onChange 
+}: HighlightColorSectionProps) {
   const [enabled, setEnabled] = useState(!!color);
+  const [showPicker, setShowPicker] = useState(false);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
   
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
     if (!checked) {
-      onChange(undefined);
+      onChange({ color: undefined, intensity: intensity });
+      setShowPicker(false);
     } else {
-      onChange(color || '#FFFF00');
+      onChange({ 
+        color: color || '#FFFF00',
+        intensity: intensity
+      });
     }
+  };
+  
+  const handleColorChange = (newColor: string) => {
+    if (newColor === 'transparent') {
+      setEnabled(false);
+      onChange({ color: undefined, intensity: intensity });
+      setShowPicker(false);
+    } else {
+      onChange({ color: newColor, intensity: intensity });
+    }
+  };
+
+  const getPickerPosition = () => {
+    if (!colorButtonRef.current) return undefined;
+    const rect = colorButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      left: rect.left
+    };
   };
   
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">高亮色</h3>
+        <h3 className="text-sm font-medium text-text-primary">发光</h3>
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -39,40 +68,45 @@ export function HighlightColorSection({ color, onChange }: HighlightColorSection
       
       {enabled && (
         <>
-          <div className="grid grid-cols-4 gap-2">
-            {PRESET_COLORS.map(presetColor => (
-              <button
-                key={presetColor}
-                onClick={() => onChange(presetColor)}
-                className={`h-10 rounded-lg border-2 transition-all ${
-                  color === presetColor
-                    ? 'border-accent-purple scale-110'
-                    : 'border-border-secondary hover:border-border-primary'
-                }`}
-                style={{ backgroundColor: presetColor }}
-                title={presetColor}
-              />
-            ))}
-          </div>
-          
           <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={color || '#FFFF00'}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-12 h-10 rounded cursor-pointer border border-border-secondary"
+            <button
+              ref={colorButtonRef}
+              onClick={() => setShowPicker(!showPicker)}
+              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              style={{ backgroundColor: color || '#FFFF00' }}
             />
-            <input
-              type="text"
+          </div>
+
+          {showPicker && (
+            <ColorPicker
               value={color || '#FFFF00'}
-              onChange={(e) => onChange(e.target.value)}
-              className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary font-mono"
-              placeholder="#FFFF00"
+              onChange={handleColorChange}
+              onClose={() => setShowPicker(false)}
+              position={getPickerPosition()}
+              allowTransparent={true}
             />
+          )}
+          
+          <div>
+            <label className="text-xs text-text-secondary mb-2 block">发光强度</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="5"
+                max="30"
+                step="1"
+                value={intensity}
+                onChange={(e) => onChange({ color: color, intensity: Number(e.target.value) })}
+                className="flex-1 accent-accent-purple"
+              />
+              <span className="text-sm text-text-primary w-12 text-right font-mono">
+                {intensity}px
+              </span>
+            </div>
           </div>
           
           <p className="text-xs text-text-secondary">
-            为文字添加背景高亮效果
+            为文字轮廓添加发光效果
           </p>
         </>
       )}

@@ -17,32 +17,29 @@ export interface SubtitleShadow {
 }
 
 export interface SubtitleStyle {
-  // 基础文字属性
   fontSize: number;
   fontFamily: string;
   fontWeight: number;
   fontStyle: 'normal' | 'italic';
-  color: string;  // 填充色
+  color: string;
   
-  // 🆕 新增属性
-  letterSpacing?: number;        // 文字间距（仅字幕使用）
-  textDecoration?: string;       // 文字装饰（'none' | 'underline' | 'line-through' | 'underline line-through'）
-  highlightColor?: string;       // 高亮色（文字背景高亮，仅字幕使用）
+  letterSpacing?: number;
+  textDecoration?: string;
+  highlightColor?: string;
+  highlightIntensity?: number;
   
-  // 容器属性
-  backgroundColor: string;       // 背景色（整个容器背景）
+  backgroundColor: string;
+  backgroundShape?: number;
   position: 'top' | 'center' | 'bottom';
   alignment: 'left' | 'center' | 'right';
   opacity: number;
   
-  // 描边（通用）
   stroke?: {
     enabled: boolean;
     color: string;
     width: number;
   };
   
-  // 阴影
   shadow: SubtitleShadow;
 }
 
@@ -85,12 +82,13 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontStyle: 'normal',
   color: '#ffffff',
   
-  // 🆕 新增属性的默认值
-  letterSpacing: 0,           // 默认无额外间距
-  textDecoration: 'none',     // 默认无装饰
-  highlightColor: undefined,  // 默认无高亮
+  letterSpacing: 0,
+  textDecoration: 'none',
+  highlightColor: undefined,
+  highlightIntensity: 15,
   
   backgroundColor: 'transparent',
+  backgroundShape: 0,
   position: 'bottom',
   alignment: 'center',
   opacity: 1,

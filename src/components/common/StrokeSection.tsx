@@ -1,3 +1,6 @@
+import { useState, useRef } from 'react';
+import { ColorPicker } from './ColorPicker';
+
 interface StrokeSectionProps {
   stroke?: {
     enabled: boolean;
@@ -11,9 +14,32 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
   const enabled = stroke?.enabled || false;
   const color = stroke?.color || '#000000';
   const width = stroke?.width || 2;
+  const [showPicker, setShowPicker] = useState(false);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
   
   const handleToggle = (checked: boolean) => {
     onChange({ enabled: checked, color, width });
+    if (!checked) {
+      setShowPicker(false);
+    }
+  };
+  
+  const handleColorChange = (newColor: string) => {
+    if (newColor === 'transparent') {
+      onChange({ enabled: false, color, width });
+      setShowPicker(false);
+    } else {
+      onChange({ enabled, color: newColor, width });
+    }
+  };
+
+  const getPickerPosition = () => {
+    if (!colorButtonRef.current) return undefined;
+    const rect = colorButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      left: rect.left
+    };
   };
   
   return (
@@ -34,29 +60,32 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
       {enabled && (
         <>
           <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => onChange({ enabled, color: e.target.value, width })}
-              className="w-12 h-10 rounded cursor-pointer border border-border-secondary"
-            />
-            <input
-              type="text"
-              value={color}
-              onChange={(e) => onChange({ enabled, color: e.target.value, width })}
-              className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary font-mono"
-              placeholder="#000000"
+            <button
+              ref={colorButtonRef}
+              onClick={() => setShowPicker(!showPicker)}
+              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              style={{ backgroundColor: color }}
             />
           </div>
+
+          {showPicker && (
+            <ColorPicker
+              value={color}
+              onChange={handleColorChange}
+              onClose={() => setShowPicker(false)}
+              position={getPickerPosition()}
+              allowTransparent={true}
+            />
+          )}
           
           <div>
             <label className="text-xs text-text-secondary mb-2 block">描边宽度</label>
             <div className="flex items-center gap-3">
               <input
                 type="range"
-                min="1"
-                max="10"
-                step="1"
+                min="0.4"
+                max="1.2"
+                step="0.4"
                 value={width}
                 onChange={(e) => onChange({ enabled, color, width: Number(e.target.value) })}
                 className="flex-1 accent-accent-purple"

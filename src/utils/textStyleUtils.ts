@@ -83,32 +83,49 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     backgroundColor: style.backgroundColor,
     opacity: style.opacity,
     textAlign: style.alignment,
-    textShadow: style.shadow?.enabled 
-      ? `${style.shadow.offsetX}px ${style.shadow.offsetY}px ${style.shadow.blur}px ${style.shadow.color}`
-      : 'none'
   };
   
-  // 🆕 文字间距支持
+  const textShadows: string[] = [];
+  
+  if (style.shadow?.enabled) {
+    textShadows.push(
+      `${style.shadow.offsetX}px ${style.shadow.offsetY}px ${style.shadow.blur}px ${style.shadow.color}`
+    );
+  }
+  
+  if (style.highlightColor) {
+    const intensity = style.highlightIntensity || 15;
+    textShadows.push(
+      `0 0 ${intensity}px ${style.highlightColor}`,
+      `0 0 ${intensity * 1.5}px ${style.highlightColor}`,
+      `0 0 ${intensity * 2}px ${style.highlightColor}`
+    );
+  }
+  
+  if (textShadows.length > 0) {
+    cssProperties.textShadow = textShadows.join(', ');
+  }
+  
+  if (style.stroke?.enabled && style.stroke.width > 0) {
+    cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
+  }
+  
   if (style.letterSpacing !== undefined && style.letterSpacing !== 0) {
     cssProperties.letterSpacing = `${style.letterSpacing}px`;
   }
   
-  // 🆕 文字装饰支持（下划线、删除线）
   if (style.textDecoration && style.textDecoration !== 'none') {
     cssProperties.textDecoration = style.textDecoration;
   }
   
-  // 🆕 高亮色支持（文字背景高亮）
-  if (style.highlightColor) {
-    // 使用 linear-gradient 实现文字背景高亮效果
-    cssProperties.background = `linear-gradient(transparent 0%, transparent 30%, ${style.highlightColor} 30%, ${style.highlightColor} 70%, transparent 70%, transparent 100%)`;
-    cssProperties.backgroundClip = 'text';
-    cssProperties.WebkitBackgroundClip = 'text';
-  }
-  
-  // 🆕 描边支持
-  if (style.stroke?.enabled && style.stroke.width > 0) {
-    cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
+  if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+    if (style.backgroundShape !== undefined && style.backgroundShape > 0) {
+      if (style.backgroundShape === 50) {
+        cssProperties.borderRadius = '50%';
+      } else {
+        cssProperties.borderRadius = `${style.backgroundShape}px`;
+      }
+    }
   }
   
   return cssProperties;
@@ -134,20 +151,26 @@ export const applyStyleToSegments = (
         ...segment,
         style: {
           ...DEFAULT_SUBTITLE_STYLE,
-          ...(segment.style || {}),  // ✅ 修复：防止 undefined
+          ...(segment.style || {}),
           ...newStyle,
-          shadow: {  // ✅ 修复：深度合并 shadow
+          shadow: {
             ...DEFAULT_SUBTITLE_STYLE.shadow,
             ...(segment.style?.shadow || {}),
             ...(newStyle.shadow || {})
           },
-          stroke: {  // 🆕 深度合并 stroke
+          stroke: {
             enabled: false,
             color: '#000000',
             width: 0,
             ...(segment.style?.stroke || {}),
             ...(newStyle.stroke || {})
-          }
+          },
+          highlightIntensity: newStyle.highlightIntensity !== undefined 
+            ? newStyle.highlightIntensity 
+            : segment.style?.highlightIntensity,
+          backgroundShape: newStyle.backgroundShape !== undefined
+            ? newStyle.backgroundShape
+            : segment.style?.backgroundShape
         },
         animation: segment.animation
       });
@@ -172,20 +195,26 @@ export const applyStyleToSegments = (
           text: selectedText,
           style: {
             ...DEFAULT_SUBTITLE_STYLE,
-            ...(segment.style || {}),  // ✅ 修复：防止 undefined
+            ...(segment.style || {}),
             ...newStyle,
-            shadow: {  // ✅ 修复：深度合并 shadow
+            shadow: {
               ...DEFAULT_SUBTITLE_STYLE.shadow,
               ...(segment.style?.shadow || {}),
               ...(newStyle.shadow || {})
             },
-            stroke: {  // 🆕 深度合并 stroke
+            stroke: {
               enabled: false,
               color: '#000000',
               width: 0,
               ...(segment.style?.stroke || {}),
               ...(newStyle.stroke || {})
-            }
+            },
+            highlightIntensity: newStyle.highlightIntensity !== undefined 
+              ? newStyle.highlightIntensity 
+              : segment.style?.highlightIntensity,
+            backgroundShape: newStyle.backgroundShape !== undefined
+              ? newStyle.backgroundShape
+              : segment.style?.backgroundShape
           },
           animation: segment.animation
         });
@@ -214,20 +243,26 @@ export const applyStyleToAllSegments = (
     ...segment,
     style: {
       ...DEFAULT_SUBTITLE_STYLE,
-      ...(segment.style || {}),  // ✅ 修复：防止 undefined
+      ...(segment.style || {}),
       ...newStyle,
-      shadow: {  // ✅ 修复：深度合并 shadow
+      shadow: {
         ...DEFAULT_SUBTITLE_STYLE.shadow,
         ...(segment.style?.shadow || {}),
         ...(newStyle.shadow || {})
       },
-      stroke: {  // 🆕 深度合并 stroke
+      stroke: {
         enabled: false,
         color: '#000000',
         width: 0,
         ...(segment.style?.stroke || {}),
         ...(newStyle.stroke || {})
-      }
+      },
+      highlightIntensity: newStyle.highlightIntensity !== undefined 
+        ? newStyle.highlightIntensity 
+        : segment.style?.highlightIntensity,
+      backgroundShape: newStyle.backgroundShape !== undefined
+        ? newStyle.backgroundShape
+        : segment.style?.backgroundShape
     },
     animation: segment.animation
   }));

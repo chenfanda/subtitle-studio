@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
+import { ColorPicker } from '@/components/common/ColorPicker';
 
 interface QuickToolbarProps {
   targetType: 'subtitle' | 'textElement';
@@ -23,10 +24,6 @@ const FONT_SIZE_OPTIONS = [
   12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 48
 ];
 
-const GLOW_COLORS = [
-  '#00BFFF', '#FFD700', '#FF4500', '#00FF7F', '#9932CC', '#FFFFFF', '#FF69B4'
-];
-
 export function QuickToolbar({ targetType, targetId, position, onClose }: QuickToolbarProps) {
   const { subtitles, updateSubtitle } = useSubtitleStore();
   const { textElements, updateTextElement } = useTextElementStore();
@@ -34,6 +31,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBrightness, setShowBrightness] = useState(false);
+  const brightnessButtonRef = useRef<HTMLButtonElement>(null);
   
   const currentObject = targetType === 'subtitle'
     ? subtitles.find(s => s.id === targetId)
@@ -42,8 +40,8 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   if (!currentObject) return null;
   
   const currentStyle = currentObject.style || DEFAULT_SUBTITLE_STYLE;
-  const currentGlowColor = currentStyle.shadow?.enabled ? currentStyle.shadow.color : null;
-  const currentBrightness = currentStyle.shadow?.enabled ? currentStyle.shadow.blur : 15;
+  const currentGlowColor = currentStyle.highlightColor;
+  const currentBrightness = currentStyle.highlightIntensity || 15;
   
   const handleStyleUpdate = (updates: Partial<typeof currentStyle>) => {
     if (targetType === 'subtitle') {
@@ -54,43 +52,27 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   };
   
   const handleColorSelect = (color: string) => {
-    handleStyleUpdate({
-      shadow: {
-        enabled: true,
-        color: color,
-        offsetX: 0,
-        offsetY: 0,
-        blur: currentBrightness
-      }
-    });
+    if (color === 'transparent') {
+      handleStyleUpdate({
+        highlightColor: undefined,
+        highlightIntensity: currentBrightness
+      });
+    } else {
+      handleStyleUpdate({
+        highlightColor: color,
+        highlightIntensity: currentBrightness
+      });
+    }
     setShowColorPicker(false);
   };
   
   const handleBrightnessChange = (brightness: number) => {
     if (currentGlowColor) {
       handleStyleUpdate({
-        shadow: {
-          enabled: true,
-          color: currentGlowColor,
-          offsetX: 0,
-          offsetY: 0,
-          blur: brightness
-        }
+        highlightColor: currentGlowColor,
+        highlightIntensity: brightness
       });
     }
-  };
-  
-  const handleRemoveGlow = () => {
-    handleStyleUpdate({
-      shadow: {
-        enabled: false,
-        color: '#000000',
-        offsetX: 0,
-        offsetY: 0,
-        blur: 0
-      }
-    });
-    setShowColorPicker(false);
   };
   
   const handleFontChange = (fontFamily: string) => {
@@ -127,29 +109,20 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         />
         
         {showColorPicker && (
-          <div className="absolute top-8 left-0 bg-gray-800 border border-gray-600 rounded p-2 grid grid-cols-4 gap-1 min-w-32 z-50">
-            <button
-              onClick={handleRemoveGlow}
-              className="w-5 h-5 bg-gray-600 rounded border hover:border-gray-400 text-xs text-white flex items-center justify-center"
-              title="移除发光"
-            >
-              ✕
-            </button>
-            {GLOW_COLORS.map((color) => (
-              <button
-                key={color}
-                onClick={() => handleColorSelect(color)}
-                className="w-5 h-5 rounded border border-gray-600 hover:border-gray-400"
-                style={{ backgroundColor: color }}
-                title={`选择 ${color}`}
-              />
-            ))}
+          <div className="absolute bottom-full mb-2 left-0 z-50">
+            <ColorPicker
+              value={currentGlowColor || '#FFFF00'}
+              onChange={handleColorSelect}
+              onClose={() => setShowColorPicker(false)}
+              allowTransparent={true}
+            />
           </div>
         )}
       </div>
       
       <div className="relative">
         <button
+          ref={brightnessButtonRef}
           onClick={() => setShowBrightness(!showBrightness)}
           className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
           title="亮度"
@@ -159,7 +132,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         </button>
         
         {showBrightness && currentGlowColor && (
-          <div className="absolute top-8 left-0 bg-gray-800 border border-gray-600 rounded p-2 w-24 z-50">
+          <div className="absolute top-full mt-2 left-0 bg-gray-800 border border-gray-600 rounded p-2 w-24 z-50">
             <input
               type="range"
               min="5"
