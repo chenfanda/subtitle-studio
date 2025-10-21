@@ -59,7 +59,7 @@ export function SubtitleOverlay() {
     
     if (currentSubtitle.richText) {
       return currentSubtitle.richText.map((segment, index) => (
-        <div
+        <span
           key={index}
           ref={(el) => {
             if (el) {
@@ -73,14 +73,14 @@ export function SubtitleOverlay() {
           data-animation={segment.animation?.name || ''}
         >
           {segment.text}
-        </div>
+        </span>
       ));
     }
     
     return (
-      <div style={convertStyleToCSS(subtitleStyle)}>
+      <span style={convertStyleToCSS(subtitleStyle)}>
         {currentSubtitle.text}
-      </div>
+      </span>
     );
   };
 
@@ -262,7 +262,7 @@ export function SubtitleOverlay() {
           >
             <div 
               className={`
-                inline-block px-4 py-2 transition-all rounded
+                inline-block px-4 py-2  transition-all rounded
                 ${isSelected 
                   ? 'border-2 border-accent-purple shadow-lg shadow-accent-purple/20' 
                   : 'border-2 border-transparent'
@@ -272,14 +272,13 @@ export function SubtitleOverlay() {
                 width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',
               }}
             >
-           <div 
-            className="subtitle-content"
-            style={{
-              wordBreak: 'break-word',
-              textAlign: subtitleStyle.alignment,
-              width: '100%',
-              }}
-            >
+              <div 
+                className="subtitle-content"
+                style={{
+                  wordBreak: 'break-word',
+                  textAlign: subtitleStyle.alignment,
+                }}
+              >
                 {renderRichTextContent()}
               </div>
             </div>
