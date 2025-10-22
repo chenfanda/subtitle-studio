@@ -13,11 +13,18 @@ interface QuickToolbarProps {
 }
 
 const FONT_OPTIONS = [
-  '"阿里巴巴普惠体", "Alibaba PuHuiTi", sans-serif',
-  '"PingFang SC", "苹方-简", "Helvetica Neue", "Hiragino Sans GB", sans-serif',
-  '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif',
-  'Arial, "Helvetica Neue", Helvetica, sans-serif',
-  'sans-serif'
+  { value: '"Alibaba PuHuiTi", sans-serif', label: '阿里巴巴普惠体' },
+  { value: '"ZcoolKuaiLe", sans-serif', label: '站酷快乐' },
+  { value: '"ZcoolkuheiT", sans-serif', label: '站酷酷黑' },
+  { value: '"ZcoolYuYangT", sans-serif', label: '站酷渔阳' },
+  { value: '"ZcoolQingKeHuangYou", sans-serif', label: '站酷黄油' },
+  { value: '"ZcoolwenyiT", sans-serif', label: '站酷文艺' },
+  { value: '"Zcoolxiaowei", sans-serif', label: '站酷小薇' },
+  { value: '"ZCOOL Addict", sans-serif', label: 'ZCOOL Addict' },
+  { value: '"PingFang SC", "苹方-简", sans-serif', label: 'PingFang SC' },
+  { value: '"Microsoft YaHei", "微软雅黑", sans-serif', label: 'Microsoft YaHei' },
+  { value: 'Arial, "Helvetica Neue", Helvetica, sans-serif', label: 'Arial' },
+  { value: 'sans-serif', label: 'Sans Serif' }
 ];
 
 const FONT_SIZE_OPTIONS = [
@@ -89,11 +96,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
     onClose();
   };
   
-  // 获取字体显示名称（去掉引号和备选字体）
-  const getFontDisplayName = (fontFamily: string) => {
-    const match = fontFamily.match(/^"?([^",]+)"?/);
-    return match ? match[1] : fontFamily;
-  };
+
   
   return (
     <div 
@@ -152,14 +155,14 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         )}
       </div>
       
-      <select
+    <select
         value={currentStyle.fontFamily}
         onChange={(e) => handleFontChange(e.target.value)}
         className="px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-white min-w-20"
       >
         {FONT_OPTIONS.map(font => (
-          <option key={font} value={font}>
-            {getFontDisplayName(font)}
+          <option key={font.value} value={font.value}>
+            {font.label}
           </option>
         ))}
       </select>

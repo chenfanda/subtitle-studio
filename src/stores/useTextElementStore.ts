@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { TextElement } from '@/types/textElement';
 import type { SubtitleStyle } from '@/types/subtitle';
+import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { DEFAULT_TEXT_ELEMENT_POSITION } from '@/types/textElement';
 import { findById, generateId, deepClone } from '@/utils/storeUtils';
 import { useHistoryStore } from './useHistoryStore';
@@ -48,16 +49,35 @@ export const useTextElementStore = create<TextElementStore>()(
       },
       
       updateTextElement: (id, updates) => {
-        set((state) => {
-          const element = findById(state.textElements, id);
-          if (!element) return;
-          
-          Object.assign(element, updates);
-        });
-        
-        useProjectStore.getState().markUnsaved();
-        useHistoryStore.getState().pushState();
-      },
+              set((state) => {
+                const element = findById(state.textElements, id);
+                if (!element) return;
+
+                if (updates.style && element.richText) {
+                  
+                  const mainStyle = element.style || DEFAULT_SUBTITLE_STYLE;
+
+                  element.richText = element.richText.map(segment => {
+                  
+                    const baseStyle = segment.style || mainStyle;
+
+                    return {
+                      ...segment,
+                
+                      style: { 
+                        ...baseStyle,     
+                        ...updates.style  
+                      } 
+                    };
+                  });
+                }
+                
+                Object.assign(element, updates);
+              });
+              
+              useProjectStore.getState().markUnsaved();
+              useHistoryStore.getState().pushState();
+            },
       
       updateTextElementText: (id, text) => {
         set((state) => {

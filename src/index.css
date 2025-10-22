@@ -1,3 +1,80 @@
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  src: url('/fonts/AlibabaPuHuiTi-3-105-Heavy.woff2') format('woff2');
+  font-weight: 800; /* 对应 Heavy */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  src: url('/fonts/AlibabaPuHuiTi-3-115-Black.woff2') format('woff2');
+  font-weight: 900; /* 对应 Black */
+  font-style: normal;
+}
+
+/* ZCOOL Addict Italic */
+@font-face {
+  font-family: 'ZCOOL Addict';
+  src: url('/fonts/ZCOOL_Addict_Italic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: italic;
+}
+
+/* Zcool KuaiLe */
+@font-face {
+  font-family: 'ZcoolKuaiLe';
+  src: url('/fonts/ZcoolKuaiLe-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Zcool kuheiT */
+@font-face {
+  font-family: 'ZcoolkuheiT';
+  src: url('/fonts/ZcoolkuheiT-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Zcool QingKeHuangYou */
+@font-face {
+  font-family: 'ZcoolQingKeHuangYou';
+  src: url('/fonts/ZcoolQingKeHuangYou-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Zcool wenyiT */
+@font-face {
+  font-family: 'ZcoolwenyiT';
+  src: url('/fonts/ZcoolwenyiT-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Zcool xiaowei */
+@font-face {
+  font-family: 'Zcoolxiaowei';
+  src: url('/fonts/Zcoolxiaowei-LOGOT.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Zcool YuYangT (一个字体家族，两个字重) */
+@font-face {
+  font-family: 'ZcoolYuYangT';
+  src: url('/fonts/ZcoolYuYangT-Regular.woff2') format('woff2');
+  font-weight: normal; /* 对应 Regular */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ZcoolYuYangT';
+  src: url('/fonts/ZcoolYuYangT-Bold.woff2') format('woff2');
+  font-weight: bold; /* 对应 Bold (700) */
+  font-style: normal;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -222,190 +222,205 @@ const handleClickOutside = (e: React.MouseEvent) => {
 
 ## 目录结构
 ```
+public/
+└── fonts/                          # 字体文件
+    ├── AlibabaPuHuiTi-3-105-Heavy.woff2
+    ├── AlibabaPuHuiTi-3-115-Black.woff2
+    ├── ZCOOL_Addict_Italic.woff2
+    ├── ZcoolKuaiLe-Regular.woff2
+    ├── ZcoolkuheiT-Regular.woff2
+    ├── ZcoolQingKeHuangYou-Regular.woff2
+    ├── ZcoolwenyiT-Regular.woff2
+    ├── Zcoolxiaowei-LOGOT.woff2
+    ├── ZcoolYuYangT-Bold.woff2
+    └── ZcoolYuYangT-Regular.woff2
+
 src/
 ├── components/                      # 组件目录
 │   ├── audio/                      # 音频相关组件
-│   │   ├── AudioCard.tsx                  # 音频卡片（使用 useSubtitleStore）
-│   │   ├── AudioLibrary.tsx               # 音频库
-│   │   ├── AudioPanel.tsx                 # 音频面板
-│   │   ├── AudioCategoryTabs.tsx          # 音频分类标签
-│   │   ├── AudioUpload.tsx                # 音频上传
-│   │   └── BackgroundMusicControl.tsx     # 背景音乐控制
+│   │   ├── AudioCard.tsx
+│   │   ├── AudioLibrary.tsx
+│   │   ├── AudioPanel.tsx
+│   │   ├── AudioCategoryTabs.tsx
+│   │   ├── AudioUpload.tsx
+│   │   └── BackgroundMusicControl.tsx
 │   │
 │   ├── broll/                      # B-roll 视频组件
-│   │   ├── BrollDialog.tsx                # B-roll 弹窗
-│   │   ├── BrollEditView.tsx              # 编辑视图（使用 useSubtitleStore）
-│   │   ├── BrollPanel.tsx                 # B-roll 面板（使用 useSubtitleStore）
-│   │   ├── BrollSearchView.tsx            # 搜索视图
-│   │   ├── BrollVideoCard.tsx             # B-roll 视频卡片
-│   │   ├── BrollVideoPlayer.tsx           # B-roll 视频播放器
-│   │   └── BrollTransitionSelector.tsx    # 转场效果选择器
+│   │   ├── BrollDialog.tsx
+│   │   ├── BrollEditView.tsx
+│   │   ├── BrollPanel.tsx
+│   │   ├── BrollSearchView.tsx
+│   │   ├── BrollVideoCard.tsx
+│   │   ├── BrollVideoPlayer.tsx
+│   │   └── BrollTransitionSelector.tsx
 │   │
 │   ├── common/                     # 通用组件
-│   │   ├── RichTextEditor.tsx             # 富文本编辑器（使用 useSubtitleStore + useTextElementStore）
+│   │   ├── RichTextEditor.tsx             # 富文本编辑器
 │   │   ├── TransformBorder.tsx            # 变换边框
-│   │   ├── Watermark.tsx                  # 水印
-│   │   ├── Modal.tsx                      # 模态框
-│   │   ├── Button.tsx                     # 按钮组件
-│   │   ├── Input.tsx                      # 输入框组件
-│   │   ├── Select.tsx                     # 选择器组件
-│   │   ├── Tabs.tsx                       # 标签页组件
-│   │   ├── Tooltip.tsx                    # 提示框组件
-│   │   ├── Loading.tsx                    # 加载指示器
-│   │   ├── ErrorBoundary.tsx              # 错误边界
-│   │   ├── TemplateQuickAccess.tsx        # 模板快速访问
-│   │   ├── BasicEffectsSection.tsx        # 基础效果区域
-│   │   ├── AlignmentSection.tsx           # 对齐设置区域
-│   │   ├── HighlightColorSection.tsx      # 高亮颜色区域
-│   │   ├── StrokeSection.tsx              # 描边设置区域
-│   │   ├── ShadowSection.tsx              # 阴影设置区域
-│   │   └── BackgroundSection.tsx          # 背景设置区域
+│   │   ├── Watermark.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Select.tsx
+│   │   ├── Tabs.tsx
+│   │   ├── Tooltip.tsx
+│   │   ├── Loading.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── TemplateQuickAccess.tsx
+│   │   ├── BasicEffectsSection.tsx        # ⭐ 基础效果 (已更新 FONT_OPTIONS)
+│   │   ├── AlignmentSection.tsx
+│   │   ├── HighlightColorSection.tsx
+│   │   ├── StrokeSection.tsx
+│   │   ├── ShadowSection.tsx
+│   │   └── BackgroundSection.tsx
 │   │
 │   ├── export/                     # 导出相关组件
-│   │   ├── ExportModal.tsx                # 导出模态框
-│   │   ├── ExportPreview.tsx              # 导出预览
-│   │   ├── ExportSettings.tsx             # 导出设置
-│   │   └── ExportProgress.tsx             # 导出进度
+│   │   ├── ExportModal.tsx
+│   │   ├── ExportPreview.tsx
+│   │   ├── ExportSettings.tsx
+│   │   └── ExportProgress.tsx
 │   │
 │   ├── layout/                     # 布局组件
 │   │   ├── HeaderBar.tsx                  # ⭐ 顶部栏（撤销/重做按钮）
-│   │   ├── LeftSidebar.tsx                # 左侧边栏
-│   │   ├── RightSidebar.tsx               # 右侧边栏
+│   │   ├── LeftSidebar.tsx
+│   │   ├── RightSidebar.tsx
 │   │   ├── VideoArea.tsx                  # ⭐ 视频区域（点击空白清除选择）
-│   │   ├── TimelineArea.tsx               # 时间轴区域
-│   │   └── BottomBar.tsx                  # 底部栏
+│   │   ├── TimelineArea.tsx
+│   │   └── BottomBar.tsx
 │   │
 │   ├── media/                      # 媒体资源组件
-│   │   ├── MediaPanel.tsx                 # 媒体面板（使用 useSubtitleStore）
-│   │   ├── MediaElement.tsx               # 媒体元素
-│   │   ├── MediaOverlay.tsx               # 媒体叠加层
-│   │   ├── MediaUpload.tsx                # 媒体上传
-│   │   ├── StickerLibrary.tsx             # 贴纸库
-│   │   ├── StickerCard.tsx                # 贴纸卡片
-│   │   ├── GifsLibrary.tsx                # GIF 库
-│   │   └── GifCard.tsx                    # GIF 卡片
+│   │   ├── MediaPanel.tsx
+│   │   ├── MediaElement.tsx
+│   │   ├── MediaOverlay.tsx
+│   │   ├── MediaUpload.tsx
+│   │   ├── StickerLibrary.tsx
+│   │   ├── StickerCard.tsx
+│   │   ├── GifsLibrary.tsx
+│   │   └── GifCard.tsx
 │   │
 │   ├── pages/                      # 页面组件
-│   │   ├── EditingStage.tsx               # 编辑页面
-│   │   ├── ProcessingStage.tsx            # 处理页面（使用 useSubtitleStore）
-│   │   └── UploadStage.tsx                # 上传页面
+│   │   ├── EditingStage.tsx
+│   │   ├── ProcessingStage.tsx
+│   │   └── UploadStage.tsx
 │   │
 │   ├── settings/                   # 设置相关组件
-│   │   ├── SettingsModal.tsx              # 设置模态框
-│   │   ├── GeneralSettings.tsx            # 通用设置
-│   │   ├── VideoSettings.tsx              # 视频设置
-│   │   ├── SubtitleSettings.tsx           # 字幕设置
-│   │   ├── WatermarkSettings.tsx          # 水印设置
-│   │   └── ShortcutSettings.tsx           # 快捷键设置
+│   │   ├── SettingsModal.tsx
+│   │   ├── GeneralSettings.tsx
+│   │   ├── VideoSettings.tsx
+│   │   ├── SubtitleSettings.tsx
+│   │   ├── WatermarkSettings.tsx
+│   │   └── ShortcutSettings.tsx
 │   │
 │   ├── subtitle/                   # 字幕组件
-│   │   ├── SubtitleEditor.tsx             # ⭐ 字幕编辑器（双击编辑）
+│   │   ├── SubtitleEditor.tsx             # ⭐ 字幕编辑器（双击编辑弹窗）
 │   │   ├── SubtitleList.tsx               # ⭐ 字幕列表（点击选择）
-│   │   ├── SubtitlePanel.tsx              # 字幕面板
-│   │   ├── SubtitleToolbar.tsx            # 字幕工具栏（使用 useSubtitleStore）
-│   │   ├── SubtitleItem.tsx               # 字幕项
-│   │   └── SubtitleImport.tsx             # 字幕导入
+│   │   ├── SubtitlePanel.tsx              # 字幕面板 (渲染 Editor 和 List)
+│   │   ├── SubtitleToolbar.tsx            # 字幕工具栏 (合并, 分割, 编辑)
+│   │   ├── SubtitleItem.tsx
+│   │   └── SubtitleImport.tsx
 │   │
 │   ├── templates/                  # 模板组件
-│   │   ├── EffectPreviewCard.tsx          # 动效卡片（使用 useSubtitleStore）
-│   │   ├── TemplatePanel.tsx              # 模板面板
-│   │   ├── TemplateLibrary.tsx            # 模板库
-│   │   ├── TemplateCategoryTabs.tsx       # 模板分类标签
-│   │   └── AnimationPreview.tsx           # 动画预览
+│   │   ├── EffectPreviewCard.tsx
+│   │   ├── TemplatePanel.tsx
+│   │   ├── TemplateLibrary.tsx
+│   │   ├── TemplateCategoryTabs.tsx
+│   │   └── AnimationPreview.tsx
 │   │
 │   ├── text/                       # 文字组件
-│   │   ├── StylePreviewCard.tsx           # 样式卡片（使用 useTextElementStore）
-│   │   ├── TextStylePanel.tsx             # 文字样式面板
-│   │   ├── TextCategoryTabs.tsx           # 文字分类标签
-│   │   └── FontPicker.tsx                 # 字体选择器
+│   │   ├── StylePreviewCard.tsx
+│   │   ├── TextStylePanel.tsx
+│   │   ├── TextCategoryTabs.tsx
+│   │   └── FontPicker.tsx                 # (此文件在原始 README 中, 尽管你提到它不存在)
 │   │
 │   ├── timeline/                   # 时间轴组件
-│   │   ├── Timeline.tsx                   # 时间轴主组件
+│   │   ├── Timeline.tsx
 │   │   ├── SubtitleTrack.tsx              # ⭐ 字幕轨道（点击选择）
-│   │   ├── TextElementTrack.tsx           # 文字元素轨道
-│   │   ├── MediaTrack.tsx                 # 媒体轨道
-│   │   ├── AudioTrack.tsx                 # 音频轨道
-│   │   ├── TimelineRuler.tsx              # 时间标尺（使用 useSubtitleStore）
-│   │   ├── AudioWaveform.tsx              # 音频波形（使用 useSubtitleStore）
-│   │   ├── PlayheadIndicator.tsx          # 播放头指示器
-│   │   ├── TimelineZoom.tsx               # 时间轴缩放控制
-│   │   └── TimelineScroll.tsx             # 时间轴滚动控制
+│   │   ├── TextElementTrack.tsx
+│   │   ├── MediaTrack.tsx
+│   │   ├── AudioTrack.tsx
+│   │   ├── TimelineRuler.tsx
+│   │   ├── AudioWaveform.tsx
+│   │   ├── PlayheadIndicator.tsx
+│   │   ├── TimelineZoom.tsx
+│   │   └── TimelineScroll.tsx
 │   │
 │   └── video/                      # 视频组件
-│       ├── VideoPlayer.tsx                # 视频播放器
+│       ├── VideoPlayer.tsx
 │       ├── VideoControls.tsx              # ⭐ 播放控制（删除按钮防误删）
-│       ├── VideoUpload.tsx                # 视频上传
+│       ├── VideoUpload.tsx
 │       ├── SubtitleOverlay.tsx            # ⭐ 字幕叠加层（拖动、选择、工具栏）
 │       ├── TextElementOverlay.tsx         # ⭐ 文字元素叠加层（拖动、选择、工具栏）
-│       ├── QuickToolbar.tsx               # ⭐ 快速工具栏（共用组件）
-│       └── VideoPreview.tsx               # 视频预览
+│       ├── QuickToolbar.tsx               # ⭐ 快速工具栏 (已更新 FONT_OPTIONS 和渲染)
+│       └── VideoPreview.tsx
 │
 ├── stores/                         # 状态管理（Zustand + Immer）
-│   ├── useProjectStore.ts                 # ⭐ 项目基础状态（播放控制、项目信息）
-│   ├── useSubtitleStore.ts                # ⭐ 字幕状态管理（CRUD、restore）
-│   ├── useTextElementStore.ts             # ⭐ 文字元素状态管理（CRUD、restore）
-│   ├── useHistoryStore.ts                 # ⭐⭐ 历史记录管理（全局快照、撤销/重做）
-│   ├── useUIStore.ts                      # ⭐⭐ UI 状态管理（新增 videoToolbar）
-│   ├── useTimelineStore.ts                # 时间轴状态
-│   ├── useTextStyleStore.ts               # 文字样式状态（使用 useSubtitleStore）
-│   ├── useTemplateStore.ts                # 动画模板状态（使用 useSubtitleStore）
-│   ├── useAudioStore.ts                   # ⭐ 音频状态（新增 restoreBackgroundMusic）
-│   ├── useBrollStore.ts                   # ⭐ B-roll 状态（新增 restorePlacedBrolls）
-│   ├── useMediaStore.ts                   # ⭐ 媒体资源状态（新增 restorePlacedMedia）
-│   ├── useSettingsStore.ts                # 设置状态
-│   └── useExportStore.ts                  # 导出状态
+│   ├── useProjectStore.ts                 # ⭐ 项目基础状态
+│   ├── useSubtitleStore.ts                # ⭐ 字幕状态 (已修复 updateSubtitle)
+│   ├── useTextElementStore.ts             # ⭐ 文字元素状态 (已修复 updateTextElement)
+│   ├── useHistoryStore.ts                 # ⭐⭐ 历史记录管理
+│   ├── useUIStore.ts                      # ⭐⭐ UI 状态 (管理 videoToolbar, editingSubtitleId)
+│   ├── useTimelineStore.ts
+│   ├── useTextStyleStore.ts               # ⭐ 文字样式状态
+│   ├── useTemplateStore.ts
+│   ├── useAudioStore.ts
+│   ├── useBrollStore.ts
+│   ├── useMediaStore.ts
+│   ├── useSettingsStore.ts
+│   └── useExportStore.ts
 │
 ├── types/                          # TypeScript 类型定义
-│   ├── project.ts                         # 项目类型
+│   ├── project.ts
 │   ├── subtitle.ts                        # 字幕类型
 │   ├── textElement.ts                     # 文字元素类型
-│   ├── history.ts                         # ⭐ 历史记录类型（新增 isRestoring）
-│   ├── animation.ts                       # 动画类型
-│   ├── textStyle.ts                       # 文字样式类型
-│   ├── audio.ts                           # 音频类型
-│   ├── broll.ts                           # B-roll 类型
-│   ├── media.ts                           # 媒体类型
-│   ├── ui.ts                              # UI 类型
-│   ├── timeline.ts                        # 时间轴类型
-│   ├── settings.ts                        # 设置类型
-│   ├── export.ts                          # 导出类型
-│   └── common.ts                          # 通用类型
+│   ├── history.ts
+│   ├── animation.ts
+│   ├── textStyle.ts
+│   ├── audio.ts
+│   ├── broll.ts
+│   ├── media.ts
+│   ├── ui.ts                              # ⭐ UI 类型 (定义 UIState, editingSubtitleId)
+│   ├── timeline.ts
+│   ├── settings.ts
+│   ├── export.ts
+│   └── common.ts
 │
 ├── utils/                          # 工具函数
-│   ├── subtitleParser.ts                  # 字幕解析工具（SRT、VTT）
-│   ├── textStyleUtils.ts                  # 文字样式工具
-│   ├── animationUtils.ts                  # 动画工具
-│   ├── audioUtils.ts                      # 音频工具
-│   ├── brollUtils.ts                      # B-roll 工具
-│   ├── timelineUtils.ts                   # 时间轴工具
-│   ├── videoUtils.ts                      # 视频工具
-│   ├── exportUtils.ts                     # 导出工具
-│   ├── storageUtils.ts                    # 本地存储工具
-│   ├── validationUtils.ts                 # 验证工具
-│   ├── formatUtils.ts                     # 格式化工具
-│   ├── colorUtils.ts                      # 颜色工具
-│   ├── mathUtils.ts                       # 数学工具
-│   └── fileUtils.ts                       # 文件工具
+│   ├── subtitleParser.ts
+│   ├── textStyleUtils.ts                  # ⭐ (包含字体修复所需的工具函数)
+│   ├── animationUtils.ts
+│   ├── audioUtils.ts
+│   ├── brollUtils.ts
+│   ├── timelineUtils.ts
+│   ├── videoUtils.ts
+│   ├── exportUtils.ts
+│   ├── storageUtils.ts
+│   ├── validationUtils.ts
+│   ├── formatUtils.ts
+│   ├── colorUtils.ts
+│   ├── mathUtils.ts
+│   └── fileUtils.ts
 │
 ├── constants/                      # 常量配置
-│   ├── animationTemplates.ts              # 动画模板配置
-│   ├── textStyleTemplates.ts              # 文字样式模板配置
-│   ├── audioCategories.ts                 # 音频分类配置
-│   ├── mediaLibrary.ts                    # 媒体库配置
-│   ├── defaultStyles.ts                   # 默认样式配置
-│   ├── shortcuts.ts                       # 快捷键配置
-│   ├── exportPresets.ts                   # 导出预设配置
-│   └── config.ts                          # 应用配置
+│   ├── animationTemplates.ts
+│   ├── textStyleTemplates.ts
+│   ├── audioCategories.ts
+│   ├── mediaLibrary.ts
+│   ├── defaultStyles.ts
+│   ├── shortcuts.ts
+│   ├── exportPresets.ts
+│   └── config.ts
 │
 ├── hooks/                          # 自定义 React Hooks
-│   ├── useKeyboardShortcuts.ts            # 快捷键 Hook
-│   ├── useAutoSave.ts                     # 自动保存 Hook
-│   ├── useDebounce.ts                     # 防抖 Hook
-│   ├── useThrottle.ts                     # 节流 Hook
-│   ├── useLocalStorage.ts                 # 本地存储 Hook
-│   ├── useVideoPlayer.ts                  # 视频播放器 Hook
-│   ├── useTimeline.ts                     # 时间轴 Hook
-│   └── useUndo.ts                         # 撤销/重做 Hook
+│   ├── useKeyboardShortcuts.ts
+│   ├── useAutoSave.ts
+│   ├── useDebounce.ts
+│   ├── useThrottle.ts
+│   ├── useLocalStorage.ts
+│   ├── useVideoPlayer.ts
+│   ├── useTimeline.ts
+│   └── useUndo.ts
+│
+└── index.css                       # ⭐ 全局样式 (新增 @font-face 规则)
 ```
 
 ---
