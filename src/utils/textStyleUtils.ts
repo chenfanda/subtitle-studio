@@ -82,7 +82,7 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     color: style.color,
     backgroundColor: style.backgroundColor,
     opacity: style.opacity,
-    textAlign: style.alignment,
+    // textAlign: style.alignment,
   };
   
   const textShadows: string[] = [];

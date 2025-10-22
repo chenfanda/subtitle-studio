@@ -262,7 +262,7 @@ export function SubtitleOverlay() {
           >
             <div 
               className={`
-                inline-block px-4 py-2  transition-all rounded
+                inline-block transition-all rounded flex flex-col
                 ${isSelected 
                   ? 'border-2 border-accent-purple shadow-lg shadow-accent-purple/20' 
                   : 'border-2 border-transparent'
@@ -270,6 +270,12 @@ export function SubtitleOverlay() {
               `}
               style={{
                 width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',
+                minWidth: '300px',
+                minHeight: '80px',
+                justifyContent: 
+                  subtitleStyle.verticalAlignment === 'top' ? 'flex-start' :
+                  subtitleStyle.verticalAlignment === 'bottom' ? 'flex-end' :
+                  'center',
               }}
             >
               <div 
@@ -277,6 +283,7 @@ export function SubtitleOverlay() {
                 style={{
                   wordBreak: 'break-word',
                   textAlign: subtitleStyle.alignment,
+                  width: '100%',
                 }}
               >
                 {renderRichTextContent()}

@@ -127,7 +127,8 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         {targetType === 'subtitle' && (
           <AlignmentSection 
             alignment={currentStyle.alignment}
-            onChange={(alignment) => handleStyleChange({ alignment })}
+            verticalAlignment={currentStyle.verticalAlignment || 'center'}
+            onChange={(alignment, verticalAlignment) => handleStyleChange({ alignment, verticalAlignment })}
           />
         )}
         

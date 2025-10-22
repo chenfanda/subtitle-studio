@@ -62,7 +62,7 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
             <button
               ref={colorButtonRef}
               onClick={() => setShowPicker(!showPicker)}
-              className="w-10 h-10-full rounded border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
               style={{ backgroundColor: color }}
             />
           </div>

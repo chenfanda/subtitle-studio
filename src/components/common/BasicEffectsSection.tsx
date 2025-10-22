@@ -9,11 +9,26 @@ interface BasicEffectsSectionProps {
 }
 
 const FONT_OPTIONS = [
-  { value: 'Montserrat Extra', label: 'Montserrat Extra' },
-  { value: 'PingFang SC', label: 'PingFang SC' },
-  { value: 'Microsoft YaHei', label: 'Microsoft YaHei' },
-  { value: 'Arial', label: 'Arial' },
-  { value: 'sans-serif', label: 'Sans Serif' }
+  { 
+    value: '"Montserrat Extra", "Montserrat", sans-serif', 
+    label: 'Montserrat Extra' 
+  },
+  { 
+    value: '"PingFang SC", "苹方-简", "Helvetica Neue", "Hiragino Sans GB", sans-serif', 
+    label: 'PingFang SC' 
+  },
+  { 
+    value: '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif', 
+    label: 'Microsoft YaHei' 
+  },
+  { 
+    value: 'Arial, "Helvetica Neue", Helvetica, sans-serif', 
+    label: 'Arial' 
+  },
+  { 
+    value: 'sans-serif', 
+    label: 'Sans Serif' 
+  }
 ];
 
 export function BasicEffectsSection({ targetType, style, onChange }: BasicEffectsSectionProps) {

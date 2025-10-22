@@ -13,10 +13,10 @@ interface QuickToolbarProps {
 }
 
 const FONT_OPTIONS = [
-  'Alibaba PuHuiTi',
-  'PingFang SC', 
-  'Microsoft YaHei',
-  'Arial',
+  '"阿里巴巴普惠体", "Alibaba PuHuiTi", sans-serif',
+  '"PingFang SC", "苹方-简", "Helvetica Neue", "Hiragino Sans GB", sans-serif',
+  '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif',
+  'Arial, "Helvetica Neue", Helvetica, sans-serif',
   'sans-serif'
 ];
 
@@ -89,6 +89,12 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
     onClose();
   };
   
+  // 获取字体显示名称（去掉引号和备选字体）
+  const getFontDisplayName = (fontFamily: string) => {
+    const match = fontFamily.match(/^"?([^",]+)"?/);
+    return match ? match[1] : fontFamily;
+  };
+  
   return (
     <div 
       className="absolute z-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1"
@@ -152,7 +158,9 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         className="px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-white min-w-20"
       >
         {FONT_OPTIONS.map(font => (
-          <option key={font} value={font}>{font.split(',')[0]}</option>
+          <option key={font} value={font}>
+            {getFontDisplayName(font)}
+          </option>
         ))}
       </select>
       

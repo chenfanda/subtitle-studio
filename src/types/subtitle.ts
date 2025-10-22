@@ -32,6 +32,7 @@ export interface SubtitleStyle {
   backgroundShape?: number;
   position: 'top' | 'center' | 'bottom';
   alignment: 'left' | 'center' | 'right';
+  verticalAlignment: 'top' | 'center' | 'bottom';
   opacity: number;
   
   stroke?: {
@@ -77,7 +78,7 @@ export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontSize: 24,
-  fontFamily: 'Arial',
+  fontFamily: '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif',
   fontWeight: 600,
   fontStyle: 'normal',
   color: '#ffffff',
@@ -91,6 +92,7 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   backgroundShape: 0,
   position: 'bottom',
   alignment: 'center',
+  verticalAlignment: 'center',
   opacity: 1,
   shadow: {
     enabled: true,
