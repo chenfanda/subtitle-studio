@@ -63,24 +63,21 @@ export function SubtitleList() {
           {subtitles.map((subtitle, index) => {
             const isSelected = selectedSubtitleIds.includes(subtitle.id);
             const isEditing = editingSubtitleId === subtitle.id;
-            const isCurrent = currentTimeMs >= subtitle.startTime && currentTimeMs <= subtitle.endTime;
+            const isCurrent = currentTimeMs >= subtitle.startTime && currentTimeMs < subtitle.endTime;
             const hasAnimation = subtitle.richText ? subtitle.richText.some(segment => segment.animation) : false;
 
             return (
-              <div
-                key={subtitle.id}
-                className={`
-                  relative px-4 py-3 cursor-pointer transition-all duration-150
-                  ${isSelected 
-                    ? 'bg-accent-purple/15 border-l-2 border-accent-purple' 
-                    : 'hover:bg-bg-tertiary/30 border-l-2 border-transparent'
-                  }
-                  ${isCurrent ? 'bg-accent-blue/10 shadow-inset-accent-blue' : ''}
-                  ${isEditing ? 'ring-1 ring-accent-purple/40' : ''}
-                `}
-                onClick={(e) => handleSubtitleClick(subtitle.id, subtitle.startTime, e)}
-                onDoubleClick={() => handleSubtitleDoubleClick(subtitle.id)}
-              >
+            <div
+              key={subtitle.id}
+              className={`
+                relative px-4 py-3 cursor-pointer transition-all duration-150
+                hover:bg-bg-tertiary/30 border-l-2 border-transparent
+                ${isCurrent ? 'bg-accent-blue/10 shadow-inset-accent-blue' : ''}
+                ${isEditing ? 'ring-1 ring-accent-purple/40' : ''}
+              `}
+              onClick={(e) => handleSubtitleClick(subtitle.id, subtitle.startTime, e)}
+              onDoubleClick={() => handleSubtitleDoubleClick(subtitle.id)}
+            >
                 <div className="absolute left-1 top-1/2 transform -translate-y-1/2">
                   <div className={`
                     w-1 h-8 rounded-full transition-colors
@@ -88,20 +85,21 @@ export function SubtitleList() {
                   `} />
                 </div>
 
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-20">
+            <div className="flex gap-3">
+                <div className="flex-1 flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
                     <div className="text-xs text-text-tertiary font-mono leading-tight">
                       {formatMillisecondsToTime(subtitle.startTime)}
                     </div>
-                    <div className="text-xs text-text-disabled font-mono mt-0.5">
+                    <span className="text-xs text-text-disabled font-mono">
+                      -&gt;
+                    </span>
+                    <div className="text-xs text-text-disabled font-mono">
                       {formatMillisecondsToTime(subtitle.endTime)}
-                    </div>
-                    <div className="text-xs text-accent-blue mt-0.5">
-                      {Math.round((subtitle.endTime - subtitle.startTime) / 100) / 10}s
                     </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 mt-1.5">
                     <div className={`
                       text-sm leading-relaxed break-words
                       ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}
@@ -109,10 +107,7 @@ export function SubtitleList() {
                       {subtitle.text}
                     </div>
 
-                    <div className="flex items-center justify-between mt-1">
-                      <div className="text-xs text-text-disabled">
-                        #{index + 1}
-                      </div>
+                    <div className="flex items-center justify-end mt-1">
                       {hasAnimation && (
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-yellow-400" title="已应用动效">✨</span>
@@ -123,27 +118,28 @@ export function SubtitleList() {
                       )}
                     </div>
                   </div>
-
-                  <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1">
-                    {isCurrent && (
-                      <div className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
-                    )}
-                    {isSelected && !isCurrent && (
-                      <div className="w-2 h-2 rounded-full bg-accent-purple" />
-                    )}
-                    {isEditing && (
-                      <div className="text-xs text-accent-purple">✎</div>
-                    )}
-                    {hasAnimation && (
-                      <div 
-                        className="text-sm text-yellow-400" 
-                        title={`${subtitle.richText?.filter(seg => seg.animation).length || 0} 个动效片段`}
-                      >
-                        ✨
-                      </div>
-                    )}
-                  </div>
                 </div>
+
+                <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1">
+                  {isCurrent && (
+                    <div className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
+                  )}
+                  {isSelected && !isCurrent && (
+                    <div className="w-2 h-2 rounded-full bg-accent-purple" />
+                  )}
+                  {isEditing && (
+                    <div className="text-xs text-accent-purple">✎</div>
+                  )}
+                  {hasAnimation && (
+                    <div 
+                      className="text-sm text-yellow-400" 
+                      title={`${subtitle.richText?.filter(seg => seg.animation).length || 0} 个动效片段`}
+                    >
+                      ✨
+                    </div>
+                  )}
+                </div>
+              </div>
               </div>
             );
           })}

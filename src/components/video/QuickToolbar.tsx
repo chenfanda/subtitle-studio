@@ -100,16 +100,16 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   
   return (
     <div 
-      className="absolute z-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg px-2 py-1.5 flex items-center gap-1"
+      className="absolute z-40 bg-gray-900 border border-gray-700 rounded shadow-lg flex items-center divide-x divide-gray-700"
       style={{
         left: `${position.x}%`,
-        top: `calc(${position.y}% + 50px)`,
+        top: `calc(${position.y}% + 40px)`,
         transform: 'translateX(-50%)'
       }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="relative">
+      <div className="relative px-2 py-1">
         <button
           onClick={() => setShowColorPicker(!showColorPicker)}
           className="w-6 h-6 rounded-full border-2 border-gray-600 hover:border-gray-400 transition-colors"
@@ -133,24 +133,26 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         <button
           ref={brightnessButtonRef}
           onClick={() => setShowBrightness(!showBrightness)}
-          className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white"
+          className="px-3 py-1 text-xs hover:bg-gray-700 text-white transition-colors"
           title="亮度"
           disabled={!currentGlowColor}
         >
-          ☀
+          高亮
         </button>
         
         {showBrightness && currentGlowColor && (
-          <div className="absolute top-full mt-2 left-0 bg-gray-800 border border-gray-600 rounded p-2 w-24 z-50">
-            <input
-              type="range"
-              min="5"
-              max="30"
-              value={currentBrightness}
-              onChange={(e) => handleBrightnessChange(Number(e.target.value))}
-              className="w-full accent-accent-purple"
-            />
-            <div className="text-xs text-gray-400 text-center mt-1">{currentBrightness}</div>
+          <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-600 rounded p-1 w-32 z-50">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="range"
+                min="5"
+                max="30"
+                value={currentBrightness}
+                onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+                className="w-full accent-accent-purple"
+              />
+              <div className="text-xs text-gray-400 flex-shrink-0">{currentBrightness}</div>
+            </div>
           </div>
         )}
       </div>
@@ -158,7 +160,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
     <select
         value={currentStyle.fontFamily}
         onChange={(e) => handleFontChange(e.target.value)}
-        className="px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-white min-w-20"
+        className="pl-3 pr-2 py-1 text-xs bg-gray-900 hover:bg-gray-700 border-none rounded-none text-white min-w-20 focus:outline-none"
       >
         {FONT_OPTIONS.map(font => (
           <option key={font.value} value={font.value}>
@@ -170,7 +172,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       <select
         value={currentStyle.fontSize}
         onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-        className="px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-white w-12"
+        className="pl-3 pr-8 py-1 text-xs bg-gray-900 hover:bg-gray-700 border-none rounded-none text-white focus:outline-none"
       >
         {FONT_SIZE_OPTIONS.map(size => (
           <option key={size} value={size}>{size}</option>
@@ -179,7 +181,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       
       <button
         onClick={handleStyleClick}
-        className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-white whitespace-nowrap min-w-[52px] flex items-center justify-center"
+        className="px-3 py-1 text-xs hover:bg-gray-700 text-white whitespace-nowrap min-w-[52px] flex items-center justify-center transition-colors"
         title="样式"
       >
         样式
@@ -187,7 +189,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
         
       <button
         onClick={onClose}
-        className="w-5 h-5 text-gray-400 hover:text-white text-xs ml-1"
+        className="px-2 py-1 text-gray-400 hover:text-white text-xs transition-colors"
         title="关闭"
       >
         ✕

@@ -37,11 +37,11 @@ export function SubtitleOverlay() {
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const currentSubtitle = useMemo(() => {
-    if (!subtitles || !currentTime) return null;
+    if (!subtitles || typeof currentTime !== 'number') return null;
     
     const currentTimeMs = currentTime * 1000;
     return subtitles.find(subtitle => {
-      return currentTimeMs >= subtitle.startTime && currentTimeMs <= subtitle.endTime;
+      return currentTimeMs >= subtitle.startTime && currentTimeMs < subtitle.endTime;
     });
   }, [subtitles, currentTime]);
 
@@ -270,8 +270,8 @@ export function SubtitleOverlay() {
               `}
               style={{
                 width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto',
-                minWidth: '300px',
-                minHeight: '80px',
+                minWidth: '330px',
+                minHeight: '50px',
                 justifyContent: 
                   subtitleStyle.verticalAlignment === 'top' ? 'flex-start' :
                   subtitleStyle.verticalAlignment === 'bottom' ? 'flex-end' :
