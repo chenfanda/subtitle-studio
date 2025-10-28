@@ -6,6 +6,7 @@ interface BasicEffectsSectionProps {
   targetType: 'subtitle' | 'textElement';
   style: SubtitleStyle;
   onChange: (updates: Partial<SubtitleStyle>) => void;
+  onSaveStyle: () => void;
 }
 
 const FONT_OPTIONS = [
@@ -23,7 +24,12 @@ const FONT_OPTIONS = [
   { value: 'sans-serif', label: 'Sans Serif' }
 ];
 
-export function BasicEffectsSection({ targetType, style, onChange }: BasicEffectsSectionProps) {
+export function BasicEffectsSection({ 
+  targetType, 
+  style, 
+  onChange,
+  onSaveStyle
+}: BasicEffectsSectionProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -38,7 +44,18 @@ export function BasicEffectsSection({ targetType, style, onChange }: BasicEffect
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-medium text-text-primary">基本效果</h3>
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-text-primary">基本效果</h3>
+        <button
+          onClick={onSaveStyle}
+          className="flex items-center gap-1 text-xs font-medium text-accent-purple hover:text-accent-purple/80 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          <span>保存样式</span>
+        </button>
+      </div>
       
       <div>
         <label className="text-xs text-text-secondary mb-2 block">文字字体</label>

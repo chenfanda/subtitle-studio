@@ -11,8 +11,8 @@ export function TemplatePanel() {
   const categories = [
     { id: 'custom', name: '自定义' },
     { id: 'featured', name: '精选' },
-    { id: 'advanced', name: '高级' },
-    { id: 'basic', name: '基本' }
+    { id: 'dynamic', name: '动态效果' },
+    { id: 'static', name: '基本效果' }
   ] as const;
 
   return (
@@ -22,14 +22,13 @@ export function TemplatePanel() {
           {categories.map((category) => (
             <button
               key={category.id}
-              onClick={() => setActiveCategory(category.id)}
+              onClick={() => setActiveCategory(category.id as any)}
               className={`
                 flex-1 py-3 px-4 text-sm font-medium transition-colors border-b-2
                 ${activeCategory === category.id
                   ? 'text-accent-purple border-accent-purple'
                   : 'text-text-secondary border-transparent hover:text-text-primary'
-                }
-              `}
+                }\n              `}
             >
               {category.name}
             </button>
@@ -40,8 +39,8 @@ export function TemplatePanel() {
       <div className="flex-1 overflow-y-auto p-4">
         {activeCategory === 'custom' && <CustomEffectsTab />}
         {activeCategory === 'featured' && <FeaturedEffectsTab />}
-        {activeCategory === 'advanced' && <AdvancedEffectsTab />}
-        {activeCategory === 'basic' && <BasicEffectsTab />}
+        {activeCategory === 'dynamic' && <AdvancedEffectsTab />}
+        {activeCategory === 'static' && <BasicEffectsTab />}
       </div>
     </div>
   );

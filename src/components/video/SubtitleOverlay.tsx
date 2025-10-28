@@ -8,7 +8,6 @@ import { QuickToolbar } from './QuickToolbar';
 import { TransformBorder } from '../common/TransformBorder';
 import { convertToWebAnimation } from '@/utils/animationUtils';
 import { convertStyleToCSS } from '@/utils/textStyleUtils';
-import type { RichTextSegment } from '@/types/subtitle';
 
 export function SubtitleOverlay() {
   const { 
@@ -20,15 +19,15 @@ export function SubtitleOverlay() {
   } = useSubtitleStore();
   const { currentTime } = useProjectStore();
   const { 
-    selectedSubtitleIds, 
     setSelectedSubtitles, 
     clearSelectedTextElements,
     videoToolbar,
     setVideoToolbar,
     setVideoToolbarVisible,
-    showRichTextEditor
+    showRichTextEditor,
+    setRichTextSelection, 
+    setRichTextEditorTarget 
   } = useUIStore();
-  
   const [isDragging, setIsDragging] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
   const [segmentAnimations, setSegmentAnimations] = useState<Map<number, Animation>>(new Map());
@@ -52,7 +51,12 @@ export function SubtitleOverlay() {
   
   const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85, scale: 1.0, width: undefined };
   
-  const subtitleStyle = currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
+  const subtitleStyle = (
+    currentSubtitle?.richText && 
+    currentSubtitle.richText.length > 0
+  )
+    ? (currentSubtitle.richText[0].style || DEFAULT_SUBTITLE_STYLE)
+    : (currentSubtitle?.style || DEFAULT_SUBTITLE_STYLE);
 
   const renderRichTextContent = () => {
     if (!currentSubtitle) return null;
@@ -143,7 +147,7 @@ export function SubtitleOverlay() {
     };
   }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+ const handleMouseDown = (e: React.MouseEvent) => {
     if (e.detail === 2) return;
     
     e.preventDefault();
@@ -156,6 +160,14 @@ export function SubtitleOverlay() {
       targetType: 'subtitle',
       targetId: currentSubtitle.id
     });
+    
+    setRichTextSelection({
+      subtitleId: currentSubtitle.id,
+      startIndex: 0,
+      endIndex: currentSubtitle.text.length
+    });
+    setRichTextEditorTarget({ type: 'subtitle', id: currentSubtitle.id });
+    
     setIsDragging(true);
     setHasMoved(false);
     

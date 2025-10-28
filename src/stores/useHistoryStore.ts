@@ -31,7 +31,7 @@ interface HistoryStore extends HistoryState {
   };
 }
 
-const MAX_HISTORY = 5;
+const MAX_HISTORY = 20;
 
 const collectCurrentSnapshot = (): ProjectSnapshot => {
   return structuredClone({

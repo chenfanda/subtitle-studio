@@ -1,6 +1,52 @@
 import type { RichTextSegment, SubtitleStyle } from '@/types/subtitle';
 import type { AnimationEffect } from '@/types/animation';
+import type { TextStyleTemplate, TextStyleConfig } from '@/types/textStyle';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
+
+export const convertTemplateToSubtitleStyle = (
+  templateStyle: TextStyleTemplate['style']
+): Partial<SubtitleStyle> => {
+  
+  const convertedStyle: Partial<SubtitleStyle> = {
+    ...DEFAULT_SUBTITLE_STYLE,
+    
+    fontSize: templateStyle.fontSize || DEFAULT_SUBTITLE_STYLE.fontSize,
+    fontFamily: templateStyle.fontFamily || DEFAULT_SUBTITLE_STYLE.fontFamily,
+    color: templateStyle.color || DEFAULT_SUBTITLE_STYLE.color,
+    backgroundColor: templateStyle.backgroundColor || DEFAULT_SUBTITLE_STYLE.backgroundColor,
+    
+    fontWeight: templateStyle.fontWeight === 'bold' ? 700 : 400,
+    fontStyle: templateStyle.fontStyle || 'normal',
+    
+    stroke: templateStyle.stroke
+      ? {
+          enabled: true,
+          color: templateStyle.stroke.color,
+          width: templateStyle.stroke.width,
+        }
+      : {
+          enabled: false,
+          color: '#000000',
+          width: 0,
+        },
+    
+    shadow: {
+      ...DEFAULT_SUBTITLE_STYLE.shadow,
+      enabled: false,
+    },
+    
+    highlightColor: undefined,
+    highlightIntensity: 0,
+    
+    alignment: templateStyle.textAlign || DEFAULT_SUBTITLE_STYLE.alignment,
+  };
+  
+  if (templateStyle.borderRadius) {
+    convertedStyle.backgroundShape = templateStyle.borderRadius;
+  }
+  
+  return convertedStyle;
+};
 
 export const convertRichTextToPlainText = (richText: RichTextSegment[]): string => {
   return richText.map(segment => segment.text).join('');
@@ -399,4 +445,38 @@ export const getSegmentAnimations = (segments: RichTextSegment[]): AnimationEffe
 
 export const hasAnyAnimation = (segments: RichTextSegment[]): boolean => {
   return segments.some(segment => segment.animation !== undefined);
+};
+
+
+export const convertSubtitleStyleToTemplate = (
+  style: Partial<SubtitleStyle>
+): TextStyleConfig => {
+  const safeStyle = { ...DEFAULT_SUBTITLE_STYLE, ...style };
+
+  const templateStyle: TextStyleConfig = {
+    fontFamily: safeStyle.fontFamily,
+    fontSize: safeStyle.fontSize,
+    fontWeight: safeStyle.fontWeight >= 600 ? 'bold' : 'normal',
+    fontStyle: safeStyle.fontStyle,
+    color: safeStyle.color,
+    backgroundColor: safeStyle.backgroundColor === 'transparent' ? undefined : safeStyle.backgroundColor,
+    textAlign: safeStyle.alignment,
+  };
+
+  if (safeStyle.stroke?.enabled && safeStyle.stroke.width > 0) {
+    templateStyle.stroke = {
+      color: safeStyle.stroke.color,
+      width: safeStyle.stroke.width,
+    };
+  }
+  
+  if (safeStyle.backgroundShape && safeStyle.backgroundShape > 0) {
+    templateStyle.borderRadius = safeStyle.backgroundShape;
+  }
+  
+  if (safeStyle.letterSpacing) {
+    templateStyle.letterSpacing = safeStyle.letterSpacing;
+  }
+
+  return templateStyle;
 };

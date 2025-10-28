@@ -4,6 +4,10 @@ import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { ColorPicker } from '@/components/common/ColorPicker';
+import { 
+  applyStyleToSegments, 
+  createRichTextFromPlainText 
+} from '@/utils/textStyleUtils';
 
 interface QuickToolbarProps {
   targetType: 'subtitle' | 'textElement';
@@ -32,9 +36,13 @@ const FONT_SIZE_OPTIONS = [
 ];
 
 export function QuickToolbar({ targetType, targetId, position, onClose }: QuickToolbarProps) {
-  const { subtitles, updateSubtitle } = useSubtitleStore();
+  const { subtitles, updateSubtitleRichText } = useSubtitleStore();
   const { textElements, updateTextElement } = useTextElementStore();
-  const { setShowRichTextEditor, setRichTextEditorTarget } = useUIStore();
+  const { 
+    setShowRichTextEditor, 
+    setRichTextEditorTarget,
+    clearRichTextSelection
+  } = useUIStore();
   
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBrightness, setShowBrightness] = useState(false);
@@ -46,17 +54,40 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   
   if (!currentObject) return null;
   
-  const currentStyle = currentObject.style || DEFAULT_SUBTITLE_STYLE;
+  const currentStyle = (
+    targetType === 'subtitle' && 
+    currentObject.richText && 
+    currentObject.richText.length > 0
+  ) 
+    ? (currentObject.richText[0].style || DEFAULT_SUBTITLE_STYLE)
+    : (currentObject.style || DEFAULT_SUBTITLE_STYLE);
+  
   const currentGlowColor = currentStyle.highlightColor;
   const currentBrightness = currentStyle.highlightIntensity || 15;
   
   const handleStyleUpdate = (updates: Partial<typeof currentStyle>) => {
-    if (targetType === 'subtitle') {
-      updateSubtitle(targetId, { style: { ...currentStyle, ...updates } });
-    } else {
-      updateTextElement(targetId, { style: { ...currentStyle, ...updates } });
-    }
-  };
+      if (targetType === 'subtitle') {
+        const selection = useUIStore.getState().richTextSelection;
+        
+        if (!selection || selection.subtitleId !== targetId) {
+          console.warn('QuickToolbar: Stale selection state. Aborting style update.');
+          return;
+        }
+        
+        const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
+        
+        const newSegments = applyStyleToSegments(
+          baseRichText,
+          selection.startIndex,
+          selection.endIndex,
+          updates
+        );
+        updateSubtitleRichText(targetId, newSegments);
+
+      } else {
+        updateTextElement(targetId, { style: { ...currentStyle, ...updates } });
+      }
+    };
   
   const handleColorSelect = (color: string) => {
     if (color === 'transparent') {
@@ -91,6 +122,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
   };
   
   const handleStyleClick = () => {
+    clearRichTextSelection();
     setRichTextEditorTarget({ type: targetType, id: targetId });
     setShowRichTextEditor(true);
     onClose();

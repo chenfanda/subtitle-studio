@@ -10,12 +10,17 @@ interface VideoToolbarState {
   targetId: string | null;
 }
 
+type TemplateCategory = 'custom' | 'featured' | 'dynamic' | 'static';
+
 interface UIStore extends UIState {
   richTextSelection: RichTextSelection | null;
   setRichTextSelection: (selection: RichTextSelection | null) => void;
   clearRichTextSelection: () => void;
   
   setActivePanel: (panel: PanelType) => void;
+  templateTab: TemplateCategory;
+  setTemplateTab: (tab: TemplateCategory) => void;
+
   toggleLeftPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
   setLeftPanelCollapsed: (collapsed: boolean) => void;
@@ -91,6 +96,7 @@ export const useUIStore = create<UIStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
       ...initialState,
+      templateTab: 'featured', 
       richTextSelection: null,
       selectedTextElementIds: [],
       editingTextElementId: null,
@@ -118,6 +124,11 @@ export const useUIStore = create<UIStore>()(
           state.activePanel = panel;
         }),
       
+      setTemplateTab: (tab) =>
+        set((state) => {
+          state.templateTab = tab;
+        }),
+
       toggleLeftPanel: () => 
         set((state) => {
           state.leftPanelCollapsed = !state.leftPanelCollapsed;
@@ -356,6 +367,7 @@ export const useUIStore = create<UIStore>()(
       resetUIState: () => 
         set(() => ({ 
           ...initialState,
+          templateTab: 'featured', 
           richTextSelection: null,
           selectedTextElementIds: [],
           editingTextElementId: null,

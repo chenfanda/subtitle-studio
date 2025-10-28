@@ -1,3 +1,6 @@
+import type { TextStyleTemplate } from './textStyle';
+import type { RichTextSegment } from './subtitle'; 
+
 export type AnimationCategory = 'custom' | 'featured' | 'advanced' | 'basic';
 
 export type AnimationEffectType = 'entrance' | 'continuous' | 'exit';
@@ -17,4 +20,21 @@ export interface AnimationTemplate {
   preview: string;
   category: AnimationCategory;
   effects: AnimationEffect[];
+}
+
+export interface DynamicStyleTemplate {
+  id: string;
+  name: string;
+  preview: string;
+  category: string; 
+  style: TextStyleTemplate['style'];
+  animation: AnimationEffect;
+}
+
+export interface RichTextStyleTemplate {
+  id: string;
+  name: string;
+  preview: string; 
+  category: string; 
+  segments: RichTextSegment[]; 
 }

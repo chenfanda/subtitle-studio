@@ -1,6 +1,6 @@
 import { useUIStore } from '@/stores/useUIStore';
 import { useTemplateStore } from '@/stores/useTemplateStore';
-import { ANIMATION_TEMPLATES } from '@/constants/animationTemplates';
+import { EffectPreviewCard } from '@/components/templates/EffectPreviewCard'; // Corrected import path
 
 interface TemplateQuickAccessProps {
   targetType: 'subtitle' | 'textElement';
@@ -8,51 +8,44 @@ interface TemplateQuickAccessProps {
 }
 
 export function TemplateQuickAccess({ targetType, targetId }: TemplateQuickAccessProps) {
-  const { setActivePanel } = useUIStore();
-  const { applyAnimationToRange } = useTemplateStore();
-  
-  // ✅ 获取2个推荐模板（从精选分类）
-  const featuredTemplates = ANIMATION_TEMPLATES.featured?.slice(0, 2) || [];
-  
-  const handleTemplateClick = (template: any) => {
-    if (template.effects && template.effects[0]) {
-      applyAnimationToRange(targetId, template.effects[0]);
-    }
-  };
-  
+  const setActivePanel = useUIStore((state) => state.setActivePanel);
+  const setActiveTemplateCategory = useTemplateStore((state) => state.setActiveCategory);
+  const getTemplatesByCategory = useTemplateStore((state) => state.getTemplatesByCategory);
+
+  // Get first 2 featured (dynamic) templates
+  const featuredTemplates = getTemplatesByCategory('featured').slice(0, 2);
+
   const handleViewMore = () => {
     setActivePanel('templates');
+    setActiveTemplateCategory('featured');
   };
-  
+
+  // Only show for subtitles and if templates exist
+  if (targetType !== 'subtitle' || featuredTemplates.length === 0) {
+    return null;
+  }
+
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-text-primary">模板</h3>
-      
-      {/* 2个模板卡片 */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-text-primary">精选模板</h3>
+        <button
+          onClick={handleViewMore}
+          className="text-xs font-medium text-accent-purple hover:text-accent-purple/80 transition-colors"
+        >
+          查看更多
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         {featuredTemplates.map(template => (
-          <button
+          <EffectPreviewCard
             key={template.id}
-            onClick={() => handleTemplateClick(template)}
-            className="aspect-video rounded-lg border-2 border-border-secondary hover:border-accent-purple transition-all overflow-hidden bg-bg-tertiary flex items-center justify-center group"
-          >
-            <div className="text-center p-2">
-              <div className="text-xs font-medium text-text-primary group-hover:text-accent-purple transition-colors">
-                {template.name}
-              </div>
-            </div>
-          </button>
+            template={template}
+            targetSubtitleId={targetId} // Pass targetId here
+          />
         ))}
       </div>
-      
-      {/* 查看更多按钮 */}
-      <button
-        onClick={handleViewMore}
-        className="w-full py-2 text-sm text-accent-purple hover:text-accent-purple/80 border border-border-secondary rounded-lg hover:bg-bg-tertiary transition-all flex items-center justify-center gap-2"
-      >
-        <span>查看更多模板</span>
-        <span>→</span>
-      </button>
     </div>
   );
 }

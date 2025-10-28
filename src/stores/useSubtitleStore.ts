@@ -93,38 +93,24 @@ export const useSubtitleStore = create<SubtitleStore>()(
       },
       
       updateSubtitle: (id, updates) => {
-            set((state) => {
-              const subtitle = findById(state.subtitles, id);
-              if (!subtitle) return;
-              
-              if (updates.richText) {
-                updates.text = convertRichTextToPlainText(updates.richText);
-              }
-
-              if (updates.style && subtitle.richText) {
-            
-                const mainStyle = subtitle.style || DEFAULT_SUBTITLE_STYLE;
-
-                subtitle.richText = subtitle.richText.map(segment => {
-            
-                  const baseStyle = segment.style || mainStyle;
-
-                  return {
-                    ...segment,
-                    style: { 
-                      ...baseStyle,    
-                      ...updates.style  
-                    } 
-                  };
-                });
-              }
-              
-              Object.assign(subtitle, updates);
-            });
-            
-            useProjectStore.getState().markUnsaved();
-            useHistoryStore.getState().pushState();
-          },
+        set((state) => {
+          const subtitle = findById(state.subtitles, id);
+          if (!subtitle) return;
+          
+          if (updates.richText) {
+            updates.text = convertRichTextToPlainText(updates.richText);
+          } 
+          else if (updates.text && updates.text !== subtitle.text) { 
+            const baseStyle = subtitle.style || DEFAULT_SUBTITLE_STYLE;
+            updates.richText = createRichTextFromPlainText(updates.text, baseStyle);
+          }
+          
+          Object.assign(subtitle, updates);
+        });
+        
+        useProjectStore.getState().markUnsaved();
+        useHistoryStore.getState().pushState();
+      },
       
       updateSubtitleRichText: (id, richText) => {
         set((state) => {
