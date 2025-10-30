@@ -13,20 +13,21 @@ import {
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTextElementStore } from '../../stores/useTextElementStore';
-import { useUIStore } from '../../stores/useUIStore';
+import { useUIStore, useSelectedAttachment } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
 
 export function VideoControls() {
   const { isPlaying, volume, togglePlayback, setVolume, currentTime, duration, setCurrentTime } = useProjectStore();
-  const { deleteSubtitle } = useSubtitleStore();
+  const { removeSubtitleAudio } = useSubtitleStore();
   const { deleteTextElement } = useTextElementStore();
   const { 
     toggleTimelineCollapsed, 
     videoToolbar,
-    clearSelectedSubtitles,
+    setSelectedAttachment,
     clearSelectedTextElements,
     clearVideoToolbar
   } = useUIStore();
+  const selectedAttachment = useSelectedAttachment();
   
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -113,18 +114,37 @@ export function VideoControls() {
   };
 
   const handleDeleteSelected = () => {
-    if (videoToolbar.targetType === 'subtitle' && videoToolbar.targetId) {
-      deleteSubtitle(videoToolbar.targetId);
-      clearSelectedSubtitles();
-      clearVideoToolbar();
-    } else if (videoToolbar.targetType === 'textElement' && videoToolbar.targetId) {
+    // 优先处理时间轴附件
+    if (selectedAttachment) {
+      const { type, subtitleId } = selectedAttachment;
+      
+      switch (type) {
+        case 'audio':
+          removeSubtitleAudio(subtitleId);
+          break;
+        // case 'broll':
+        //   removeSubtitleBroll(subtitleId);
+        //   break;
+        default:
+          break;
+      }
+      setSelectedAttachment(null);
+    } 
+    // 否则，处理视频画面元素 (仅限 textElement)
+    else if (videoToolbar.visible && videoToolbar.targetId && videoToolbar.targetType === 'textElement') {
       deleteTextElement(videoToolbar.targetId);
       clearSelectedTextElements();
       clearVideoToolbar();
     }
   };
 
-  const canDelete = videoToolbar.visible && videoToolbar.targetId !== null;
+  // 扩展启用逻辑
+  const canDeleteAttachment = selectedAttachment !== null;
+  const canDeleteVideoElement = videoToolbar.visible && 
+                                videoToolbar.targetId !== null && 
+                                videoToolbar.targetType === 'textElement';
+                                
+  const canDelete = canDeleteAttachment || canDeleteVideoElement;
 
   useState(() => {
     const handleFullscreenChange = () => {
@@ -202,7 +222,7 @@ export function VideoControls() {
                   ? 'bg-white/10 hover:bg-white/20 text-white'
                   : 'bg-white/5 text-white/30 cursor-not-allowed'
               }`}
-              title={canDelete ? "删除选中元素" : "未选中任何元素"}
+              title={canDelete ? "删除选中元素" : "未选中任何可删除元素"}
             >
               <span className="text-sm">🗑️</span>
             </button>

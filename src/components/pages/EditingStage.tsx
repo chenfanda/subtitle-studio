@@ -5,8 +5,13 @@ import { VideoControls } from '../video/VideoControls';
 import { TimelineArea } from '../layout/TimelineArea';
 import { RichTextEditor } from '../common/RichTextEditor';
 import { AudioPlayer } from '../audio/AudioPlayer';
-import { useLeftPanelCollapsed, useTimelineCollapsed } from '@/stores/useUIStore';
-import { useUIStore } from '@/stores/useUIStore';
+import { AudioSettingsPanel } from '../audio/AudioSettingsPanel';
+import { 
+  useLeftPanelCollapsed, 
+  useTimelineCollapsed,
+  useUIStore,
+  useSelectedAttachment 
+} from '@/stores/useUIStore';
 
 export function EditingStage() {
   const collapsed = useLeftPanelCollapsed();
@@ -17,10 +22,42 @@ export function EditingStage() {
     setShowRichTextEditor,
     setRichTextEditorTarget 
   } = useUIStore();
+  
+  const selectedAttachment = useSelectedAttachment();
 
   const handleCloseRichTextEditor = () => {
     setShowRichTextEditor(false);
     setRichTextEditorTarget(null);
+  };
+
+  const renderRightPanel = () => {
+    if (selectedAttachment) {
+      switch (selectedAttachment.type) {
+        case 'audio':
+          return (
+            <AudioSettingsPanel
+              key={selectedAttachment.subtitleId}
+              subtitleId={selectedAttachment.subtitleId}
+            />
+          );
+        // case 'broll':
+        //   return <BrollSettingsPanel ... />;
+        default:
+          return null;
+      }
+    }
+    
+    if (showRichTextEditor && richTextEditorTarget) {
+       return (
+         <RichTextEditor
+           targetType={richTextEditorTarget.type}
+           targetId={richTextEditorTarget.id}
+           onClose={handleCloseRichTextEditor}
+         />
+       );
+    }
+    
+    return null;
   };
 
   return (
@@ -36,13 +73,8 @@ export function EditingStage() {
               <VideoArea />
             </div>
             
-            {showRichTextEditor && richTextEditorTarget && (
-              <RichTextEditor
-                targetType={richTextEditorTarget.type}
-                targetId={richTextEditorTarget.id}
-                onClose={handleCloseRichTextEditor}
-              />
-            )}
+            {renderRightPanel()}
+
           </div>
           
           <div className="h-20 bg-gray-800 flex-shrink-0 border-t-2 border-gray-600">

@@ -5,16 +5,18 @@ import { useUIStore } from '@/stores/useUIStore';
 
 export function SubtitleTrack() {
   const { subtitles } = useSubtitleStore();
-  const { currentTime } = useProjectStore();
+  const { currentTime, setCurrentTime } = useProjectStore(); // 1. (新增) 获取 setCurrentTime
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
 
-  const handleSubtitleClick = (subtitleId: string) => {
+  const handleSubtitleClick = (subtitleId: string, startTime: number) => {
     setSelectedSubtitles([subtitleId]);
+    setCurrentTime(startTime / 1000); // 2. (新增) 点击时跳转时间
   };
 
-  const handleSubtitleDoubleClick = (subtitleId: string) => {
+  const handleSubtitleDoubleClick = (subtitleId: string, startTime: number) => {
     setEditingSubtitle(subtitleId);
+    setCurrentTime(startTime / 1000); // 3. (新增) 双击时也跳转时间
   };
 
   return (
@@ -48,8 +50,8 @@ export function SubtitleTrack() {
                 left: startPos, 
                 width
               }}
-              onClick={() => handleSubtitleClick(subtitle.id)}
-              onDoubleClick={() => handleSubtitleDoubleClick(subtitle.id)}
+              onClick={() => handleSubtitleClick(subtitle.id, subtitle.startTime)}
+              onDoubleClick={() => handleSubtitleDoubleClick(subtitle.id, subtitle.startTime)}
             >
               <div className="truncate text-xs">
                 {subtitle.text}

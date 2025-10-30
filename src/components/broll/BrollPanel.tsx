@@ -86,7 +86,7 @@ export function BrollPanel() {
                       </div>
                     ) : (
                       <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-text-tertiary">
-                        <span className="text-2xl">📷</span>
+                        <span className="text-2xl">🎬</span>
                       </div>
                     )}
                   </button>

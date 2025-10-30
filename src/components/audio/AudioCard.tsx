@@ -4,6 +4,7 @@ import { useSelectedSubtitles } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { formatDuration } from '@/utils/audioUtils';
 import type { AudioTrack } from '@/types/audio';
+import { PlayIcon, PauseIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
 
 interface AudioCardProps {
   track: AudioTrack;
@@ -17,6 +18,7 @@ export function AudioCard({ track }: AudioCardProps) {
   const { 
     currentTrack, 
     isPlaying, 
+    currentTime,
     playAudio, 
     pauseAudio 
   } = useAudioStore();
@@ -40,21 +42,19 @@ export function AudioCard({ track }: AudioCardProps) {
     }
   }, [selectedSubtitleIds, hasSelectedSubtitles, subtitles, track.id]);
 
-  const handleMouseEnter = () => {
-    setIsHovering(true);
-    if (!isCurrentlyPlaying) {
+  const handlePlayToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isCurrentlyPlaying) {
+      pauseAudio();
+    } else {
       playAudio(track);
     }
   };
 
-  const handleMouseLeave = () => {
-    setIsHovering(false);
-    if (isCurrentlyPlaying) {
-      pauseAudio();
-    }
-  };
-
-  const handleCardClick = () => {
+  const handleApplyAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (!hasSelectedSubtitles) return;
     
     if (!hasThisAudio) {
@@ -81,30 +81,46 @@ export function AudioCard({ track }: AudioCardProps) {
     }
   };
 
-  const showBorder = isHovering || hasThisAudio || isApplied;
+  const showBorder = isHovering || hasThisAudio || isApplied || isCurrentlyPlaying;
 
   const getBorderColor = () => {
     if (hasThisAudio) return 'border-orange-500';
     if (isApplied) return 'border-green-500';
-    if (isHovering) return 'border-accent-purple';
-    return '';
+    if (isHovering || isCurrentlyPlaying) return 'border-accent-purple';
+    return 'border-transparent';
   };
 
+  const progressPercentage = (isCurrentlyPlaying && track.duration > 0) 
+    ? (currentTime / (track.duration * 1000)) * 100 
+    : 0;
+
   return (
-    <button
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleCardClick}
+    <div
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       className={`
         relative w-full rounded-lg transition-all duration-200
         overflow-hidden group p-2 flex items-center gap-3
-        ${showBorder ? `border-2 ${getBorderColor()}` : 'border-0'}
-        ${!hasSelectedSubtitles ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
+        border-2
+        ${getBorderColor()}
+        ${!hasSelectedSubtitles ? 'opacity-60' : ''}
       `}
-      disabled={!hasSelectedSubtitles}
     >
-      <div className="flex-shrink-0 w-16 h-16 rounded bg-bg-tertiary flex items-center justify-center overflow-hidden">
+      <div className="flex-shrink-0 w-12 h-12 rounded bg-bg-tertiary flex items-center justify-center overflow-hidden relative">
         <div className="text-2xl">🎵</div>
+        
+        {(isHovering || isCurrentlyPlaying) && (
+          <button
+            onClick={handlePlayToggle}
+            className="absolute inset-0 bg-black/50 flex items-center justify-center"
+          >
+            {isCurrentlyPlaying ? (
+              <PauseIcon className="w-6 h-6 text-white" />
+            ) : (
+              <PlayIcon className="w-6 h-6 text-white" />
+            )}
+          </button>
+        )}
       </div>
       
       <div className="flex-1 text-left min-w-0">
@@ -116,19 +132,34 @@ export function AudioCard({ track }: AudioCardProps) {
         </div>
       </div>
       
-      {hasThisAudio && (
-        <div className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full" />
+      {(isHovering || hasThisAudio) && hasSelectedSubtitles && (
+        <button
+          onClick={handleApplyAudio}
+          className={`
+            absolute right-2 bottom-2 w-4 h-4 rounded flex items-center justify-center
+            transition-all duration-200
+            ${hasThisAudio
+              ? 'bg-orange-500 hover:bg-orange-600 text-white'
+              : 'bg-accent-purple hover:bg-accent-purple-dark text-white'
+            }
+          `}
+          title={hasThisAudio ? "移除音频" : "应用音频"}
+        >
+          {hasThisAudio ? (
+            <MinusIcon className="w-5 h-5" />
+          ) : (
+            <PlusIcon className="w-5 h-5" />
+          )}
+        </button>
       )}
 
       {isApplied && (
         <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
       )}
       
-      {!hasSelectedSubtitles && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-          <span className="text-xs text-white">请先选择字幕</span>
-        </div>
+      {isCurrentlyPlaying && (
+        <div className="absolute bottom-0 left-0 h-0.5 bg-accent-purple" style={{ width: `${progressPercentage}%` }} />
       )}
-    </button>
+    </div>
   );
 }

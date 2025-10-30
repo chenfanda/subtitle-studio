@@ -1,4 +1,3 @@
-// src/components/timeline/PlayheadIndicator.tsx
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
@@ -9,27 +8,22 @@ export function PlayheadIndicator() {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 计算播放头位置：currentTime(秒) × 每秒像素数 - 滚动偏移
   const playheadPosition = (currentTime || 0) * pixelsPerSecond - scrollPosition;
 
-  // 自动跟随播放进度滚动 - 优化版本
   useEffect(() => {
     if (!isPlaying || isDragging) return;
 
-    // 使用节流，避免频繁更新
     const timeoutId = setTimeout(() => {
       const currentPixelPosition = (currentTime || 0) * pixelsPerSecond;
       const visibleStart = scrollPosition;
       const visibleEnd = scrollPosition + (viewportWidth || 800);
       
-      // 增加更大的缓冲区，减少滚动频率
       const leftBuffer = 200;
       const rightBuffer = 200;
       
       let needsScroll = false;
       let newScrollPosition = scrollPosition;
       
-      // 只在播放头真正超出缓冲区时才滚动
       if (currentPixelPosition < visibleStart + leftBuffer) {
         newScrollPosition = Math.max(0, currentPixelPosition - 300);
         needsScroll = true;
@@ -38,16 +32,15 @@ export function PlayheadIndicator() {
         needsScroll = true;
       }
       
-      // 只有真正需要滚动时才更新状态
       if (needsScroll && Math.abs(newScrollPosition - scrollPosition) > 10) {
         requestAnimationFrame(() => {
           setScrollPosition(newScrollPosition);
         });
       }
-    }, 100); // 100ms节流
+    }, 100); 
 
     return () => clearTimeout(timeoutId);
-  }, [currentTime, isPlaying, isDragging]); // 减少依赖项
+  }, [currentTime, isPlaying, isDragging]); 
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -76,6 +69,7 @@ export function PlayheadIndicator() {
   };
 
   const handleTimelineClick = (e: React.MouseEvent) => {
+    // 这个函数现在不会被触发了，因为父 div 是 pointer-events-none
     if (isDragging) return;
     if (!containerRef.current || !duration) return;
     
@@ -90,20 +84,18 @@ export function PlayheadIndicator() {
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 pointer-events-auto"
-      onClick={handleTimelineClick}
+      className="absolute inset-0 pointer-events-none" // ⬅️ 核心修改
+      onClick={handleTimelineClick} // 这个点击事件现在无效了
     >
-      {/* 播放头指示线 */}
       <div
         className="absolute top-0 bottom-0 w-0.5 bg-accent-red z-30"
         style={{ left: playheadPosition }}
       >
-        {/* 播放头拖拽手柄 */}
         <div 
           className={`
             absolute -top-1 w-4 h-4 bg-accent-red rounded-full 
             transform -translate-x-1/2 cursor-grab hover:scale-110
-            transition-transform duration-150 pointer-events-auto
+            transition-transform duration-150 pointer-events-auto // ⬅️ 手柄保持可点击
             ${isDragging ? 'scale-110 cursor-grabbing' : ''}
           `}
           style={{ 

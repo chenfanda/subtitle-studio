@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { UIState, PanelType, RichTextSelection } from '@/types/ui';
+// 1. (修改) 导入 SelectedAttachment
+import type { UIState, PanelType, RichTextSelection, SelectedAttachment } from '@/types/ui'; 
 import { APP_CONFIG } from '@/constants/config';
+
 
 interface VideoToolbarState {
   visible: boolean;
@@ -40,6 +42,9 @@ interface UIStore extends UIState {
   clearSelectedTextElements: () => void;
   toggleTextElementSelection: (id: string) => void;
   setEditingTextElement: (id: string | null) => void;
+
+  // 2. (新增) 管理附件选择的状态
+  setSelectedAttachment: (attachment: SelectedAttachment | null) => void;
   
   showRichTextEditor: boolean;
   richTextEditorTarget: {
@@ -83,6 +88,7 @@ const initialState: UIState = {
   leftPanelCollapsed: false,
   selectedSubtitleIds: [],
   editingSubtitleId: null,
+  selectedAttachment: null, // 3. (新增) 
   timelineZoom: APP_CONFIG.DEFAULT_PIXELS_PER_SECOND,
   timelineScrollLeft: 0,
   showSettingsModal: false,
@@ -150,6 +156,7 @@ export const useUIStore = create<UIStore>()(
       setSelectedSubtitles: (ids) => 
         set((state) => {
           state.selectedSubtitleIds = [...new Set(ids)];
+          state.selectedAttachment = null; // 4. (修改) 互斥
         }),
       
       addSelectedSubtitle: (id) => 
@@ -157,6 +164,7 @@ export const useUIStore = create<UIStore>()(
           if (!state.selectedSubtitleIds.includes(id)) {
             state.selectedSubtitleIds.push(id);
           }
+          state.selectedAttachment = null; // 4. (修改) 互斥
         }),
       
       removeSelectedSubtitle: (id) => 
@@ -181,14 +189,18 @@ export const useUIStore = create<UIStore>()(
           } else {
             state.selectedSubtitleIds.splice(index, 1);
           }
+          state.selectedAttachment = null; // 4. (修改) 互斥
         }),
       
       setEditingSubtitle: (id) => 
         set((state) => {
           state.editingSubtitleId = id;
           
-          if (id && !state.selectedSubtitleIds.includes(id)) {
-            state.selectedSubtitleIds = [id];
+          if (id) {
+            if (!state.selectedSubtitleIds.includes(id)) {
+              state.selectedSubtitleIds = [id];
+            }
+            state.selectedAttachment = null; // 4. (修改) 互斥
           }
           
           if (!id) {
@@ -199,6 +211,7 @@ export const useUIStore = create<UIStore>()(
       setSelectedTextElements: (ids) =>
         set((state) => {
           state.selectedTextElementIds = [...new Set(ids)];
+          state.selectedAttachment = null; // 4. (修改) 互斥
         }),
       
       addSelectedTextElement: (id) =>
@@ -206,6 +219,7 @@ export const useUIStore = create<UIStore>()(
           if (!state.selectedTextElementIds.includes(id)) {
             state.selectedTextElementIds.push(id);
           }
+          state.selectedAttachment = null; // 4. (修改) 互斥
         }),
       
       removeSelectedTextElement: (id) =>
@@ -229,14 +243,29 @@ export const useUIStore = create<UIStore>()(
           } else {
             state.selectedTextElementIds.splice(index, 1);
           }
+          state.selectedAttachment = null; 
         }),
       
       setEditingTextElement: (id) =>
         set((state) => {
           state.editingTextElementId = id;
           
-          if (id && !state.selectedTextElementIds.includes(id)) {
-            state.selectedTextElementIds = [id];
+          if (id) {
+            if (!state.selectedTextElementIds.includes(id)) {
+              state.selectedTextElementIds = [id];
+            }
+            state.selectedAttachment = null; 
+          }
+        }),
+
+      setSelectedAttachment: (attachment) =>
+        set((state) => {
+          state.selectedAttachment = attachment;
+          if (attachment) {
+            state.selectedSubtitleIds = [];
+            state.editingSubtitleId = null;
+            state.selectedTextElementIds = [];
+            state.editingTextElementId = null;
           }
         }),
       
@@ -413,3 +442,6 @@ export const useTimelineCollapsed = () =>
 
 export const useVideoToolbar = () =>
   useUIStore((state) => state.videoToolbar);
+
+export const useSelectedAttachment = () =>
+  useUIStore((state) => state.selectedAttachment);
