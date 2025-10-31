@@ -16,7 +16,8 @@ export function LeftSidebar() {
 
   return (
     <div 
-      className="bg-bg-primary flex border-r border-border-primary overflow-hidden"
+      // 📍 修复: 在这里添加了 h-full
+      className="h-full bg-bg-primary flex border-r border-border-primary overflow-hidden"
       style={{ width: leftPanelWidth }}
     >
       <VerticalToolbar />
@@ -34,6 +35,7 @@ export function LeftSidebar() {
   );
 }
 
+// 这个面板也应该有 h-full，您已经正确添加了
 function ClipsPanel() {
   return (
     <div className="h-full flex items-center justify-center text-text-secondary">

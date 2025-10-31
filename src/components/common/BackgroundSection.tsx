@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Square, Circle } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
 
 interface BackgroundSectionProps {
@@ -56,7 +57,7 @@ export function BackgroundSection({
             onChange={(e) => handleToggle(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
+          <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
       
@@ -84,7 +85,10 @@ export function BackgroundSection({
           <div>
             <label className="text-xs text-text-secondary mb-2 block">背景形状</label>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary">▢</span>
+              {/* 📍 修改点 2: 替换了 '▢' 
+                * w-3.5 h-3.5 (14px) 视觉上匹配 text-xs (12px)
+                */}
+              <Square className="w-3.5 h-3.5 text-text-secondary" />
               <input
                 type="range"
                 min="0"
@@ -92,10 +96,14 @@ export function BackgroundSection({
                 step="3"
                 value={backgroundShape}
                 onChange={(e) => onChange({ backgroundShape: Number(e.target.value) })}
-                className="flex-1 accent-accent-purple"
+                className="flex-1 accent-accent-purple focus:outline-none"
               />
-              <span className="text-xs text-text-secondary">○</span>
+              {/* 📍 修改点 3: 替换了 '○' */}
+              <Circle className="w-3.5 h-3.5 text-text-secondary" />
             </div>
+            {/* 备注: 这里的逻辑 (50) 似乎有一个小 bug，因为滑块最大值是 9,
+                但不影响图标替换。
+            */}
             <div className="text-xs text-text-tertiary text-center mt-1">
               {backgroundShape === 0 ? '方形' : backgroundShape === 50 ? '椭圆' : '圆角'}
             </div>

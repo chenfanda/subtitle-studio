@@ -62,7 +62,8 @@ export function HighlightColorSection({
             onChange={(e) => handleToggle(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
+          {/* 📍 修改点 1: 移除开关(toggle)的紫色边框 */}
+          <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
       
@@ -97,7 +98,8 @@ export function HighlightColorSection({
                 step="1"
                 value={intensity}
                 onChange={(e) => onChange({ color: color, intensity: Number(e.target.value) })}
-                className="flex-1 accent-accent-purple"
+                // 📍 修改点 2: 保留紫色滑块，并添加 focus:outline-none 来移除矩形边框
+                className="flex-1 accent-accent-purple focus:outline-none"
               />
               <span className="text-sm text-text-primary w-12 text-right font-mono">
                 {intensity}px

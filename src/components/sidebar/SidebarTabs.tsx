@@ -1,21 +1,32 @@
 import { useUIStore, useActivePanel } from '@/stores/useUIStore';
 import type { PanelType } from '@/types/ui';
+// 导入 lucide-react 图标库
+import {
+  Scissors,
+  MessageSquareText,
+  Type,
+  Sparkles,
+  Image,
+  AudioWaveform,
+  Film
+} from 'lucide-react';
 
 interface ToolItem {
   id: PanelType;
-  icon: string;
+  icon: React.ElementType; // 图标类型从 string 改为 React.ElementType
   label: string;
   shortcut?: string;
 }
 
+// (使用 lucide-react 替换 emoji)
 const TOOLS: ToolItem[] = [
-  { id: 'clips', icon: '✂️', label: '剪辑工具', shortcut: 'C' },
-  { id: 'subtitles', icon: '💬', label: '字幕编辑', shortcut: 'U' },
-  { id: 'text', icon: 'T', label: '文字元素', shortcut: 'T' },
-  { id: 'templates', icon: '✨', label: '文字模板', shortcut: 'E' },
-  { id: 'media', icon: '🖼️', label: '媒体素材', shortcut: 'M' },
-  { id: 'audio', icon: '🎵', label: '音频工具', shortcut: 'A' },
-  { id: 'broll', icon: '📽️', label: 'B-roll素材', shortcut: 'B' }
+  { id: 'clips', icon: Scissors, label: '剪辑工具', shortcut: 'C' },
+  { id: 'subtitles', icon: MessageSquareText, label: '字幕编辑', shortcut: 'U' },
+  { id: 'text', icon: Type, label: '文字元素', shortcut: 'T' },
+  { id: 'templates', icon: Sparkles, label: '文字模板', shortcut: 'E' },
+  { id: 'media', icon: Image, label: '媒体素材', shortcut: 'M' },
+  { id: 'audio', icon: AudioWaveform, label: '音频工具', shortcut: 'A' },
+  { id: 'broll', icon: Film, label: 'B-roll素材', shortcut: 'B' }
 ];
 
 export function VerticalToolbar() {
@@ -23,16 +34,18 @@ export function VerticalToolbar() {
   const { setActivePanel } = useUIStore();
 
   return (
-    <div className="w-15 bg-bg-primary flex flex-col items-center py-4 space-y-2 border-r border-border-secondary">
+    // (移除了 border-r，因为 LeftSidebar.tsx 父组件已经有了)
+    <div className="w-15 bg-bg-primary flex flex-col items-center py-4 space-y-2">
       {TOOLS.map((tool) => {
         const isActive = activePanel === tool.id;
+        const Icon = tool.icon; // 将图标组件赋值给大写变量
         
         return (
           <button
             key={tool.id}
             onClick={() => setActivePanel(tool.id)}
             className={`
-              relative w-12 h-12 rounded-lg flex items-center justify-center text-xl 
+              relative w-12 h-12 rounded-lg flex items-center justify-center 
               transition-all duration-normal hover:scale-105 group
               ${isActive 
                 ? 'bg-accent-purple text-white shadow-lg shadow-accent-purple/20' 
@@ -43,7 +56,8 @@ export function VerticalToolbar() {
             aria-label={tool.label}
             aria-pressed={isActive}
           >
-            <span className="select-none">{tool.icon}</span>
+            {/* (渲染图标组件) */}
+            <Icon className="w-6 h-6" strokeWidth={1.5} />
             
             {!isActive && (
               <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-10 bg-white transition-opacity duration-normal" />
@@ -52,19 +66,11 @@ export function VerticalToolbar() {
         );
       })}
       
-      <div className="flex-1" />
-      
-      <div className="w-full h-px bg-border-secondary mx-2" />
-      
-      <button
-        className="w-10 h-10 rounded-lg flex items-center justify-center text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors duration-normal"
-        title="面板设置"
-        onClick={() => {
-          console.log('Panel settings');
-        }}
-      >
-        ⚙️
-      </button>
+      {/* (已删除) 
+        <div className="flex-1" />  // <-- 导致布局 bug 的元素
+        <div className="w-full h-px bg-border-secondary mx-2" />
+        <button ...>⚙️</button> // <-- 多余的设置按钮
+      */}
     </div>
   );
 }

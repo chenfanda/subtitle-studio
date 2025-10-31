@@ -5,18 +5,18 @@ import { useUIStore } from '@/stores/useUIStore';
 
 export function SubtitleTrack() {
   const { subtitles } = useSubtitleStore();
-  const { currentTime, setCurrentTime } = useProjectStore(); // 1. (新增) 获取 setCurrentTime
+  const { currentTime, setCurrentTime } = useProjectStore(); 
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { selectedSubtitleIds, setSelectedSubtitles, setEditingSubtitle } = useUIStore();
 
   const handleSubtitleClick = (subtitleId: string, startTime: number) => {
     setSelectedSubtitles([subtitleId]);
-    setCurrentTime(startTime / 1000); // 2. (新增) 点击时跳转时间
+    setCurrentTime(startTime / 1000); 
   };
 
   const handleSubtitleDoubleClick = (subtitleId: string, startTime: number) => {
     setEditingSubtitle(subtitleId);
-    setCurrentTime(startTime / 1000); // 3. (新增) 双击时也跳转时间
+    setCurrentTime(startTime / 1000); 
   };
 
   return (
@@ -39,11 +39,13 @@ export function SubtitleTrack() {
               className={`
                 absolute h-6 rounded-sm cursor-pointer transition-all duration-150
                 flex items-center px-2 text-xs text-white
+                
+                {/* 📍 这里的逻辑已按您的要求修改 */}
                 ${isSelected 
-                  ? 'bg-accent-purple border border-white/20' 
+                  ? 'bg-accent-purple border-2 border-white' // 1. 选中: 紫色 + 2px 白色边框
                   : isCurrent
-                    ? 'bg-accent-blue'
-                    : 'bg-accent-purple/80 hover:bg-accent-purple'
+                    ? 'bg-accent-blue'                       // 2. 未选中 (播放头在上面): 亮蓝色
+                    : 'bg-accent-blue/80 hover:bg-accent-blue' // 3. 未选中 (默认): 淡蓝色
                 }
               `}
               style={{ 

@@ -2,16 +2,16 @@ import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 import { useUIStore, useSelectedAttachment } from '@/stores/useUIStore';
 
-export function AudioIdentifierTrack() {
+export function SoundEffectIdentifierTrack() {
   const { subtitles } = useSubtitleStore();
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { setSelectedAttachment } = useUIStore();
   const selectedAttachment = useSelectedAttachment();
 
-  const audioSubtitles = subtitles.filter(s => s.audioTrack);
+  const sfxSubtitles = subtitles.filter(s => s.soundEffect);
 
   const handleIdentifierClick = (subtitleId: string) => {
-    setSelectedAttachment({ type: 'audio', subtitleId });
+    setSelectedAttachment({ type: 'soundEffect', subtitleId });
   };
 
   return (
@@ -20,13 +20,20 @@ export function AudioIdentifierTrack() {
         className="relative h-full w-full flex items-center"
         style={{ transform: `translateX(-${scrollPosition}px)` }}
       >
-        {audioSubtitles.map((subtitle) => {
+        {sfxSubtitles.map((subtitle) => {
+          if (!subtitle.soundEffect) return null;
+
           const startPos = (subtitle.startTime / 1000) * pixelsPerSecond;
-          const width = Math.max(((subtitle.endTime - subtitle.startTime) / 1000) * pixelsPerSecond, 40);
-          
-          const isSelected = selectedAttachment?.type === 'audio' && 
+
+          // 关键区别：宽度基于音效时长，而不是字幕 endTime
+          const width = Math.max(
+            (subtitle.soundEffect.track.duration * pixelsPerSecond), 
+            40
+          );
+
+          const isSelected = selectedAttachment?.type === 'soundEffect' && 
                              selectedAttachment?.subtitleId === subtitle.id;
-          
+
           return (
             <div
               key={subtitle.id}
@@ -34,8 +41,8 @@ export function AudioIdentifierTrack() {
                 absolute h-6 rounded-sm cursor-pointer transition-all duration-150
                 flex items-center px-2 text-xs text-white
                 ${isSelected 
-                  ? 'bg-blue-500 border-2 border-white' 
-                  : 'bg-teal-800 hover:bg-teal-700'
+                  ? 'bg-purple-600 border-2 border-white' 
+                  : 'bg-green-800 hover:bg-green-700'
                 }
               `}
               style={{ 
@@ -45,7 +52,7 @@ export function AudioIdentifierTrack() {
               onClick={() => handleIdentifierClick(subtitle.id)}
             >
               <div className="truncate text-xs">
-                🎵 {subtitle.audioTrack?.track.name || 'Audio'}
+                🔊 {subtitle.soundEffect.track.name || 'Sound Effect'}
               </div>
             </div>
           );

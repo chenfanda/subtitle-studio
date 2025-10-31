@@ -57,6 +57,11 @@ export interface SubtitleAudioData {
   fadeOut: number;
 }
 
+export interface SubtitleSoundEffectData {
+  track: AudioTrack;
+  volume: number;
+}
+
 export interface SubtitleItem {
   id: string;
   text: string;
@@ -66,6 +71,7 @@ export interface SubtitleItem {
   position?: SubtitlePosition;
   richText?: RichTextSegment[];
   audioTrack?: SubtitleAudioData;
+  soundEffect?: SubtitleSoundEffectData;
   brollVideo?: BrollVideoData;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAudioStore } from '@/stores/useAudioStore';
+import { useAudioStore, useActiveAudioTask, useBackgroundMusic } from '@/stores/useAudioStore';
 import { useSelectedSubtitles } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { formatDuration } from '@/utils/audioUtils';
@@ -14,33 +14,53 @@ export function AudioCard({ track }: AudioCardProps) {
   const [isHovering, setIsHovering] = useState(false);
   const [isApplied, setIsApplied] = useState(false);
   const [hasThisAudio, setHasThisAudio] = useState(false);
-  
+
   const { 
     currentTrack, 
     isPlaying, 
     currentTime,
     playAudio, 
-    pauseAudio 
+    pauseAudio,
+    setBackgroundMusic,
+    removeBackgroundMusic
   } = useAudioStore();
+
+  const activeAudioTask = useActiveAudioTask();
+  const backgroundMusic = useBackgroundMusic();
   const selectedSubtitleIds = useSelectedSubtitles();
-  const { subtitles, updateSubtitle } = useSubtitleStore();
-  
+  const { subtitles, setSubtitleSoundEffect, removeSubtitleSoundEffect } = useSubtitleStore();
+
   const hasSelectedSubtitles = selectedSubtitleIds.length > 0;
   const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying;
-  
-  useEffect(() => {
-    if (!hasSelectedSubtitles) {
-      setHasThisAudio(false);
-      return;
-    }
 
-    const selectedSubtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
-    if (selectedSubtitle?.audioTrack) {
-      setHasThisAudio(selectedSubtitle.audioTrack.track.id === track.id);
-    } else {
-      setHasThisAudio(false);
+  const isBgmMode = activeAudioTask === 'bgm';
+  const isSfxMode = activeAudioTask === 'sfx';
+
+  const isActionDisabled = isSfxMode && !hasSelectedSubtitles;
+
+  useEffect(() => {
+    let has = false; // 1. 默认值为 false
+
+    if (isBgmMode) { // 2. 检查 BGM 模式
+      has = backgroundMusic?.id === track.id;
+    } 
+    else if (isSfxMode && hasSelectedSubtitles) { // 3. 检查 SFX 模式
+      const selectedSubtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
+      if (selectedSubtitle?.soundEffect) {
+        has = selectedSubtitle.soundEffect.track.id === track.id;
+      }
     }
-  }, [selectedSubtitleIds, hasSelectedSubtitles, subtitles, track.id]);
+    
+    setHasThisAudio(has); // 4. 在所有逻辑判断后，只调用一次 set
+  }, [
+    selectedSubtitleIds, 
+    hasSelectedSubtitles, 
+    subtitles, 
+    track.id, 
+    isBgmMode, 
+    isSfxMode,
+    backgroundMusic
+  ]);
 
   const handlePlayToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -55,29 +75,33 @@ export function AudioCard({ track }: AudioCardProps) {
   const handleApplyAudio = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!hasSelectedSubtitles) return;
-    
-    if (!hasThisAudio) {
-      selectedSubtitleIds.forEach(subtitleId => {
-        updateSubtitle(subtitleId, {
-          audioTrack: {
-            track,
-            volume: track.volume,
-            fadeIn: track.fadeIn,
-            fadeOut: track.fadeOut
-          }
+
+    if (isActionDisabled) return;
+
+    if (isBgmMode) {
+      if (hasThisAudio) {
+        removeBackgroundMusic();
+      } else {
+        setBackgroundMusic(track);
+        setIsApplied(true);
+        setTimeout(() => setIsApplied(false), 1500);
+      }
+    }
+    else if (isSfxMode) {
+      if (!hasThisAudio) {
+        selectedSubtitleIds.forEach(subtitleId => {
+          setSubtitleSoundEffect(subtitleId, {
+            track: track,
+            volume: track.volume
+          });
         });
-      });
-      
-      setIsApplied(true);
-      setTimeout(() => setIsApplied(false), 1500);
-    } else {
-      selectedSubtitleIds.forEach(subtitleId => {
-        updateSubtitle(subtitleId, {
-          audioTrack: undefined
+        setIsApplied(true);
+        setTimeout(() => setIsApplied(false), 1500);
+      } else {
+        selectedSubtitleIds.forEach(subtitleId => {
+          removeSubtitleSoundEffect(subtitleId);
         });
-      });
-      setHasThisAudio(false);
+      }
     }
   };
 
@@ -103,12 +127,12 @@ export function AudioCard({ track }: AudioCardProps) {
         overflow-hidden group p-2 flex items-center gap-3
         border-2
         ${getBorderColor()}
-        ${!hasSelectedSubtitles ? 'opacity-60' : ''}
+        ${isActionDisabled ? 'opacity-60 cursor-not-allowed' : ''}
       `}
     >
       <div className="flex-shrink-0 w-12 h-12 rounded bg-bg-tertiary flex items-center justify-center overflow-hidden relative">
         <div className="text-2xl">🎵</div>
-        
+
         {(isHovering || isCurrentlyPlaying) && (
           <button
             onClick={handlePlayToggle}
@@ -122,7 +146,7 @@ export function AudioCard({ track }: AudioCardProps) {
           </button>
         )}
       </div>
-      
+
       <div className="flex-1 text-left min-w-0">
         <div className="text-sm font-medium text-text-primary truncate">
           {track.name}
@@ -131,8 +155,8 @@ export function AudioCard({ track }: AudioCardProps) {
           {formatDuration(track.duration)}
         </div>
       </div>
-      
-      {(isHovering || hasThisAudio) && hasSelectedSubtitles && (
+
+      {(isHovering || hasThisAudio) && !isActionDisabled && (
         <button
           onClick={handleApplyAudio}
           className={`
@@ -143,7 +167,7 @@ export function AudioCard({ track }: AudioCardProps) {
               : 'bg-accent-purple hover:bg-accent-purple-dark text-white'
             }
           `}
-          title={hasThisAudio ? "移除音频" : "应用音频"}
+          title={hasThisAudio ? "移除" : "应用"}
         >
           {hasThisAudio ? (
             <MinusIcon className="w-5 h-5" />
@@ -156,7 +180,7 @@ export function AudioCard({ track }: AudioCardProps) {
       {isApplied && (
         <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
       )}
-      
+
       {isCurrentlyPlaying && (
         <div className="absolute bottom-0 left-0 h-0.5 bg-accent-purple" style={{ width: `${progressPercentage}%` }} />
       )}

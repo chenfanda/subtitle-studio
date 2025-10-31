@@ -10,10 +10,17 @@ interface StrokeSectionProps {
   onChange: (stroke: { enabled: boolean; color: string; width: number }) => void;
 }
 
+const STROKE_PRESETS = {
+  S: 0.1,
+  M: 0.2,
+  L: 0.3,
+};
+
 export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
   const enabled = stroke?.enabled || false;
   const color = stroke?.color || '#000000';
-  const width = stroke?.width || 2;
+  const width = stroke?.width || STROKE_PRESETS.M;
+  
   const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
   
@@ -33,6 +40,10 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
     }
   };
 
+  const handleWidthChange = (newWidth: number) => {
+    onChange({ enabled, color, width: newWidth });
+  };
+
   const getPickerPosition = () => {
     if (!colorButtonRef.current) return undefined;
     const rect = colorButtonRef.current.getBoundingClientRect();
@@ -41,7 +52,13 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
       left: rect.left
     };
   };
-  
+
+  // --- 辅助样式：用于 S/M/L 按钮 ---
+  // --- 修改：py-2 改为 py-1.5，使按钮更矮 ---
+  const btnBaseStyle = "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors";
+  const btnActiveStyle = "bg-accent-purple text-white";
+  const btnInactiveStyle = "bg-bg-tertiary text-text-secondary hover:bg-bg-primary";
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -63,7 +80,8 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
             <button
               ref={colorButtonRef}
               onClick={() => setShowPicker(!showPicker)}
-              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              // --- 修改：w-10 h-10 改为 w-8 h-8，使按钮更小 ---
+              className="w-8 h-8 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
               style={{ backgroundColor: color }}
             />
           </div>
@@ -80,19 +98,25 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
           
           <div>
             <label className="text-xs text-text-secondary mb-2 block">描边宽度</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0.4"
-                max="1.2"
-                step="0.4"
-                value={width}
-                onChange={(e) => onChange({ enabled, color, width: Number(e.target.value) })}
-                className="flex-1 accent-accent-purple"
-              />
-              <span className="text-sm text-text-primary w-12 text-right font-mono">
-                {width}px
-              </span>
+            <div className="flex items-center gap-2">
+              <button
+                className={`${btnBaseStyle} ${width === STROKE_PRESETS.S ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handleWidthChange(STROKE_PRESETS.S)}
+              >
+                S
+              </button>
+              <button
+                className={`${btnBaseStyle} ${width === STROKE_PRESETS.M ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handleWidthChange(STROKE_PRESETS.M)}
+              >
+                M
+              </button>
+              <button
+                className={`${btnBaseStyle} ${width === STROKE_PRESETS.L ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handleWidthChange(STROKE_PRESETS.L)}
+              >
+                L
+              </button>
             </div>
           </div>
         </>

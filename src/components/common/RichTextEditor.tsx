@@ -16,6 +16,8 @@ import {
   applyStyleToSegments,
 } from '@/utils/textStyleUtils';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
+// 导入 Lucide 图标
+import { Target, Hourglass, Check } from 'lucide-react';
 
 interface RichTextEditorProps {
   targetType: 'subtitle' | 'textElement';
@@ -163,13 +165,10 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
   };
 
   return (
-    <div className="w-96 h-full bg-bg-secondary border-l border-border-primary overflow-y-auto flex flex-col">
+    <div className="w-75 h-full bg-bg-primary border-l border-border-primary overflow-y-auto flex flex-col">
       <div className="flex-shrink-0 p-4 border-b border-border-secondary flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">样式编辑</h2>
-          <p className="text-xs text-text-secondary mt-1">
-            {targetType === 'subtitle' ? '字幕' : '文字元素'}
-          </p>
         </div>
         <button
           onClick={handleClose}
@@ -257,19 +256,19 @@ export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditor
         >
           {applyState === 'idle' && (
             <>
-              <span>🎯</span>
+              <Target className="w-4 h-4" />
               <span>运用于全长视频</span>
             </>
           )}
           {applyState === 'loading' && (
             <>
-              <span>⌛</span>
+              <Hourglass className="w-4 h-4" />
               <span>运用中...</span>
             </>
           )}
           {applyState === 'applied' && (
             <>
-              <span>✅</span>
+              <Check className="w-4 h-4" />
               <span>已运用</span>
             </>
           )}

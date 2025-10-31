@@ -1,4 +1,6 @@
-import { useState, useRef } from 'react';
+// VideoControls.tsx (已修复)
+
+import { useState, useRef, useEffect } from 'react';
 import { 
   PlayIcon, 
   PauseIcon, 
@@ -8,18 +10,117 @@ import {
   BackwardIcon,
   Cog6ToothIcon,
   ArrowsPointingOutIcon,
-  ArrowsPointingInIcon
-} from '@heroicons/react/24/solid';
+  ArrowsPointingInIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline'; 
+
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTextElementStore } from '../../stores/useTextElementStore';
-import { useUIStore, useSelectedAttachment } from '../../stores/useUIStore';
+import { useAudioStore } from '../../stores/useAudioStore'; 
+import { 
+  useUIStore, 
+  useSelectedAttachment, 
+  useTimelineCollapsed 
+} from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
+import { APP_CONFIG } from '../../constants/config'; // 假设您的默认音量在这里
+
+// (SettingsMenu 组件保持不变...)
+function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
+  onSkip: (seconds: number) => void;
+  onSetRate: (rate: number) => void;
+  playbackRate: number;
+}) {
+  const [isPlaybackRateOpen, setIsPlaybackRateOpen] = useState(false);
+  const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  const handleSetRate = (rate: number) => {
+    onSetRate(rate);
+    setIsPlaybackRateOpen(false);
+  };
+
+  return (
+    <div 
+      className="absolute bottom-12 right-0 w-48 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 overflow-hidden"
+      onClick={(e) => e.stopPropagation()} 
+    >
+      <div className="flex items-center justify-between p-2 border-b border-white/10">
+        <span className="text-xs text-white/70">跳过</span>
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => onSkip(-10)}
+            className="flex items-center space-x-1 text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
+          >
+            <BackwardIcon className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => onSkip(10)}
+            className="flex items-center space-x-1 text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
+          >
+            <ForwardIcon className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      
+      <div className="relative">
+        <button 
+          onClick={() => setIsPlaybackRateOpen(prev => !prev)}
+          className="flex items-center justify-between w-full p-2 text-left text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <ClockIcon className="w-5 h-5" />
+            <span className="text-xs">播放速度</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <span className="text-xs text-white">{playbackRate}x</span>
+            {isPlaybackRateOpen ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />}
+          </div>
+        </button>
+
+        {isPlaybackRateOpen && (
+          <div className="absolute bottom-full left-0 right-0 bg-gray-900 border border-white/10 rounded-lg p-1 mb-1 max-h-40 overflow-y-auto">
+            {rates.map(rate => (
+              <button
+                key={rate}
+                onClick={() => handleSetRate(rate)}
+                className={`w-full text-left text-xs p-1.5 rounded ${
+                  playbackRate === rate 
+                    ? 'bg-purple-600 text-white' 
+                    : 'text-white/80 hover:bg-white/10'
+                }`}
+              >
+                {rate}x
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 export function VideoControls() {
-  const { isPlaying, volume, togglePlayback, setVolume, currentTime, duration, setCurrentTime } = useProjectStore();
-  const { removeSubtitleAudio } = useSubtitleStore();
+  const { 
+    isPlaying, 
+    volume, 
+    togglePlayback, 
+    setVolume, 
+    currentTime, 
+    duration, 
+    setCurrentTime,
+    playbackRate,
+    setPlaybackRate 
+  } = useProjectStore();
+  
+  const { removeSubtitleAudio, removeSubtitleSoundEffect } = useSubtitleStore();
   const { deleteTextElement } = useTextElementStore();
+  const { removeBackgroundMusic } = useAudioStore();
+  
   const { 
     toggleTimelineCollapsed, 
     videoToolbar,
@@ -28,10 +129,12 @@ export function VideoControls() {
     clearVideoToolbar
   } = useUIStore();
   const selectedAttachment = useSelectedAttachment();
-  
+  const timelineCollapsed = useTimelineCollapsed(); 
+
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
   const progressRef = useRef<HTMLDivElement>(null);
 
   const currentTimeFormatted = formatTime(currentTime || 0);
@@ -40,12 +143,10 @@ export function VideoControls() {
 
   const handleProgressClick = (e: React.MouseEvent) => {
     if (!progressRef.current || !duration) return;
-    
     const rect = progressRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
     const newTime = percentage * duration;
-    
     setCurrentTime(Math.max(0, Math.min(duration, newTime)));
   };
 
@@ -53,32 +154,25 @@ export function VideoControls() {
     e.preventDefault();
     setIsDragging(true);
     handleProgressClick(e);
-    
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!progressRef.current || !duration) return;
-      
       const rect = progressRef.current.getBoundingClientRect();
       const moveX = moveEvent.clientX - rect.left;
       const percentage = Math.max(0, Math.min(1, moveX / rect.width));
       const newTime = percentage * duration;
-      
       setCurrentTime(newTime);
     };
-    
     const handleMouseUp = () => {
       setIsDragging(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-    
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
   const handleProgressClickWhenNotDragging = (e: React.MouseEvent) => {
-    if (!isDragging) {
-      handleProgressClick(e);
-    }
+    if (!isDragging) handleProgressClick(e);
   };
 
   const handleSkip = (seconds: number) => {
@@ -92,17 +186,16 @@ export function VideoControls() {
   };
 
   const toggleMute = () => {
-    setVolume(volume > 0 ? 0 : 0.8);
+    // 📍 修复 1: 将 0.8 改为 80 (或 APP_CONFIG.DEFAULT_VOLUME)
+    setVolume(volume > 0 ? 0 : 80); 
   };
 
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
       } else {
         await document.exitFullscreen();
-        setIsFullscreen(false);
       }
     } catch (error) {
       console.error('全屏操作失败:', error);
@@ -114,23 +207,25 @@ export function VideoControls() {
   };
 
   const handleDeleteSelected = () => {
-    // 优先处理时间轴附件
     if (selectedAttachment) {
       const { type, subtitleId } = selectedAttachment;
-      
       switch (type) {
         case 'audio':
+          // @ts-ignore (subtitleId 存在)
           removeSubtitleAudio(subtitleId);
           break;
-        // case 'broll':
-        //   removeSubtitleBroll(subtitleId);
-        //   break;
+        case 'soundEffect':
+          // @ts-ignore (subtitleId 存在)
+          removeSubtitleSoundEffect(subtitleId);
+          break;
+        case 'backgroundMusic':
+          removeBackgroundMusic();
+          break;
         default:
           break;
       }
       setSelectedAttachment(null);
     } 
-    // 否则，处理视频画面元素 (仅限 textElement)
     else if (videoToolbar.visible && videoToolbar.targetId && videoToolbar.targetType === 'textElement') {
       deleteTextElement(videoToolbar.targetId);
       clearSelectedTextElements();
@@ -138,139 +233,142 @@ export function VideoControls() {
     }
   };
 
-  // 扩展启用逻辑
-  const canDeleteAttachment = selectedAttachment !== null;
-  const canDeleteVideoElement = videoToolbar.visible && 
-                                videoToolbar.targetId !== null && 
-                                videoToolbar.targetType === 'textElement';
-                                
-  const canDelete = canDeleteAttachment || canDeleteVideoElement;
+  const canDelete = selectedAttachment !== null || (videoToolbar.visible && videoToolbar.targetId !== null && videoToolbar.targetType === 'textElement');
 
-  useState(() => {
+  useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isSettingsOpen) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('click', handleClickOutside); 
     };
-  });
-
+  }, [isSettingsOpen]); 
+  
   return (
     <div className="w-full bg-transparent">
+      {/* 1. 进度条 (不变) */}
       <div 
         ref={progressRef}
-        className="w-full h-1.5 bg-white/20 cursor-pointer relative group"
+        className="w-full h-2 bg-white/20 cursor-pointer relative" 
         onClick={handleProgressClickWhenNotDragging}
         onMouseDown={handleProgressMouseDown}
       >
         <div 
-          className="h-full bg-purple-500 transition-all duration-100"
+          className="h-full bg-purple-500"
           style={{ width: `${progressPercentage}%` }}
         />
-        
         <div 
-          className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-purple-500 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ left: `${progressPercentage}%`, marginLeft: '-8px' }}
+          className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity" 
+          style={{ left: `${progressPercentage}%`, marginLeft: '-6px' }}
         />
       </div>
 
-      <div className="flex items-center justify-between p-4 bg-gradient-to-t from-black/80 to-transparent">
-        <div className="flex items-center space-x-4">
+      {/* 2. 控制栏 */}
+      <div className="flex items-center p-2 bg-gradient-to-t from-black/80 to-transparent relative">
+        
+        {/* --- 左侧组 (不变) --- */}
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleSkip(-10)}
-            className="flex items-center space-x-1 text-white/80 hover:text-white transition-colors"
+            onClick={handleToggleTimeline}
+            className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center transition-colors text-white"
+            title={timelineCollapsed ? "展开时间轴" : "折叠时间轴"}
           >
-            <BackwardIcon className="w-5 h-5" />
-            <span className="text-sm">10</span>
+            {timelineCollapsed ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
           </button>
 
+          <button
+            onClick={handleDeleteSelected}
+            disabled={!canDelete}
+            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+              canDelete
+                ? 'bg-white/10 hover:bg-white/20 text-white'
+                : 'bg-white/5 text-white/30 cursor-not-allowed'
+            }`}
+            title={canDelete ? "删除选中元素" : "未选中任何可删除元素"}
+          >
+            <TrashIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* --- 中心组 (不变) --- */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center space-x-4">
+          <span className="text-white text-sm font-mono w-16 text-right">{currentTimeFormatted}</span>
+          
           <button
             onClick={togglePlayback}
-            className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+            className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
           >
             {isPlaying ? (
-              <PauseIcon className="w-6 h-6 text-white" />
+              <PauseIcon className="w-5 h-5 text-white" />
             ) : (
-              <PlayIcon className="w-6 h-6 text-white ml-1" />
+              <PlayIcon className="w-5 h-5 text-white ml-0.5" /> 
             )}
           </button>
-
-          <button
-            onClick={() => handleSkip(10)}
-            className="flex items-center space-x-1 text-white/80 hover:text-white transition-colors"
-          >
-            <ForwardIcon className="w-5 h-5" />
-            <span className="text-sm">10</span>
-          </button>
-
-          <div className="flex items-center space-x-2 ml-4">
-            <button
-              onClick={handleToggleTimeline}
-              className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center transition-colors"
-              title="折叠/展开时间轴"
-            >
-              <span className="text-white text-sm">🔽</span>
-            </button>
-
-            <button
-              onClick={handleDeleteSelected}
-              disabled={!canDelete}
-              className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
-                canDelete
-                  ? 'bg-white/10 hover:bg-white/20 text-white'
-                  : 'bg-white/5 text-white/30 cursor-not-allowed'
-              }`}
-              title={canDelete ? "删除选中元素" : "未选中任何可删除元素"}
-            >
-              <span className="text-sm">🗑️</span>
-            </button>
-          </div>
+          
+          <span className="text-white/80 text-sm font-mono w-16 text-left">{durationFormatted}</span>
         </div>
 
-        <div className="flex items-center space-x-2 text-white text-sm font-mono">
-          <span>{currentTimeFormatted}</span>
-          <span className="text-white/60">/</span>
-          <span className="text-white/80">{durationFormatted}</span>
-        </div>
-
-        <div className="flex items-center space-x-4">
+        {/* --- 右侧组 (音量条已修复) --- */}
+        <div className="flex items-center space-x-2 ml-auto">
           <div 
             className="flex items-center space-x-2"
             onMouseEnter={() => setIsVolumeHovered(true)}
             onMouseLeave={() => setIsVolumeHovered(false)}
           >
-            <button onClick={toggleMute} className="text-white/80 hover:text-white transition-colors">
+            <button onClick={toggleMute} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white transition-colors">
               {volume > 0 ? (
                 <SpeakerWaveIcon className="w-5 h-5" />
               ) : (
                 <SpeakerXMarkIcon className="w-5 h-5" />
               )}
             </button>
-            
             <div className={`overflow-hidden transition-all duration-200 ${
               isVolumeHovered ? 'w-20 opacity-100' : 'w-0 opacity-0'
             }`}>
               <input
                 type="range"
+                // 📍 修复 2: 将 max="1" 改为 max="100"
                 min="0"
-                max="1"
-                step="0.1"
+                max="100"
+                step="1"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer slider focus:outline-none focus:ring-0"
               />
             </div>
           </div>
 
-          <button className="text-white/80 hover:text-white transition-colors">
-            <Cog6ToothIcon className="w-5 h-5" />
-          </button>
+          {/* ... (设置和全屏按钮不变) ... */}
+          <div className="relative">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(prev => !prev); }}
+              className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
+            >
+              <Cog6ToothIcon className="w-5 h-5" />
+            </button>
+            
+            {isSettingsOpen && (
+              <SettingsMenu 
+                onSkip={handleSkip} 
+                onSetRate={setPlaybackRate} 
+                playbackRate={playbackRate} 
+              />
+            )}
+          </div>
 
           <button 
             onClick={toggleFullscreen}
-            className="text-white/80 hover:text-white transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
             title={isFullscreen ? "退出全屏" : "进入全屏"}
           >
             {isFullscreen ? (

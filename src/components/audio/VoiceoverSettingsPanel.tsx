@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { SubtitleAudioData } from '@/types/subtitle';
 import { useUIStore } from '@/stores/useUIStore';
 
-// 这是一个内联的开关组件，以匹配截图样式
+// (ToggleSwitch 组件不变)
 function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
   return (
     <button
@@ -12,6 +12,8 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (enab
         relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer 
         rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out
         ${enabled ? 'bg-accent-purple' : 'bg-gray-600'}
+        // 📍 修复 1: 为开关也添加 focus:outline-none
+        focus:outline-none
       `}
     >
       <span
@@ -30,7 +32,7 @@ interface AudioSettingsPanelProps {
   subtitleId: string;
 }
 
-export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
+export function VoiceoverSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
   const subtitles = useSubtitleStore(state => state.subtitles);
   const setSubtitleAudio = useSubtitleStore(state => state.setSubtitleAudio);
   
@@ -102,12 +104,12 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
     return null;
   }
 
-  // 判断开关是否开启，用于控制滑块和数值框的显示
   const isFadeInEnabled = fadeIn > 0;
   const isFadeOutEnabled = fadeOut > 0;
 
   return (
-    <div className="w-80 bg-gray-900 p-4 flex-shrink-0 flex flex-col" style={{width: 300, backgroundColor: '#18181B'}}>
+    // 📍 修复 2: 移除内联 style, 替换为 w-72 (288px) 和 bg-bg-primary
+    <div className="w-50 bg-bg-primary p-4 flex-shrink-0 flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-white text-lg font-semibold">音频</h3>
         <button 
@@ -130,9 +132,10 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              // 📍 修复 3: 添加 focus:outline-none 移除边框
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
             />
-            <div className="w-20 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-3 py-1.5 text-sm">
+            <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
               {Math.round(volume * 100)}%
             </div>
           </div>
@@ -144,7 +147,6 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
             <label className="text-sm text-gray-300">淡入</label>
             <ToggleSwitch enabled={isFadeInEnabled} onChange={handleFadeInToggle} />
           </div>
-          {/* 只有当开关开启时才显示滑块和数值框 */}
           {isFadeInEnabled && (
             <div className="flex items-center space-x-3 mt-2">
               <input
@@ -154,9 +156,10 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
                 step="0.1"
                 value={fadeIn}
                 onChange={handleFadeInChange}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                // 📍 修复 4: 添加 focus:outline-none 移除边框
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
               />
-              <div className="w-20 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-3 py-1.5 text-sm">
+              <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
                 {fadeIn.toFixed(1)}s
               </div>
             </div>
@@ -169,7 +172,6 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
             <label className="text-sm text-gray-300">淡出</label>
             <ToggleSwitch enabled={isFadeOutEnabled} onChange={handleFadeOutToggle} />
           </div>
-          {/* 只有当开关开启时才显示滑块和数值框 */}
           {isFadeOutEnabled && (
             <div className="flex items-center space-x-3 mt-2">
               <input
@@ -179,9 +181,10 @@ export function AudioSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
                 step="0.1"
                 value={fadeOut}
                 onChange={handleFadeOutChange}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                // 📍 修复 5: 添加 focus:outline-none 移除边框
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
               />
-              <div className="w-20 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-3 py-1.5 text-sm">
+              <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
                 {fadeOut.toFixed(1)}s
               </div>
             </div>

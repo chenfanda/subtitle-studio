@@ -1,4 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+// 1. 导入 lucide-react 图标
+import {
+  Pencil,
+  Play,
+  Trash2,
+  ImagePlus,
+  Ban,
+  List
+} from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -50,7 +59,7 @@ export function SubtitleList() {
     return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs < s.endTime);
   }, [currentTimeMs, subtitles]);
 
-  // 3. --- 自动滚动效果 (已更新为“翻页”逻辑) ---
+  // 自动滚动效果
   useEffect(() => {
     if (!currentSubtitle || !scrollContainerRef.current) return;
     
@@ -60,20 +69,16 @@ export function SubtitleList() {
     const containerRect = scrollContainerRef.current.getBoundingClientRect();
     const itemRect = currentItemEl.getBoundingClientRect();
 
-    // 检查字幕项是否完全在滚动容器的可视区域内
     const isVisible = 
       itemRect.top >= containerRect.top && 
       itemRect.bottom <= containerRect.bottom;
 
-    // 如果字幕项不在可视区域内
     if (!isVisible) {
-      // 滚动到顶部 (start) 来实现“翻页”效果
       currentItemEl.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
     }
-    // 如果已经在可视区域内，则不执行任何操作
     
   }, [currentSubtitle]); 
 
@@ -92,22 +97,21 @@ export function SubtitleList() {
     }
   };
 
-  // 辅助函数：将 MM:SS.CS 或 HH:MM:SS.CS 格式解析为毫秒
   const parseTimeToMilliseconds = (timeStr: string): number | null => {
     const parts = timeStr.split(':');
     let totalMs = 0;
     try {
       if (parts.length === 3) { // HH:MM:SS.CS
         const [ss, cs] = parts[2].split('.');
-        totalMs += parseInt(parts[0], 10) * 3600 * 1000; // hours
-        totalMs += parseInt(parts[1], 10) * 60 * 1000;   // minutes
-        totalMs += parseInt(ss, 10) * 1000;             // seconds
-        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10; // centiseconds
+        totalMs += parseInt(parts[0], 10) * 3600 * 1000;
+        totalMs += parseInt(parts[1], 10) * 60 * 1000;
+        totalMs += parseInt(ss, 10) * 1000;
+        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10;
       } else if (parts.length === 2) { // MM:SS.CS
         const [ss, cs] = parts[1].split('.');
-        totalMs += parseInt(parts[0], 10) * 60 * 1000;   // minutes
-        totalMs += parseInt(ss, 10) * 1000;             // seconds
-        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10; // centiseconds
+        totalMs += parseInt(parts[0], 10) * 60 * 1000;
+        totalMs += parseInt(ss, 10) * 1000;
+        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10;
       } else {
         return null;
       }
@@ -299,11 +303,14 @@ export function SubtitleList() {
     setShowRichTextEditor(true);
   };
 
+  // 2. 替换空状态的 emoji
   if (!subtitles.length) {
     return (
       <div className="h-full flex items-center justify-center text-text-tertiary">
         <div className="text-center">
-          <div className="text-2xl mb-2">📝</div>
+          <div className="text-4xl mb-2 opacity-50">
+            <List />
+          </div>
           <div className="text-sm">暂无字幕</div>
         </div>
       </div>
@@ -311,7 +318,7 @@ export function SubtitleList() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-bg-secondary">
+    <div className="h-full flex flex-col bg-bg-primary">
       <div className="p-4 border-b border-border-secondary flex-shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="text-text-primary font-medium text-sm">字幕列表</h3>
@@ -339,7 +346,7 @@ export function SubtitleList() {
               className={`
                 relative px-4 py-3 cursor-pointer transition-all duration-150
                 hover:bg-bg-tertiary/30 border-l-2
-                ${isCurrent ? 'bg-accent-blue/10' : 'bg-transparent'}
+                ${isCurrent ? 'bg-accent-blue/20' : 'bg-transparent'}
                 ${isSelected ? 'border-accent-purple' : 'border-transparent'}
               `}
               onClick={(e) => handleSubtitleClick(subtitle.id, subtitle.startTime, e)}
@@ -419,13 +426,25 @@ export function SubtitleList() {
                     )}
                   </div>
                 </div>
+                
+                {/* 3. 替换操作按钮的 emoji */}
                 {isSelected && (
                 <div className="flex-shrink-0 flex items-center gap-2 text-text-tertiary">
-                  <button title="编辑" onClick={(e) => handleStartEditing(e, subtitle)} className="hover:text-text-primary">✏️</button>
-                  <button title="播放" onClick={(e) => handlePlay(e, subtitle)} className="hover:text-text-primary">▶️</button>
-                  <button title="删除" onClick={(e) => handleDelete(e, subtitle.id)} className="hover:text-accent-red">🗑️</button>
-                  <button title="媒体" onClick={handleMedia} className="hover:text-text-primary">😀</button>
-                  <button title="取消效果" onClick={(e) => handleCancelEffect(e, subtitle.id)} className="hover:text-text-primary">🚫</button>
+                  <button title="编辑" onClick={(e) => handleStartEditing(e, subtitle)} className="hover:text-text-primary">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button title="播放" onClick={(e) => handlePlay(e, subtitle)} className="hover:text-text-primary">
+                    <Play className="w-4 h-4" />
+                  </button>
+                  <button title="删除" onClick={(e) => handleDelete(e, subtitle.id)} className="hover:text-accent-red">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button title="媒体" onClick={handleMedia} className="hover:text-text-primary">
+                    <ImagePlus className="w-4 h-4" />
+                  </button>
+                  <button title="取消效果" onClick={(e) => handleCancelEffect(e, subtitle.id)} className="hover:text-text-primary">
+                    <Ban className="w-4 h-4" />
+                  </button>
                 </div>
                 )}
               </div>

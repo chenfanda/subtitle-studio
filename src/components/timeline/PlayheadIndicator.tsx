@@ -69,7 +69,6 @@ export function PlayheadIndicator() {
   };
 
   const handleTimelineClick = (e: React.MouseEvent) => {
-    // 这个函数现在不会被触发了，因为父 div 是 pointer-events-none
     if (isDragging) return;
     if (!containerRef.current || !duration) return;
     
@@ -84,22 +83,22 @@ export function PlayheadIndicator() {
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 pointer-events-none" // ⬅️ 核心修改
-      onClick={handleTimelineClick} // 这个点击事件现在无效了
+      className="absolute inset-0 pointer-events-none" 
+      onClick={handleTimelineClick} 
     >
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-accent-red z-30"
+        className="absolute top-0 bottom-0 w-0.5 bg-white z-30"
         style={{ left: playheadPosition }}
       >
         <div 
           className={`
-            absolute -top-1 w-4 h-4 bg-accent-red rounded-full 
+            absolute -top-1 w-4 h-4 bg-white rounded-full
             transform -translate-x-1/2 cursor-grab hover:scale-110
-            transition-transform duration-150 pointer-events-auto // ⬅️ 手柄保持可点击
+            transition-transform duration-150 pointer-events-auto 
             ${isDragging ? 'scale-110 cursor-grabbing' : ''}
           `}
           style={{ 
-            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+            boxShadow: '0 2px 8px rgba(255, 255, 255, 0.4)'
           }}
           onMouseDown={handleMouseDown}
         />

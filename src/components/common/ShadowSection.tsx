@@ -7,17 +7,40 @@ interface ShadowSectionProps {
   onChange: (shadow: SubtitleShadow) => void;
 }
 
+const SHADOW_PRESETS = {
+  S: { offsetX: 1, offsetY: 1, blur: 2 },
+  M: { offsetX: 1, offsetY: 1, blur: 4 }, 
+  L: { offsetX: 1, offsetY: 1, blur: 8 },
+};
+
+const getActivePreset = (shadow: SubtitleShadow) => {
+  if (shadow.offsetX !== 1 || shadow.offsetY !== 1) return null;
+  if (shadow.blur === SHADOW_PRESETS.S.blur) return 'S';
+  if (shadow.blur === SHADOW_PRESETS.M.blur) return 'M';
+  if (shadow.blur === SHADOW_PRESETS.L.blur) return 'L';
+  return null;
+};
+
 export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
   const enabled = shadow?.enabled || false;
   const color = shadow?.color || '#000000';
-  const offsetX = shadow?.offsetX || 2;
-  const offsetY = shadow?.offsetY || 2;
-  const blur = shadow?.blur || 4;
+  const offsetX = shadow?.offsetX || SHADOW_PRESETS.M.offsetX;
+  const offsetY = shadow?.offsetY || SHADOW_PRESETS.M.offsetY;
+  const blur = shadow?.blur || SHADOW_PRESETS.M.blur;
+
   const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
   
   const handleToggle = (checked: boolean) => {
-    onChange({ enabled: checked, color, offsetX, offsetY, blur });
+    const preset = SHADOW_PRESETS.M;
+    onChange({ 
+      enabled: checked, 
+      color, 
+      offsetX: preset.offsetX, 
+      offsetY: preset.offsetY, 
+      blur: preset.blur 
+    });
+    
     if (!checked) {
       setShowPicker(false);
     }
@@ -32,6 +55,17 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
     }
   };
 
+  const handlePresetChange = (preset: 'S' | 'M' | 'L') => {
+    const newValues = SHADOW_PRESETS[preset];
+    onChange({
+      enabled,
+      color,
+      offsetX: newValues.offsetX,
+      offsetY: newValues.offsetY,
+      blur: newValues.blur,
+    });
+  };
+
   const getPickerPosition = () => {
     if (!colorButtonRef.current) return undefined;
     const rect = colorButtonRef.current.getBoundingClientRect();
@@ -40,7 +74,15 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
       left: rect.left
     };
   };
+
+  // --- 辅助样式：用于 S/M/L 按钮 ---
+  // --- 修改：py-2 改为 py-1.5，使按钮更矮 ---
+  const btnBaseStyle = "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors";
+  const btnActiveStyle = "bg-accent-purple text-white";
+  const btnInactiveStyle = "bg-bg-tertiary text-text-secondary hover:bg-bg-primary";
   
+  const activePreset = getActivePreset({ enabled, color, offsetX, offsetY, blur });
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -62,7 +104,8 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
             <button
               ref={colorButtonRef}
               onClick={() => setShowPicker(!showPicker)}
-              className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
+              // --- 修改：w-10 h-10 改为 w-8 h-8，使按钮更小 ---
+              className="w-8 h-8 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
               style={{ backgroundColor: color }}
             />
           </div>
@@ -77,47 +120,27 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
             />
           )}
           
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-text-secondary mb-2 block">X偏移</label>
-              <input
-                type="number"
-                min="-20"
-                max="20"
-                value={offsetX}
-                onChange={(e) => onChange({ enabled, color, offsetX: Number(e.target.value), offsetY, blur })}
-                className="w-full px-2 py-1.5 bg-bg-tertiary border border-border-secondary rounded text-sm text-text-primary"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs text-text-secondary mb-2 block">Y偏移</label>
-              <input
-                type="number"
-                min="-20"
-                max="20"
-                value={offsetY}
-                onChange={(e) => onChange({ enabled, color, offsetX, offsetY: Number(e.target.value), blur })}
-                className="w-full px-2 py-1.5 bg-bg-tertiary border border-border-secondary rounded text-sm text-text-primary"
-              />
-            </div>
-          </div>
-          
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">模糊半径</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="20"
-                step="1"
-                value={blur}
-                onChange={(e) => onChange({ enabled, color, offsetX, offsetY, blur: Number(e.target.value) })}
-                className="flex-1 accent-accent-purple"
-              />
-              <span className="text-sm text-text-primary w-12 text-right font-mono">
-                {blur}px
-              </span>
+            <label className="text-xs text-text-secondary mb-2 block">模糊</label>
+            <div className="flex items-center gap-2">
+              <button
+                className={`${btnBaseStyle} ${activePreset === 'S' ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handlePresetChange('S')}
+              >
+                S
+              </button>
+              <button
+                className={`${btnBaseStyle} ${activePreset === 'M' ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handlePresetChange('M')}
+              >
+                M
+              </button>
+              <button
+                className={`${btnBaseStyle} ${activePreset === 'L' ? btnActiveStyle : btnInactiveStyle}`}
+                onClick={() => handlePresetChange('L')}
+              >
+                L
+              </button>
             </div>
           </div>
         </>

@@ -105,14 +105,14 @@ export function TimelineRuler() {
             <div 
               className={`w-px ${
                 mark.isMainMark 
-                  ? 'bg-text-secondary h-6' 
+                  ? 'bg-text-primary h-6' 
                   : 'bg-text-tertiary h-3'
               } mt-1`}
             />
             
             {mark.isMainMark && mark.label && (
               <div 
-                className="text-xs text-text-secondary whitespace-nowrap font-mono absolute top-0"
+                className="text-xs text-text-primary whitespace-nowrap font-mono absolute top-0"
                 style={{ 
                   transform: 'translateX(-50%)',
                   marginTop: '-2px'

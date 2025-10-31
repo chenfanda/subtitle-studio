@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUturnLeftIcon, ArrowUturnRightIcon } from '@heroicons/react/24/outline';
+// 1. 导入 lucide-react 图标
+import {
+  Cloud,
+  Loader2,
+  Circle,
+  XCircle,
+  Settings,
+  HelpCircle
+} from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
@@ -65,35 +74,37 @@ export function HeaderBar() {
     redo();
   };
 
+  // 2. 将 'icon' 属性从 string (emoji) 替换为 JSX (React.ReactNode)
   const getSaveStatusInfo = () => {
     switch (saveStatus) {
       case 'saved':
         return { 
-          icon: '☁️', 
+          icon: <Cloud className="w-4 h-4" />, 
           text: '已保存',
           className: 'text-accent-green'
         };
       case 'saving':
         return { 
-          icon: '⏳', 
+          icon: <Loader2 className="w-4 h-4 animate-spin" />, 
           text: '保存中...',
           className: 'text-accent-yellow'
         };
       case 'unsaved':
         return { 
-          icon: '●', 
+          // 使用一个小的、实心的、当前颜色的圆圈
+          icon: <Circle className="w-3 h-3 fill-current" />, 
           text: '未保存',
           className: 'text-accent-yellow'
         };
       case 'error':
         return { 
-          icon: '❌', 
+          icon: <XCircle className="w-4 h-4" />, 
           text: '保存失败',
           className: 'text-accent-red'
         };
       default:
         return { 
-          icon: '☁️', 
+          icon: <Cloud className="w-4 h-4" />, 
           text: '已保存',
           className: 'text-accent-green'
         };
@@ -138,9 +149,10 @@ export function HeaderBar() {
             </h1>
           )}
           
-          {saveStatus === 'unsaved' && (
+          {/* (这个小黄点现在由 getSaveStatusInfo() 统一处理) */}
+          {/* {saveStatus === 'unsaved' && (
             <span className="ml-2 text-accent-yellow text-sm">•</span>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -176,18 +188,20 @@ export function HeaderBar() {
           </button>
         </div>
 
+        {/* 3. 状态信息图标现在会正确渲染 JSX */}
         <div className={`flex items-center space-x-2 ${saveInfo.className}`}>
-          <span className="text-sm">{saveInfo.icon}</span>
+          <span className="text-sm flex items-center justify-center w-4 h-4">{saveInfo.icon}</span>
           <span className="text-sm font-medium">{saveInfo.text}</span>
         </div>
 
+        {/* 4. 替换按钮图标 */}
         <div className="flex items-center space-x-2">
           <button 
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
             title="设置"
             onClick={() => useUIStore.getState().setShowSettingsModal(true)}
           >
-            ⚙️
+            <Settings className="w-5 h-5" />
           </button>
 
           <button 
@@ -195,7 +209,7 @@ export function HeaderBar() {
             title="帮助"
             onClick={() => useUIStore.getState().setShowHelpModal(true)}
           >
-            ❓
+            <HelpCircle className="w-5 h-5" />
           </button>
 
           <button 

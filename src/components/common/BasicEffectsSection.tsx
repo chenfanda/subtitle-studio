@@ -62,7 +62,8 @@ export function BasicEffectsSection({
         <select
           value={style.fontFamily}
           onChange={(e) => onChange({ fontFamily: e.target.value })}
-          className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-colors"
+          // 📍 修改点 1: 移除下拉菜单的紫色边框
+          className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary focus:border-border-secondary focus:ring-0 transition-colors"
         >
           {FONT_OPTIONS.map(font => (
             <option key={font.value} value={font.value}>
@@ -83,7 +84,8 @@ export function BasicEffectsSection({
               step="0.5"
               value={style.letterSpacing || 0}
               onChange={(e) => onChange({ letterSpacing: Number(e.target.value) })}
-              className="flex-1 accent-accent-purple"
+              // 📍 修改点 2: 保留您喜欢的紫色滑块，并添加 focus:outline-none 来移除矩形边框
+              className="flex-1 accent-accent-purple focus:outline-none"
             />
             <span className="text-sm text-text-primary w-16 text-right font-mono">
               {(style.letterSpacing || 0).toFixed(1)}px
@@ -100,7 +102,8 @@ export function BasicEffectsSection({
           max="72"
           value={style.fontSize}
           onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
-          className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-colors"
+          // 📍 修改点 3: 移除数字输入框的紫色边框
+          className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary focus:border-border-secondary focus:ring-0 transition-colors"
         />
       </div>
       
@@ -131,6 +134,7 @@ export function BasicEffectsSection({
       
       <div>
         <label className="text-xs text-text-secondary mb-2 block">格式</label>
+        {/* ... (按钮样式不变) ... */}
         <div className="grid grid-cols-4 gap-2">
           <button
             onClick={() => onChange({ fontWeight: style.fontWeight >= 600 ? 400 : 700 })}

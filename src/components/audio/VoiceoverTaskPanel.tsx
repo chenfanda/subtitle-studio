@@ -1,42 +1,47 @@
 import { useState } from 'react';
-// 导入 lucide-react 图标
-import { FileText, Clapperboard } from 'lucide-react'; 
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
-import { BrollDialog } from './BrollDialog';
+import { VoiceoverDialog } from './VoiceoverDialog';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
+import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 
-export function BrollPanel() {
+export function VoiceoverTaskPanel() {
   const [showDialog, setShowDialog] = useState(false);
   const [targetSubtitleId, setTargetSubtitleId] = useState<string>('');
-  
+
   const { setCurrentTime } = useProjectStore();
-  const { subtitles, removeSubtitleBroll } = useSubtitleStore();
+  const { subtitles, removeSubtitleAudio } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
   const { setSelectedSubtitles } = useUIStore();
+  const resetVoiceoverDialog = useVoiceoverStore(state => state.resetDialog);
 
-  const handleThumbnailClick = (subtitleId: string) => {
+  const handleAudioClick = (subtitleId: string) => {
     const subtitle = subtitles.find(s => s.id === subtitleId);
     if (!subtitle) return;
 
     setSelectedSubtitles([subtitleId]);
     setCurrentTime(subtitle.startTime / 1000);
 
-    if (subtitle.brollVideo) {
-      removeSubtitleBroll(subtitleId);
+    if (subtitle.audioTrack) {
+      removeSubtitleAudio(subtitleId);
     } else {
       setTargetSubtitleId(subtitleId);
       setShowDialog(true);
     }
   };
 
+  const handleCloseDialog = () => {
+    setShowDialog(false);
+    resetVoiceoverDialog();
+  }
+
   return (
     <div className="h-full flex flex-col bg-bg-primary">
       <div className="p-4 border-b border-border-secondary">
-        <h3 className="text-lg font-semibold text-text-primary mb-1">B-roll</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-1">字幕配音</h3>
         <p className="text-xs text-text-secondary">
-          为字幕片段添加丰富您的内容
+          为字幕列表生成或添加配音
         </p>
       </div>
 
@@ -44,19 +49,14 @@ export function BrollPanel() {
         {subtitles.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary">
             <div className="text-center">
-              {/* 这里是第一个替换：
-                - 原: <div className="text-4xl mb-2">📝</div>
-                - 新: 使用 FileText 图标
-                - 备注: 'w-9 h-9' (2.25rem) 约等于 'text-4xl' (2.25rem) 的大小
-              */}
-              <FileText className="w-9 h-9 mb-2 inline-block" />
+              <div className="text-4xl mb-2">📝</div>
               <div className="text-sm">暂无字幕</div>
             </div>
           </div>
         ) : (
           <div className="p-4 space-y-3">
             {subtitles.map((subtitle) => {
-              const hasBroll = !!subtitle.brollVideo;
+              const hasAudio = !!subtitle.audioTrack;
               const isSelected = selectedSubtitleIds.includes(subtitle.id);
 
               return (
@@ -69,21 +69,19 @@ export function BrollPanel() {
                   }`}
                 >
                   <button
-                    onClick={() => handleThumbnailClick(subtitle.id)}
+                    onClick={() => handleAudioClick(subtitle.id)}
                     className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
-                      hasBroll
+                      hasAudio
                         ? 'border-orange-500 shadow-lg shadow-orange-500/20 hover:border-red-500'
                         : 'border-border-secondary hover:border-accent-purple'
                     }`}
-                    title={hasBroll ? '点击删除 B-roll' : '点击添加 B-roll'}
+                    title={hasAudio ? '点击删除配音' : '点击添加配音'}
                   >
-                    {hasBroll && subtitle.brollVideo ? (
+                    {hasAudio && subtitle.audioTrack ? (
                       <div className="relative w-full h-full group">
-                        <img
-                          src={subtitle.brollVideo.video.thumbnail}
-                          alt="B-roll"
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-orange-500">
+                          <span className="text-2xl">🔊</span>
+                        </div>
                         <div className="absolute top-1 left-1 w-2 h-2 bg-orange-500 rounded-full" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex items-center justify-center">
                           <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-xs">
@@ -93,12 +91,7 @@ export function BrollPanel() {
                       </div>
                     ) : (
                       <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-text-tertiary">
-                        {/* 这里是第二个替换：
-                          - 原: <span className="text-2xl">🎬</span>
-                          - 新: 使用 Clapperboard 图标
-                          - 备注: 'w-6 h-6' (1.5rem) 等于 'text-2xl' (1.5rem) 的大小
-                        */}
-                        <Clapperboard className="w-6 h-6" />
+                        <span className="text-2xl">🎙️</span>
                       </div>
                     )}
                   </button>
@@ -110,9 +103,9 @@ export function BrollPanel() {
                     <div className="text-xs text-text-secondary">
                       {formatMillisecondsToTime(subtitle.startTime)} - {formatMillisecondsToTime(subtitle.endTime)}
                     </div>
-                    {hasBroll && (
+                    {hasAudio && (
                       <div className="text-xs text-orange-500 mt-1">
-                        ✓ 已添加 B-roll
+                        ✓ 已添加配音
                       </div>
                     )}
                   </div>
@@ -123,9 +116,9 @@ export function BrollPanel() {
         )}
       </div>
 
-      <BrollDialog
+      <VoiceoverDialog
         open={showDialog}
-        onClose={() => setShowDialog(false)}
+        onClose={handleCloseDialog}
         targetSubtitleId={targetSubtitleId}
       />
     </div>

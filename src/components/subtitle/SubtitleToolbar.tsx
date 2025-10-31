@@ -55,7 +55,7 @@ export function SubtitleToolbar() {
   };
 
   return (
-    <div className="p-3 border-b border-border-secondary bg-bg-secondary">
+    <div className="p-3 border-b border-border-secondary bg-bg-primary">
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={handleEdit}
