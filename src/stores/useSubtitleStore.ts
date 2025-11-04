@@ -43,6 +43,7 @@ interface SubtitleStore {
   splitSubtitle: (id: string, splitTime: number) => void;
   mergeSubtitles: (ids: string[]) => void;
   duplicateSubtitle: (id: string) => void;
+  insertBlankSubtitle: (targetId: string) => void;
   updateSubtitles: (subtitles: SubtitleItem[]) => void;
 
   updateSubtitlePosition: (id: string, x: number, y: number) => void;
@@ -244,7 +245,31 @@ export const useSubtitleStore = create<SubtitleStore>()(
         useProjectStore.getState().markUnsaved();
         useHistoryStore.getState().pushState();
       },
+      insertBlankSubtitle: (targetId) => {
+        set((state) => {
+          const targetIndex = state.subtitles.findIndex(s => s.id === targetId);
+          if (targetIndex === -1) return;
 
+          const targetSubtitle = state.subtitles[targetIndex];
+          const defaultDuration = 1000; // 1 second
+          
+          const newBlankSubtitle: SubtitleItem = {
+            id: generateId(),
+            startTime: targetSubtitle.endTime,
+            endTime: targetSubtitle.endTime + defaultDuration,
+            text: "...", // 默认为 ...
+            richText: createRichTextFromPlainText("...", DEFAULT_SUBTITLE_STYLE),
+            style: { ...DEFAULT_SUBTITLE_STYLE },
+            position: { ...DEFAULT_SUBTITLE_POSITION },
+          };
+
+          // 将新片段插入到目标片段之后
+          state.subtitles.splice(targetIndex + 1, 0, newBlankSubtitle);
+        });
+
+        useProjectStore.getState().markUnsaved();
+        useHistoryStore.getState().pushState();
+      },
       updateSubtitles: (subtitles) => {
         set((state) => {
           state.subtitles = sortByTime(subtitles);

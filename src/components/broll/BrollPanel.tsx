@@ -44,11 +44,6 @@ export function BrollPanel() {
         {subtitles.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary">
             <div className="text-center">
-              {/* 这里是第一个替换：
-                - 原: <div className="text-4xl mb-2">📝</div>
-                - 新: 使用 FileText 图标
-                - 备注: 'w-9 h-9' (2.25rem) 约等于 'text-4xl' (2.25rem) 的大小
-              */}
               <FileText className="w-9 h-9 mb-2 inline-block" />
               <div className="text-sm">暂无字幕</div>
             </div>
@@ -93,11 +88,6 @@ export function BrollPanel() {
                       </div>
                     ) : (
                       <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-text-tertiary">
-                        {/* 这里是第二个替换：
-                          - 原: <span className="text-2xl">🎬</span>
-                          - 新: 使用 Clapperboard 图标
-                          - 备注: 'w-6 h-6' (1.5rem) 等于 'text-2xl' (1.5rem) 的大小
-                        */}
                         <Clapperboard className="w-6 h-6" />
                       </div>
                     )}

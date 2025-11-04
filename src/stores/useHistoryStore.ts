@@ -6,6 +6,7 @@ import { useTextElementStore } from './useTextElementStore';
 import { useMediaStore } from './useMediaStore';
 import { useBrollStore } from './useBrollStore';
 import { useAudioStore } from './useAudioStore';
+import { useVideoSequenceStore } from './useVideoSequenceStore';
 import { useUIStore } from './useUIStore';
 import { useProjectStore } from './useProjectStore';
 
@@ -40,6 +41,7 @@ const collectCurrentSnapshot = (): ProjectSnapshot => {
     placedMedia: useMediaStore.getState().placedMedia,
     placedBrolls: useBrollStore.getState().placedBrolls,
     backgroundMusic: useAudioStore.getState().backgroundMusic,
+    videoSequenceClips: useVideoSequenceStore.getState().clips,
     timestamp: Date.now()
   });
 };
@@ -52,6 +54,7 @@ const restoreSnapshot = (snapshot: ProjectSnapshot, isRestoring: boolean) => {
   useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
   useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
   useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
+  useVideoSequenceStore.getState().restoreClips(snapshot.videoSequenceClips);
   
   useUIStore.getState().clearSelectedSubtitles();
   useUIStore.getState().clearSelectedTextElements();

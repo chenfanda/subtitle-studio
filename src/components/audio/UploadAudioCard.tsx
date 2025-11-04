@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { validateAudioFile } from '@/utils/audioUtils';
+import { UploadCloud, Loader2 } from 'lucide-react'; // 1. 导入图标
 
 export function UploadAudioCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,10 +54,13 @@ export function UploadAudioCard() {
         ${isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
       `}
     >
-      <div className="flex-shrink-0 w-16 h-16 rounded bg-bg-tertiary flex items-center justify-center">
-        <div className="text-2xl">
-          {isUploading ? '⏳' : '📁'}
-        </div>
+      {/* 2. 替换图标 */}
+      <div className="flex-shrink-0 w-16 h-16 rounded bg-bg-tertiary flex items-center justify-center text-text-secondary">
+        {isUploading ? (
+          <Loader2 size={24} className="animate-spin" />
+        ) : (
+          <UploadCloud size={24} />
+        )}
       </div>
       
       <div className="flex-1 text-left min-w-0">

@@ -1,5 +1,7 @@
 import { TimelineRuler } from './TimelineRuler';
 import { SubtitleTrack } from './SubtitleTrack';
+// 1. (新增) 导入我们新创建的视频轨道
+import { VideoInsertTrack } from './VideoInsertTrack';
 import { VoiceoverIdentifierTrack } from './VoiceoverIdentifierTrack';
 import { SoundEffectIdentifierTrack } from './SoundEffectIdentifierTrack';
 import { BackgroundMusicTrack } from './BackgroundMusicTrack';
@@ -19,6 +21,11 @@ export function Timeline() {
         {/* 3. 缩小所有轨道的高度 */}
         <div className="h-9 flex-shrink-0">
           <SubtitleTrack />
+        </div>
+
+        {/* 2. (新增) 将新的视频插入轨道添加到这里 */}
+        <div className="h-9 flex-shrink-0 ">
+          <VideoInsertTrack />
         </div>
 
         <div className="h-9 flex-shrink-0 ">

@@ -24,7 +24,8 @@ export function TemplatePanel() {
               key={category.id}
               onClick={() => setActiveCategory(category.id as any)}
               className={`
-                flex-1 py-3 px-4 text-sm font-medium transition-colors border-b-2
+                flex-1 py-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap
+                ${(category.id === 'dynamic' || category.id === 'static') ? 'text-xs' : 'text-sm'}
                 ${activeCategory === category.id
                   ? 'text-accent-purple border-accent-purple'
                   : 'text-text-secondary border-transparent hover:text-text-primary'

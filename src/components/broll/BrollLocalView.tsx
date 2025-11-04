@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { BrollCard } from './BrollCard';
 import { getBrollDuration, generateBrollThumbnail } from '@/utils/brollUtils';
 import type { BrollVideo } from '@/types/broll';
+import { Loader2, UploadCloud, AlertTriangle } from 'lucide-react'; // 1. 导入图标
 
 export function BrollLocalView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,9 +40,9 @@ export function BrollLocalView() {
       // 获取视频时长
       const duration = await getBrollDuration(videoUrl);
       
-      // 验证时长（最多60秒）
-      if (duration > 60) {
-        setUploadError('视频时长不能超过 60 秒');
+      // 验证时长（最多180秒）
+      if (duration > 180) {
+        setUploadError('视频时长不能超过 180 秒');
         URL.revokeObjectURL(videoUrl);
         setIsUploading(false);
         return;
@@ -116,22 +117,26 @@ export function BrollLocalView() {
         
         {isUploading ? (
           <>
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-purple mb-3"></div>
+            {/* 2. 替换加载动画 */}
+            <Loader2 size={48} className="animate-spin text-accent-purple mb-3" />
             <div className="text-text-secondary">上传中...</div>
           </>
         ) : (
           <>
-            <div className="text-5xl mb-3 text-text-tertiary">☁️</div>
+            {/* 3. 替换云朵图标 */}
+            <UploadCloud size={64} className="mb-3 text-text-tertiary" />
             <div className="text-text-primary font-medium mb-1">点击选择或拖拽上传</div>
             <div className="text-sm text-text-secondary">
-              支持 MP4（最多 60 秒，50 MB）
+              支持 MP4（最多 180 秒，50 MB）
             </div>
           </>
         )}
         
         {uploadError && (
-          <div className="mt-3 text-sm text-red-500">
-            ⚠️ {uploadError}
+          <div className="mt-3 text-sm text-red-500 flex items-center justify-center gap-1">
+            {/* 4. 替换警告图标 */}
+            <AlertTriangle size={16} /> 
+            {uploadError}
           </div>
         )}
       </div>

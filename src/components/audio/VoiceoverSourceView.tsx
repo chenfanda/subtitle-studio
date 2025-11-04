@@ -1,21 +1,26 @@
-import { useState } from 'react';
+import { useState } from 'react'; 
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
-import { useSubtitleStore } from '@/stores/useSubtitleStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore'; 
 import type { VoiceoverSourceView } from '@/stores/useVoiceoverStore';
-import type { SubtitleItem } from '@/types/subtitle';
+import type { SubtitleItem } from '@/types/subtitle'; 
+import { VoiceoverUploadPanel } from './VoiceoverUploadPanel';
 
-// 这是一个内部的 TTS 面板组件
+
 function TTSPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
   const { generateTTS, isGenerating } = useVoiceoverStore();
+  
+ 
   const subtitle = useSubtitleStore(state => 
     state.subtitles.find(s => s.id === targetSubtitleId)
   );
+
 
   const [text, setText] = useState(subtitle?.text || '');
 
   const handleGenerate = () => {
     if (!subtitle) return;
-    const subtitleWithText = { ...subtitle, text: text };
+    
+    const subtitleWithText: SubtitleItem = { ...subtitle, text: text };
     generateTTS(subtitleWithText);
   };
 
@@ -50,11 +55,6 @@ function TTSPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
 // 这是一个占位符
 function LibraryPanel() {
   return <div className="p-4 text-text-secondary">音频库功能待实现</div>;
-}
-
-// 这是一个占位符
-function UploadPanel() {
-  return <div className="p-4 text-text-secondary">上传功能待实现</div>;
 }
 
 
@@ -96,7 +96,7 @@ export function VoiceoverSourceView({ targetSubtitleId }: VoiceoverSourceViewPro
       <div className="flex-1 overflow-y-auto">
         {sourceView === 'tts' && <TTSPanel targetSubtitleId={targetSubtitleId} />}
         {sourceView === 'library' && <LibraryPanel />}
-        {sourceView === 'upload' && <UploadPanel />}
+        {sourceView === 'upload' && <VoiceoverUploadPanel />}
       </div>
     </div>
   );

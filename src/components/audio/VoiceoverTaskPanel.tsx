@@ -5,6 +5,7 @@ import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
 import { VoiceoverDialog } from './VoiceoverDialog';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
+import { FileText, Mic, Volume2 } from 'lucide-react';
 
 export function VoiceoverTaskPanel() {
   const [showDialog, setShowDialog] = useState(false);
@@ -49,7 +50,7 @@ export function VoiceoverTaskPanel() {
         {subtitles.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary">
             <div className="text-center">
-              <div className="text-4xl mb-2">📝</div>
+              <FileText size={48} className="mb-2 mx-auto" />
               <div className="text-sm">暂无字幕</div>
             </div>
           </div>
@@ -80,7 +81,7 @@ export function VoiceoverTaskPanel() {
                     {hasAudio && subtitle.audioTrack ? (
                       <div className="relative w-full h-full group">
                         <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-orange-500">
-                          <span className="text-2xl">🔊</span>
+                          <Volume2 size={24} />
                         </div>
                         <div className="absolute top-1 left-1 w-2 h-2 bg-orange-500 rounded-full" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex items-center justify-center">
@@ -91,7 +92,7 @@ export function VoiceoverTaskPanel() {
                       </div>
                     ) : (
                       <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-text-tertiary">
-                        <span className="text-2xl">🎙️</span>
+                        <Mic size={24} />
                       </div>
                     )}
                   </button>

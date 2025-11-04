@@ -10,7 +10,7 @@ import { VoiceoverTaskPanel } from './VoiceoverTaskPanel';
 import { SoundEffectCategoryTabs } from './SoundEffectCategoryTabs';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
-// 步骤 1：我们将您现有的 BGM 类别滚动条 提取到一个内部组件
+
 function BgmCategoryTabs() {
   const [isHovering, setIsHovering] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -85,7 +85,7 @@ function BgmCategoryTabs() {
   );
 }
 
-// 步骤 2：创建您设计的新的三任务切换器
+
 function AudioTaskToggle() {
   const activeAudioTask = useActiveAudioTask();
   const setActiveAudioTask = useAudioStore(state => state.setActiveAudioTask);
@@ -119,7 +119,7 @@ function AudioTaskToggle() {
   );
 }
 
-// 步骤 3：修改 AudioPanel 来组装所有内容
+
 export function AudioPanel() {
   const activeAudioTask = useActiveAudioTask();
 

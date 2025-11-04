@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-// 1. (修改) 导入 SelectedAttachment
-import type { UIState, PanelType, RichTextSelection, SelectedAttachment } from '@/types/ui'; 
+// 1. (已修改) 导入我们新添加的 ClipTask 类型
+import type { 
+  UIState, 
+  PanelType, 
+  RichTextSelection, 
+  SelectedAttachment,
+  ClipTask // <-- 已添加
+} from '@/types/ui';
 import { APP_CONFIG } from '@/constants/config';
 
 
@@ -23,6 +29,9 @@ interface UIStore extends UIState {
   templateTab: TemplateCategory;
   setTemplateTab: (tab: TemplateCategory) => void;
 
+  // 2. (新增) 添加 ClipsPanel 任务切换器状态
+  setActiveClipTask: (task: ClipTask) => void;
+  
   toggleLeftPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
   setLeftPanelCollapsed: (collapsed: boolean) => void;
@@ -43,7 +52,6 @@ interface UIStore extends UIState {
   toggleTextElementSelection: (id: string) => void;
   setEditingTextElement: (id: string | null) => void;
 
-  // 2. (新增) 管理附件选择的状态
   setSelectedAttachment: (attachment: SelectedAttachment | null) => void;
   
   showRichTextEditor: boolean;
@@ -82,13 +90,14 @@ interface UIStore extends UIState {
   resetUIState: () => void;
 }
 
+// 3. (已修改) 基于您上传的 ui.ts 和 config.ts
 const initialState: UIState = {
   activePanel: 'audio',
   leftPanelWidth: APP_CONFIG.LEFT_PANEL_WIDTH,
   leftPanelCollapsed: false,
   selectedSubtitleIds: [],
   editingSubtitleId: null,
-  selectedAttachment: null, // 3. (新增) 
+  selectedAttachment: null,
   timelineZoom: APP_CONFIG.DEFAULT_PIXELS_PER_SECOND,
   timelineScrollLeft: 0,
   showSettingsModal: false,
@@ -96,13 +105,14 @@ const initialState: UIState = {
   showHelpModal: false,
   isDragging: false,
   dragType: null,
+  activeClipTask: 'subtitles', // <-- (新增) 为新状态设置默认值
 };
 
 export const useUIStore = create<UIStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
       ...initialState,
-      templateTab: 'featured', 
+      templateTab: 'featured',
       richTextSelection: null,
       selectedTextElementIds: [],
       editingTextElementId: null,
@@ -135,6 +145,12 @@ export const useUIStore = create<UIStore>()(
           state.templateTab = tab;
         }),
 
+      // 4. (新增) 添加 setter
+      setActiveClipTask: (task) =>
+        set((state) => {
+          state.activeClipTask = task;
+        }),
+
       toggleLeftPanel: () => 
         set((state) => {
           state.leftPanelCollapsed = !state.leftPanelCollapsed;
@@ -156,7 +172,7 @@ export const useUIStore = create<UIStore>()(
       setSelectedSubtitles: (ids) => 
         set((state) => {
           state.selectedSubtitleIds = [...new Set(ids)];
-          state.selectedAttachment = null; // 4. (修改) 互斥
+          state.selectedAttachment = null; 
         }),
       
       addSelectedSubtitle: (id) => 
@@ -164,7 +180,7 @@ export const useUIStore = create<UIStore>()(
           if (!state.selectedSubtitleIds.includes(id)) {
             state.selectedSubtitleIds.push(id);
           }
-          state.selectedAttachment = null; // 4. (修改) 互斥
+          state.selectedAttachment = null; 
         }),
       
       removeSelectedSubtitle: (id) => 
@@ -189,7 +205,7 @@ export const useUIStore = create<UIStore>()(
           } else {
             state.selectedSubtitleIds.splice(index, 1);
           }
-          state.selectedAttachment = null; // 4. (修改) 互斥
+          state.selectedAttachment = null; 
         }),
       
       setEditingSubtitle: (id) => 
@@ -200,7 +216,7 @@ export const useUIStore = create<UIStore>()(
             if (!state.selectedSubtitleIds.includes(id)) {
               state.selectedSubtitleIds = [id];
             }
-            state.selectedAttachment = null; // 4. (修改) 互斥
+            state.selectedAttachment = null; 
           }
           
           if (!id) {
@@ -211,7 +227,7 @@ export const useUIStore = create<UIStore>()(
       setSelectedTextElements: (ids) =>
         set((state) => {
           state.selectedTextElementIds = [...new Set(ids)];
-          state.selectedAttachment = null; // 4. (修改) 互斥
+          state.selectedAttachment = null; 
         }),
       
       addSelectedTextElement: (id) =>
@@ -219,7 +235,7 @@ export const useUIStore = create<UIStore>()(
           if (!state.selectedTextElementIds.includes(id)) {
             state.selectedTextElementIds.push(id);
           }
-          state.selectedAttachment = null; // 4. (修改) 互斥
+          state.selectedAttachment = null; 
         }),
       
       removeSelectedTextElement: (id) =>
@@ -393,22 +409,26 @@ export const useUIStore = create<UIStore>()(
         console.log('Select all subtitles');
       },
       
+      // 5. (已修正) 使用 'immer' 的突变方式重置状态，解决报错
       resetUIState: () => 
-        set(() => ({ 
-          ...initialState,
-          templateTab: 'featured', 
-          richTextSelection: null,
-          selectedTextElementIds: [],
-          editingTextElementId: null,
-          showRichTextEditor: false,
-          richTextEditorTarget: null,
-          timelineCollapsed: false,
-          videoToolbar: {
+        set((state) => {
+          // 5a. 将 state 重置为 initialState
+          Object.assign(state, initialState);
+          
+          // 5b. 重置 initialState 中不包含的属性
+          state.templateTab = 'featured';
+          state.richTextSelection = null;
+          state.selectedTextElementIds = [];
+          state.editingTextElementId = null;
+          state.showRichTextEditor = false;
+          state.richTextEditorTarget = null;
+          state.timelineCollapsed = false;
+          state.videoToolbar = {
             visible: false,
             targetType: null,
             targetId: null,
-          },
-        })),
+          };
+        }),
     }))
   )
 );

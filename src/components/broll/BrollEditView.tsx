@@ -2,6 +2,7 @@ import { useBrollStore } from '@/stores/useBrollStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { BrollTransitionSelector } from './BrollTransitionSelector';
 import { formatDuration } from '@/utils/audioUtils';
+import { ArrowLeft, Trash2 } from 'lucide-react'; // 1. 导入图标
 
 interface BrollEditViewProps {
   onApply: () => void;
@@ -30,7 +31,8 @@ export function BrollEditView({ onApply, targetSubtitleId }: BrollEditViewProps)
           onClick={handleBack}
           className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
-          <span className="text-lg">←</span>
+          {/* 2. 替换 "返回" 图标 */}
+          <ArrowLeft size={18} />
           <span className="text-sm">返回</span>
         </button>
       </div>
@@ -50,7 +52,8 @@ export function BrollEditView({ onApply, targetSubtitleId }: BrollEditViewProps)
             className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors"
             title="删除B-roll"
           >
-            🗑️
+            {/* 3. 替换 "删除" 图标 */}
+            <Trash2 size={18} />
           </button>
 
           <div className="mt-2 text-sm">

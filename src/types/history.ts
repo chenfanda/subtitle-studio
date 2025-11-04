@@ -1,12 +1,13 @@
 import type { SubtitleItem } from './subtitle';
 import type { TextElement } from './textElement';
-
+import type { VideoInsertClip } from './videoSequence';
 export interface ProjectSnapshot {
   subtitles: SubtitleItem[];
   textElements: TextElement[];
   placedMedia: any[];
   placedBrolls: any[];
   backgroundMusic: any | null;
+  videoSequenceClips: VideoInsertClip[];
   timestamp: number;
 }
 

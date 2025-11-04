@@ -52,7 +52,7 @@ export function SoundEffectSettingsPanel({ subtitleId }: SoundEffectSettingsPane
   }
 
   return (
-    // 📍 修复 1: 移除内联 style, 替换为 w-72 (288px) 和 bg-bg-primary
+    
     <div className="w-50 bg-bg-primary p-4 flex-shrink-0 flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-white text-lg font-semibold">音效</h3>
@@ -75,7 +75,7 @@ export function SoundEffectSettingsPanel({ subtitleId }: SoundEffectSettingsPane
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
-              // 📍 修复 2: 添加 focus:outline-none 移除边框
+              
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
             />
             <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">

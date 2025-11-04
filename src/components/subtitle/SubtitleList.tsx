@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-// 1. 导入 lucide-react 图标
 import {
   Pencil,
   Play,
@@ -27,8 +26,7 @@ export function SubtitleList() {
     subtitles,
     updateSubtitle,
     updateSubtitleRichText,
-    deleteSubtitles, 
-    clearAllAnimations 
+    deleteSubtitles,
   } = useSubtitleStore();
   
   const { 
@@ -40,7 +38,8 @@ export function SubtitleList() {
     setActivePanel,
     setShowRichTextEditor,
     setRichTextEditorTarget,
-    setRichTextSelection
+    setRichTextSelection,
+    clearSelectedSubtitles
   } = useUIStore();
 
   const [localEditText, setLocalEditText] = useState("");
@@ -59,7 +58,6 @@ export function SubtitleList() {
     return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs < s.endTime);
   }, [currentTimeMs, subtitles]);
 
-  // 自动滚动效果
   useEffect(() => {
     if (!currentSubtitle || !scrollContainerRef.current) return;
     
@@ -97,27 +95,35 @@ export function SubtitleList() {
     }
   };
 
+ 
   const parseTimeToMilliseconds = (timeStr: string): number | null => {
-    const parts = timeStr.split(':');
-    let totalMs = 0;
     try {
+      const parts = timeStr.split(':');
+      let totalMs = 0;
+      let cs: string | undefined; // 声明 cs 变量
+      let ss: string;
+
       if (parts.length === 3) { // HH:MM:SS.CS
-        const [ss, cs] = parts[2].split('.');
+        [ss, cs] = parts[2].split('.');
         totalMs += parseInt(parts[0], 10) * 3600 * 1000;
         totalMs += parseInt(parts[1], 10) * 60 * 1000;
         totalMs += parseInt(ss, 10) * 1000;
-        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10;
       } else if (parts.length === 2) { // MM:SS.CS
-        const [ss, cs] = parts[1].split('.');
+        [ss, cs] = parts[1].split('.');
         totalMs += parseInt(parts[0], 10) * 60 * 1000;
         totalMs += parseInt(ss, 10) * 1000;
-        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10;
       } else {
         return null;
       }
+
+      if (cs) {
+        totalMs += parseInt(cs.padEnd(2, '0').substring(0, 2), 10) * 10;
+      }
+
       if (isNaN(totalMs)) return null;
       return totalMs;
     } catch (error) {
+      console.error("Failed to parse time:", timeStr, error);
       return null;
     }
   };
@@ -133,7 +139,9 @@ export function SubtitleList() {
         toggleSubtitleSelection(subtitleId);
       } else {
         setSelectedSubtitles([subtitleId]);
-        setCurrentTime(startTime / 1000);
+        const validSplitTimeSec = (startTime / 1000) + 0.001;
+        setCurrentTime(validSplitTimeSec);
+        
         
         const subtitle = subtitles.find(s => s.id === subtitleId);
         if (subtitle) {
@@ -174,7 +182,10 @@ export function SubtitleList() {
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     clearPlaybackTimer();
+    clearSelectedSubtitles();
+    setTimeout(() => {
     deleteSubtitles([id]);
+    },0);
   };
 
   const handleMedia = (e: React.MouseEvent) => {
@@ -226,29 +237,28 @@ export function SubtitleList() {
     setLocalEndTime(formatMillisecondsToTime(sub.endTime));
     setEditingSubtitle(null);
   };
-
   const saveTimeUpdates = (subId: string) => {
-    const newStartTime = parseTimeToMilliseconds(localStartTime);
-    const newEndTime = parseTimeToMilliseconds(localEndTime);
+      const newStartTime = parseTimeToMilliseconds(localStartTime);
+      const newEndTime = parseTimeToMilliseconds(localEndTime);
 
-    const sub = subtitles.find(s => s.id === subId);
-    if (!sub) return;
+      const sub = subtitles.find(s => s.id === subId);
+      if (!sub) return;
 
-    let updates: Partial<typeof sub> = {};
-    if (newStartTime !== null && newEndTime !== null) {
-      if (newStartTime < newEndTime && newStartTime !== sub.startTime && newEndTime !== sub.endTime) {
-        updates = { startTime: newStartTime, endTime: newEndTime };
+      let updates: Partial<typeof sub> = {};
+
+      if (newStartTime !== null && newStartTime !== sub.startTime) {
+        updates.startTime = newStartTime;
       }
-    } else if (newStartTime !== null && newStartTime !== sub.startTime) {
-      updates = { startTime: newStartTime };
-    } else if (newEndTime !== null && newEndTime !== sub.endTime) {
-      updates = { endTime: newEndTime };
-    }
 
-    if (Object.keys(updates).length > 0) {
-      updateSubtitle(subId, updates);
-    }
-  };
+  
+      if (newEndTime !== null && newEndTime !== sub.endTime) {
+        updates.endTime = newEndTime;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateSubtitle(subId, updates);
+      }
+    };
 
   const handleTimeBlur = (e: React.FocusEvent<HTMLDivElement>, subId: string) => {
     const currentTarget = e.currentTarget;
