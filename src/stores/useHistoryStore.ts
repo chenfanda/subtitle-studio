@@ -41,7 +41,7 @@ const collectCurrentSnapshot = (): ProjectSnapshot => {
     placedMedia: useMediaStore.getState().placedMedia,
     placedBrolls: useBrollStore.getState().placedBrolls,
     backgroundMusic: useAudioStore.getState().backgroundMusic,
-    videoSequenceClips: useVideoSequenceStore.getState().clips,
+    videoSequenceSegments: useVideoSequenceStore.getState().segments,
     timestamp: Date.now()
   });
 };
@@ -54,7 +54,7 @@ const restoreSnapshot = (snapshot: ProjectSnapshot, isRestoring: boolean) => {
   useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
   useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
   useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
-  useVideoSequenceStore.getState().restoreClips(snapshot.videoSequenceClips);
+  useVideoSequenceStore.getState().restoreSegments(snapshot.videoSequenceSegments);
   
   useUIStore.getState().clearSelectedSubtitles();
   useUIStore.getState().clearSelectedTextElements();

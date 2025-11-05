@@ -1,6 +1,4 @@
-/**
- * 项目状态类型定义
- */
+import type { TimelineSegment } from './videoSequence';
 
 export interface ProjectState {
   id: string;
@@ -39,30 +37,26 @@ export interface ProjectExport {
   // 核心内容（所有可见的编辑元素）
   content: {
     // 字幕数据（包含样式、位置、动画、配音、B-roll）
-    subtitles: any[];         // SubtitleItem[]
+    subtitles: any[];         
     
     // 文字元素数据（包含样式、位置、变换）
-    textElements: any[];      // TextElement[]
+    textElements: any[];      
     
     // 媒体元素数据（贴纸/GIF，包含位置、时间）
-    placedMedia: any[];       // PlacedMediaItem[]
-    
-    // B-roll 数据（独立的 B-roll，不依附字幕）
-    placedBrolls: any[];      // BrollPlacement[]
-    
-    // 背景音乐
-    backgroundMusic: any | null;  // AudioTrack | null
+    placedMedia: any[];       
+    placedBrolls: any[];     
+
+    backgroundMusic: any | null;  
+    videoSequenceSegments: TimelineSegment[];
   };
   
-  // 项目设置
+
   settings: {
-    watermark: any;           // WatermarkConfig
+    watermark: any;           
   };
 }
 
-/**
- * 项目加载选项
- */
+
 export interface ProjectLoadOptions {
   // 是否清空历史记录
   clearHistory?: boolean;

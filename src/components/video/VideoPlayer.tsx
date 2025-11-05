@@ -1,83 +1,114 @@
 import { useRef, useEffect } from 'react';
-import ReactPlayer, { ReactPlayerProps } from 'react-player';
-import { useProjectStore } from '../../stores/useProjectStore';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 
-interface VideoPlayerProps {
-  isMutedOverride?: boolean;
-}
+const safePlay = (video: HTMLVideoElement) => {
+  const promise = video.play();
+  if (promise !== undefined) {
+    promise.catch(error => {
+      console.warn("Video play interrupted:", error);
+    });
+  }
+};
 
-export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
-  const playerRef = useRef<ReactPlayer>(null);
-  
+const safePause = (video: HTMLVideoElement) => {
+  if (!video.paused) {
+    video.pause();
+  }
+};
+
+export function VideoPlayer() {
   const { 
-    videoUrl, 
     isPlaying, 
     volume, 
-    currentTime, 
-    setCurrentTime, 
-    setDuration 
+    playbackRate, 
+    setCurrentTime,
+    currentTime
   } = useProjectStore();
 
+  const { activeSourceUrl, isInsertClip, playbackOffset } = useVideoSourceSwitcher();
+
+  const mainVideoRef = useRef<HTMLVideoElement>(null);
+  const insertVideoRef = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
-    if (playerRef.current && currentTime !== undefined) {
-      const playerCurrentTime = playerRef.current.getCurrentTime();
-      if (Math.abs(playerCurrentTime - currentTime) > 0.5) {
-        playerRef.current.seekTo(currentTime, 'seconds');
+    const mainPlayer = mainVideoRef.current;
+    const insertPlayer = insertVideoRef.current;
+
+    if (!mainPlayer || !insertPlayer) {
+      return;
+    }
+
+    const activePlayer = isInsertClip ? insertPlayer : mainPlayer;
+    const inactivePlayer = isInsertClip ? mainPlayer : insertPlayer;
+
+    activePlayer.style.display = 'block';
+    activePlayer.muted = false;
+    activePlayer.volume = volume / 100;
+    activePlayer.playbackRate = playbackRate;
+
+    inactivePlayer.style.display = 'none';
+    inactivePlayer.muted = true;
+    safePause(inactivePlayer);
+
+    if (activeSourceUrl && activePlayer.src !== activeSourceUrl) {
+      activePlayer.src = activeSourceUrl;
+    }
+
+    if (activeSourceUrl) {
+      const timeDiff = Math.abs(activePlayer.currentTime - playbackOffset);
+      
+      if (timeDiff > 0.25) {
+        activePlayer.currentTime = playbackOffset;
+      }
+
+      if (isPlaying) {
+        safePlay(activePlayer);
+      } else {
+        safePause(activePlayer);
       }
     }
-  }, [currentTime]);
 
-  const handleProgress: ReactPlayerProps['onProgress'] = (progress) => {
-    const currentTimeInSeconds = Math.floor(progress.playedSeconds * 10) / 10;
+  }, [
+    activeSourceUrl, 
+    isInsertClip, 
+    playbackOffset,
+    isPlaying, 
+    volume, 
+    playbackRate
+  ]);
+
+  const handleTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const activePlayer = isInsertClip ? insertVideoRef.current : mainVideoRef.current;
     
-    if (currentTimeInSeconds !== currentTime) {
-      setCurrentTime(currentTimeInSeconds);
+    if (event.currentTarget === activePlayer && activePlayer) {
+      const playerTime = activePlayer.currentTime;
+      const storeTime = useProjectStore.getState().currentTime;
+      
+      const roundedPlayerTime = Math.floor(playerTime * 10) / 10;
+
+      if (roundedPlayerTime !== storeTime) {
+        setCurrentTime(roundedPlayerTime);
+      }
     }
-  };
-
-  const handleDuration = (duration: number) => {
-    setDuration(duration);
-  };
-
-  const handleReady = () => {
-    console.log('Video player ready');
-  };
-
-  const handleError = (error: any) => {
-    console.error('Video player error:', error);
   };
 
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden bg-black border-2 border-gray-600 relative">
-      <ReactPlayer
-        ref={playerRef}
-        url={videoUrl}
-        playing={isPlaying}
-        volume={volume/100}
-        muted={isMutedOverride}
-        width="100%"
-        height="100%"
-        onProgress={handleProgress}
-        onDuration={handleDuration}
-        onReady={handleReady}
-        onError={handleError}
-        progressInterval={200}
-        controls={false}
-        config={{
-          file: {
-            attributes: {
-              style: {
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain'
-              }
-            }
-          }
-        }}
-        style={{
-          maxWidth: '100%',
-          maxHeight: '100%'
-        }}
+    <div className="w-full h-full bg-black relative rounded-xl overflow-hidden">
+      <video
+        ref={mainVideoRef}
+        className="w-full h-full object-contain"
+        playsInline
+        muted
+        onTimeUpdate={handleTimeUpdate}
+      />
+      <video
+        ref={insertVideoRef}
+        className="w-full h-full object-contain"
+        style={{ display: 'none' }}
+        playsInline
+        muted
+        onTimeUpdate={handleTimeUpdate}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
+import { useSubtitleStore } from '@/stores/useSubtitleStore';
 
 interface VideoSourceState {
   activeSourceUrl: string;
@@ -12,7 +13,8 @@ export function useVideoSourceSwitcher(): VideoSourceState {
   const currentTime = useProjectStore((state) => state.currentTime);
   const videoUrl = useProjectStore((state) => state.videoUrl);
 
-  const { clips } = useVideoSequenceStore();
+  const segments = useVideoSequenceStore((state) => state.segments);
+  const findSubtitleAtTime = useSubtitleStore.getState().findSubtitleAtTime;
 
   const currentTimeMs = currentTime * 1000;
 
@@ -23,26 +25,50 @@ export function useVideoSourceSwitcher(): VideoSourceState {
       playbackOffset: currentTime,
     };
 
-    const activeClip = clips.find(clip => {
-      const startTime = clip.insertAtTime;
-      const endTime = clip.insertAtTime + clip.duration;
-      return currentTimeMs >= startTime && currentTimeMs < endTime;
-    });
+    const activeSubtitle = findSubtitleAtTime(currentTimeMs);
+    if (activeSubtitle && activeSubtitle.brollVideo) {
+      const brollData = activeSubtitle.brollVideo;
+      const subtitleProgressMs = currentTimeMs - activeSubtitle.startTime;
+      const brollTimeSec = (brollData.startOffset || 0) + (subtitleProgressMs / 1000);
 
-    if (!activeClip) {
+      return {
+        activeSourceUrl: brollData.video.url,
+        isInsertClip: true,
+        playbackOffset: brollTimeSec,
+      };
+    }
+
+    if (!segments || segments.length === 0) {
       return defaultSource;
     }
 
-    const relativeTimeMs = currentTimeMs - activeClip.insertAtTime;
-    const relativeTimeSec = relativeTimeMs / 1000;
+    const activeSegment = segments.find(segment => {
+      const endTime = segment.globalStartTime + segment.duration;
+      return currentTimeMs >= segment.globalStartTime && currentTimeMs < endTime;
+    });
+
+    if (!activeSegment) {
+      if (segments.length > 0) {
+        const lastSegment = segments[segments.length - 1];
+        return {
+          activeSourceUrl: lastSegment.sourceUrl,
+          isInsertClip: lastSegment.type === 'insert',
+          playbackOffset: (lastSegment.sourceStartTime / 1000) + (lastSegment.duration / 1000),
+        };
+      }
+      return defaultSource;
+    }
+
+    const relativeTimeMs = currentTimeMs - activeSegment.globalStartTime;
+    const playbackOffset = (activeSegment.sourceStartTime / 1000) + (relativeTimeMs / 1000);
 
     return {
-      activeSourceUrl: activeClip.sourceUrl,
-      isInsertClip: true,
-      playbackOffset: relativeTimeSec,
+      activeSourceUrl: activeSegment.sourceUrl,
+      isInsertClip: activeSegment.type === 'insert',
+      playbackOffset: playbackOffset,
     };
 
-  }, [currentTime, currentTimeMs, clips, videoUrl]);
+  }, [currentTime, currentTimeMs, segments, videoUrl, findSubtitleAtTime]);
 
   return activeSourceData;
 }

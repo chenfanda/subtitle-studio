@@ -7,7 +7,7 @@ import { useProjectStore } from '@/stores/useProjectStore';
  * 包含 "添加视频插入" 按钮。
  */
 export function VideoSequenceToolbar() {
-  const { addClip } = useVideoSequenceStore();
+  const { addInsertSegment } = useVideoSequenceStore();
   const { currentTime } = useProjectStore();
 
   const handleAddVideoInsert = () => {
@@ -30,12 +30,7 @@ export function VideoSequenceToolbar() {
     // 我们的 store (如 useSubtitleStore) 和 useVideoSequenceStore 使用毫秒
     const insertAtTimeMs = currentTime * 1000;
     const durationMs = durationSec * 1000;
-
-    addClip({
-      sourceUrl: sourceUrl,
-      insertAtTime: insertAtTimeMs,
-      duration: durationMs,
-    });
+    addInsertSegment(sourceUrl, durationMs, insertAtTimeMs);
   };
 
   return (

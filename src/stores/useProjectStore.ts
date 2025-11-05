@@ -12,6 +12,7 @@ import { useMediaStore } from './useMediaStore';
 import { useBrollStore } from './useBrollStore';
 import { useAudioStore } from './useAudioStore';
 import { useSettingsStore } from './useSettingsStore';
+import { useVideoSequenceStore } from './useVideoSequenceStore';
 
 export type AppStage = 'upload' | 'processing' | 'editing';
 
@@ -144,6 +145,7 @@ export const useProjectStore = create<ProjectStore>()(
         const mediaStore = useMediaStore.getState();
         const brollStore = useBrollStore.getState();
         const audioStore = useAudioStore.getState();
+        const videoSequenceStore = useVideoSequenceStore.getState();
         
         return {
           subtitles: subtitleStore.subtitles,
@@ -151,6 +153,7 @@ export const useProjectStore = create<ProjectStore>()(
           placedMedia: mediaStore.placedMedia,
           placedBrolls: brollStore.placedBrolls,
           backgroundMusic: audioStore.backgroundMusic,
+          videoSequenceSegments: videoSequenceStore.segments,
           timestamp: Date.now()
         };
       },
@@ -161,6 +164,9 @@ export const useProjectStore = create<ProjectStore>()(
         useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
         useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
         useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
+        if (snapshot.videoSequenceSegments) {
+          useVideoSequenceStore.getState().restoreSegments(snapshot.videoSequenceSegments);
+        }
       },
       
       exportProject: () => {
@@ -171,6 +177,7 @@ export const useProjectStore = create<ProjectStore>()(
         const mediaStore = useMediaStore.getState();
         const brollStore = useBrollStore.getState();
         const audioStore = useAudioStore.getState();
+        const videoSequenceStore = useVideoSequenceStore.getState();
         
         return {
           version: '1.0.0',
@@ -188,7 +195,8 @@ export const useProjectStore = create<ProjectStore>()(
             textElements: textElementStore.textElements,
             placedMedia: mediaStore.placedMedia,
             placedBrolls: brollStore.placedBrolls,
-            backgroundMusic: audioStore.backgroundMusic
+            backgroundMusic: audioStore.backgroundMusic,
+            videoSequenceSegments: videoSequenceStore.segments
           },
           settings: {
             watermark: settingsStore.watermark
@@ -209,6 +217,10 @@ export const useProjectStore = create<ProjectStore>()(
         useMediaStore.getState().restorePlacedMedia(project.content.placedMedia);
         useBrollStore.getState().restorePlacedBrolls(project.content.placedBrolls);
         useAudioStore.getState().restoreBackgroundMusic(project.content.backgroundMusic);
+        if (project.content.videoSequenceSegments) {
+          useVideoSequenceStore.getState().restoreSegments(project.content.videoSequenceSegments);
+        }
+        
         useSettingsStore.getState().updateWatermark(project.settings.watermark);
         
         useHistoryStore.getState().clearHistory();

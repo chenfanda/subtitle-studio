@@ -1,6 +1,10 @@
-export interface VideoInsertClip {
+export type TimelineSegmentType = 'main' | 'insert';
+
+export interface TimelineSegment {
   id: string;
+  type: TimelineSegmentType;
   sourceUrl: string;
-  insertAtTime: number;
+  sourceStartTime: number;
   duration: number;
+  globalStartTime: number;
 }

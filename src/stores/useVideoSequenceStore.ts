@@ -1,132 +1,207 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { VideoInsertClip } from '@/types/videoSequence';
+import type { TimelineSegment } from '@/types/videoSequence';
 import { useHistoryStore } from './useHistoryStore';
 import { useProjectStore } from './useProjectStore';
-// 1. (已修正) 移除了 'sortByTime'，因为它不兼容
-import { generateId, findById, removeByIds } from '@/utils/storeUtils';
+import { generateId, findById } from '@/utils/storeUtils';
 
 interface VideoSequenceStore {
-  clips: VideoInsertClip[];
+  segments: TimelineSegment[];
+  
+  setMainVideo: (sourceUrl: string, duration: number) => void;
+  
+  addInsertSegment: (sourceUrl: string, videoDuration: number, insertAtTime: number) => string;
+  
+  addCutMarker: (startTime: number, endTime: number) => void;
 
-  /**
-   * 添加一个新的视频插入片段。
-   * @returns 返回新创建片段的 ID。
-   */
-  addClip: (clipData: Omit<VideoInsertClip, 'id'>) => string;
+  removeSegment: (id: string) => void;
   
-  /**
-   * 按 ID 删除一个视频插入片段。
-   */
-  removeClip: (id: string) => void;
+  updateSegment: (id: string, updates: Partial<TimelineSegment>) => void;
   
-  /**
-   * 批量删除多个视频插入片段 (支持撤销)。
-   */
-  removeClips: (ids: string[]) => void;
-  
-  /**
-   * 更新一个视频插入片段的属性 (例如时间、时长或源 URL)。
-   */
-  updateClip: (id: string, updates: Partial<VideoInsertClip>) => void;
-  
-  /**
-   * 移动一个片段到新的插入时间。
-   */
-  moveClip: (id: string, newInsertAtTime: number) => void;
-
-  /**
-   * (供 useHistoryStore 使用) 恢复 clips 数组的快照。
-   */
-  restoreClips: (clips: VideoInsertClip[]) => void;
+  restoreSegments: (segments: TimelineSegment[]) => void;
 }
+
+const recomputeGlobalStartTimes = (segments: TimelineSegment[]): TimelineSegment[] => {
+  let timeCursor = 0;
+  return segments.map(segment => {
+    const updatedSegment = { ...segment, globalStartTime: timeCursor };
+    timeCursor += segment.duration;
+    return updatedSegment;
+  });
+};
 
 export const useVideoSequenceStore = create<VideoSequenceStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
-      clips: [],
+      segments: [],
 
-      addClip: (clipData) => {
-        const newClip: VideoInsertClip = {
-          ...clipData,
-          id: generateId(),
-        };
-
+      setMainVideo: (sourceUrl, duration) => {
         set((state) => {
-          state.clips.push(newClip);
-          
-          state.clips.sort((a, b) => a.insertAtTime - b.insertAtTime);
+          state.segments = [
+            {
+              id: generateId(),
+              type: 'main',
+              sourceUrl: sourceUrl,
+              sourceStartTime: 0,
+              duration: duration,
+              globalStartTime: 0,
+            }
+          ];
         });
-
-        useProjectStore.getState().markUnsaved();
-        useHistoryStore.getState().pushState();
-        
-        return newClip.id;
+        useHistoryStore.getState().clearHistory();
       },
 
-      removeClip: (id) => {
+      addInsertSegment: (sourceUrl, videoDuration, insertAtTime) => {
+        const newSegmentId = generateId();
+        
         set((state) => {
-          state.clips = state.clips.filter(c => c.id !== id);
-       
+          const newSegments: TimelineSegment[] = [];
+          let insertTimeCursor = 0;
+
+          for (const segment of state.segments) {
+            const segmentStartTime = insertTimeCursor;
+            const segmentEndTime = segmentStartTime + segment.duration;
+
+            if (
+              insertAtTime > segmentStartTime &&
+              insertAtTime < segmentEndTime &&
+              segment.type === 'main'
+            ) {
+              const cutPoint = insertAtTime - segmentStartTime;
+              const firstPartDuration = cutPoint;
+              const secondPartDuration = segment.duration - cutPoint;
+
+              if (firstPartDuration > 0) {
+                newSegments.push({
+                  ...segment,
+                  id: generateId(),
+                  duration: firstPartDuration,
+                  globalStartTime: 0,
+                });
+              }
+
+              newSegments.push({
+                id: newSegmentId,
+                type: 'insert',
+                sourceUrl: sourceUrl,
+                sourceStartTime: 0,
+                duration: videoDuration,
+                globalStartTime: 0,
+              });
+
+              if (secondPartDuration > 0) {
+                newSegments.push({
+                  ...segment,
+                  id: generateId(),
+                  sourceStartTime: segment.sourceStartTime + cutPoint,
+                  duration: secondPartDuration,
+                  globalStartTime: 0,
+                });
+              }
+            } else {
+              newSegments.push(segment);
+            }
+            insertTimeCursor += segment.duration;
+          }
+          state.segments = recomputeGlobalStartTimes(newSegments);
         });
 
         useProjectStore.getState().markUnsaved();
         useHistoryStore.getState().pushState();
+        return newSegmentId;
       },
       
-      removeClips: (ids) => {
-        useHistoryStore.getState().startBatch();
-
+      addCutMarker: (startTime, endTime) => {
         set((state) => {
-          state.clips = removeByIds(state.clips, ids);
+          const newSegments: TimelineSegment[] = [];
+          let timeCursor = 0;
+
+          for (const segment of state.segments) {
+            const segmentStartTime = timeCursor;
+            const segmentEndTime = segmentStartTime + segment.duration;
+            
+            const effectiveStartTime = Math.max(segmentStartTime, startTime);
+            const effectiveEndTime = Math.min(segmentEndTime, endTime);
+
+            if (effectiveEndTime <= effectiveStartTime) {
+              newSegments.push(segment);
+              timeCursor += segment.duration;
+              continue;
+            }
+
+            if (effectiveStartTime > segmentStartTime) {
+              const firstPartDuration = effectiveStartTime - segmentStartTime;
+              newSegments.push({
+                ...segment,
+                id: generateId(),
+                duration: firstPartDuration,
+                globalStartTime: 0,
+              });
+            }
+            
+            if (effectiveEndTime < segmentEndTime) {
+              const secondPartDuration = segmentEndTime - effectiveEndTime;
+              const secondPartSourceStartTime = segment.sourceStartTime + (effectiveEndTime - segmentStartTime);
+              newSegments.push({
+                ...segment,
+                id: generateId(),
+                sourceStartTime: secondPartSourceStartTime,
+                duration: secondPartDuration,
+                globalStartTime: 0,
+              });
+            }
+            timeCursor = segmentEndTime;
+          }
+          state.segments = recomputeGlobalStartTimes(newSegments);
+        });
+        
+        useProjectStore.getState().markUnsaved();
+        useHistoryStore.getState().pushState();
+      },
+
+      removeSegment: (id) => {
+        set((state) => {
+          const newSegments = state.segments.filter(s => s.id !== id);
+          state.segments = recomputeGlobalStartTimes(newSegments);
         });
 
         useProjectStore.getState().markUnsaved();
-        useHistoryStore.getState().endBatch();
+        useHistoryStore.getState().pushState();
       },
 
-      updateClip: (id, updates) => {
-        let needsSort = false;
-        
+      updateSegment: (id, updates) => {
         set((state) => {
-          const clip = findById(state.clips, id);
-          if (clip) {
-            Object.assign(clip, updates);
-            if (updates.insertAtTime !== undefined) {
-              needsSort = true;
+          const segment = findById(state.segments, id);
+          if (segment) {
+            Object.assign(segment, updates);
+            if (updates.duration !== undefined) {
+              state.segments = recomputeGlobalStartTimes(state.segments);
             }
           }
-          
-          if (needsSort) {
-         
-            state.clips.sort((a, b) => a.insertAtTime - b.insertAtTime);
-          }
-        });
-
-        useProjectStore.getState().markUnsaved();
-        useHistoryStore.getState().pushState();
-      },
-      
-      moveClip: (id, newInsertAtTime) => {
-        set((state) => {
-          const clip = findById(state.clips, id);
-          if (clip) {
-            clip.insertAtTime = Math.max(0, newInsertAtTime);
-          
-            state.clips.sort((a, b) => a.insertAtTime - b.insertAtTime);
-          }
         });
 
         useProjectStore.getState().markUnsaved();
         useHistoryStore.getState().pushState();
       },
 
-      restoreClips: (clips) => {
+      restoreSegments: (segments) => {
         set((state) => {
-          state.clips = clips;
+          state.segments = segments;
         });
       },
     }))
   )
 );
+export const useCalculatedDuration = () => {
+  const segments = useVideoSequenceStore((state) => state.segments);
+
+  if (!segments || segments.length === 0) {
+    return 0;
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  const totalDuration = lastSegment.globalStartTime + lastSegment.duration;
+
+  return totalDuration / 1000;
+};
