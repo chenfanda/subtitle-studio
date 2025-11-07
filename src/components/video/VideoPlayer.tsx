@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 
 const safePlay = (video: HTMLVideoElement) => {
@@ -23,10 +24,16 @@ export function VideoPlayer() {
     volume, 
     playbackRate, 
     setCurrentTime,
-    currentTime
+    setDuration 
   } = useProjectStore();
 
-  const { activeSourceUrl, isInsertClip, playbackOffset } = useVideoSourceSwitcher();
+  const { 
+    activeSourceUrl, 
+    isInsertClip, 
+    playbackOffset,
+    isGlobalTime,
+    timeMapping 
+  } = useVideoSourceSwitcher();
 
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const insertVideoRef = useRef<HTMLVideoElement>(null);
@@ -78,6 +85,27 @@ export function VideoPlayer() {
     playbackRate
   ]);
 
+  const handleInsertEnded = () => {
+    if (isInsertClip) {
+      console.warn('Video Sequence clip finished earlier than segment duration. Forcing time update.');
+      
+      const storeTime = useProjectStore.getState().currentTime;
+      const segments = useVideoSequenceStore.getState().segments;
+      const currentTimeMs = storeTime * 1000;
+      
+      const activeSegment = segments.find(segment => {
+        const endTime = segment.globalStartTime + segment.duration;
+        return currentTimeMs >= segment.globalStartTime && currentTimeMs < endTime;
+      });
+
+      if (activeSegment) {
+        const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000 + 0.01;
+        
+        setCurrentTime(segmentEndTime);
+      }
+    }
+  };
+
   const handleTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     const activePlayer = isInsertClip ? insertVideoRef.current : mainVideoRef.current;
     
@@ -85,10 +113,30 @@ export function VideoPlayer() {
       const playerTime = activePlayer.currentTime;
       const storeTime = useProjectStore.getState().currentTime;
       
-      const roundedPlayerTime = Math.floor(playerTime * 10) / 10;
+      let newGlobalTime: number;
 
-      if (roundedPlayerTime !== storeTime) {
-        setCurrentTime(roundedPlayerTime);
+      if (isGlobalTime || !timeMapping) {
+        newGlobalTime = playerTime;
+      } else {
+        const { globalStartTime, localStartTime } = timeMapping;
+        const timeDelta = playerTime - localStartTime;
+        newGlobalTime = globalStartTime + timeDelta;
+      }
+      
+      if (newGlobalTime !== storeTime && !isNaN(newGlobalTime)) {
+        setCurrentTime(newGlobalTime);
+      }
+      
+    }
+  };
+  
+  const handleMetadataLoaded = (_event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const mainPlayer = mainVideoRef.current;
+    if (mainPlayer && mainPlayer.duration) {
+      const newDuration = mainPlayer.duration;
+      
+      if (useProjectStore.getState().duration !== newDuration) {
+        setDuration(newDuration);
       }
     }
   };
@@ -101,6 +149,7 @@ export function VideoPlayer() {
         playsInline
         muted
         onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleMetadataLoaded} 
       />
       <video
         ref={insertVideoRef}
@@ -109,6 +158,7 @@ export function VideoPlayer() {
         playsInline
         muted
         onTimeUpdate={handleTimeUpdate}
+        onEnded={handleInsertEnded}
       />
     </div>
   );

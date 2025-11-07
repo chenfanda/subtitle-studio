@@ -1,13 +1,10 @@
+import { Suspense, lazy } from 'react';
 import { HeaderBar } from '../layout/HeaderBar';
 import { LeftSidebar } from '../layout/LeftSidebar';
 import { VideoArea } from '../layout/VideoArea';
-import { VideoControls } from '../video/VideoControls'; // 导入 VideoControls
+import { VideoControls } from '../video/VideoControls';
 import { TimelineArea } from '../layout/TimelineArea';
-import { RichTextEditor } from '../common/RichTextEditor';
 import { AudioPlayer } from '../audio/AudioPlayer';
-import { VoiceoverSettingsPanel } from '../audio/VoiceoverSettingsPanel';
-import { SoundEffectSettingsPanel } from '../audio/SoundEffectSettingsPanel';
-import { BackgroundMusicSettingsPanel } from '../audio/BackgroundMusicSettingsPanel';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { 
   useLeftPanelCollapsed, 
@@ -15,6 +12,16 @@ import {
   useUIStore,
   useSelectedAttachment 
 } from '@/stores/useUIStore';
+
+// --- (修改) 懒加载所有动态面板和弹窗 ---
+const BrollDialog = lazy(() => import('../broll/BrollDialog'));
+const VoiceoverDialog = lazy(() => import('../audio/VoiceoverDialog'));
+const InsertVideoDialog = lazy(() => import('../clips/InsertVideoDialog'));
+const VoiceoverSettingsPanel = lazy(() => import('../audio/VoiceoverSettingsPanel'));
+const SoundEffectSettingsPanel = lazy(() => import('../audio/SoundEffectSettingsPanel'));
+const BackgroundMusicSettingsPanel = lazy(() => import('../audio/BackgroundMusicSettingsPanel'));
+const RichTextEditor = lazy(() => import('../common/RichTextEditor'));
+// --- (修改结束) ---
 
 export function EditingStage() {
   const collapsed = useLeftPanelCollapsed();
@@ -24,7 +31,10 @@ export function EditingStage() {
     showRichTextEditor, 
     richTextEditorTarget,
     setShowRichTextEditor,
-    setRichTextEditorTarget 
+    setRichTextEditorTarget,
+    activeDialog,
+    dialogTargetSubtitleId,
+    closeDialog
   } = useUIStore();
 
   const selectedAttachment = useSelectedAttachment();
@@ -81,7 +91,10 @@ export function EditingStage() {
     
     return (
       <div className="border-l border-border-secondary">
-        {panelContent}
+        {/* --- (修改) 用 Suspense 包裹 --- */}
+        <Suspense fallback={null}>
+          {panelContent}
+        </Suspense>
       </div>
     );
   };
@@ -114,7 +127,6 @@ export function EditingStage() {
             <VideoControls />
           </div>
 
-          {/* 时间轴区域: 保持不变 */}
           {!timelineCollapsed && (projectDuration > 0) && (
             <div className="h-45 border-t border-border-primary flex-shrink-0">
               <TimelineArea />
@@ -124,6 +136,28 @@ export function EditingStage() {
       </div>
 
       <AudioPlayer />
+
+      {/* --- (修改) 用 Suspense 包裹弹窗 --- */}
+      <Suspense fallback={null}>
+        {activeDialog === 'broll' && (
+          <BrollDialog
+            open={true}
+            onClose={closeDialog}
+            targetSubtitleId={dialogTargetSubtitleId || ''}
+          />
+        )}
+        
+        {activeDialog === 'voiceover' && (
+          <VoiceoverDialog
+            open={true}
+            onClose={closeDialog}
+            targetSubtitleId={dialogTargetSubtitleId || ''}
+          />
+        )}
+        {activeDialog === 'insertVideo' && (
+          <InsertVideoDialog />
+        )}
+      </Suspense>
     </div>
   );
 }

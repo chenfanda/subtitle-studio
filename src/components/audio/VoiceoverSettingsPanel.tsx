@@ -30,7 +30,7 @@ interface AudioSettingsPanelProps {
   subtitleId: string;
 }
 
-export function VoiceoverSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
+export default function VoiceoverSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
   const subtitles = useSubtitleStore(state => state.subtitles);
   const setSubtitleAudio = useSubtitleStore(state => state.setSubtitleAudio);
   

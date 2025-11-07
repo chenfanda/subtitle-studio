@@ -9,7 +9,7 @@ interface VoiceoverDialogProps {
   targetSubtitleId: string;
 }
 
-export function VoiceoverDialog({ open, onClose, targetSubtitleId }: VoiceoverDialogProps) {
+export default function VoiceoverDialog({ open, onClose, targetSubtitleId }: VoiceoverDialogProps) {
   const { dialogView, applyToSubtitle, resetDialog } = useVoiceoverStore();
 
   useEffect(() => {

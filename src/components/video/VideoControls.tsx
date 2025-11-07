@@ -1,5 +1,3 @@
-// VideoControls.tsx (已修复)
-
 import { useState, useRef, useEffect } from 'react';
 import { 
   PlayIcon, 
@@ -20,14 +18,15 @@ import {
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTextElementStore } from '../../stores/useTextElementStore';
-import { useAudioStore } from '../../stores/useAudioStore'; 
+import { useAudioStore } from '../../stores/useAudioStore';
+import { useVideoSequenceStore } from '../../stores/useVideoSequenceStore'; 
 import { 
   useUIStore, 
   useSelectedAttachment, 
   useTimelineCollapsed 
 } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
-import { APP_CONFIG } from '../../constants/config'; // 假设您的默认音量在这里
+
 
 // (SettingsMenu 组件保持不变...)
 function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
@@ -120,6 +119,7 @@ export function VideoControls() {
   const { removeSubtitleAudio, removeSubtitleSoundEffect } = useSubtitleStore();
   const { deleteTextElement } = useTextElementStore();
   const { removeBackgroundMusic } = useAudioStore();
+  const { removeSegment } = useVideoSequenceStore();
   
   const { 
     toggleTimelineCollapsed, 
@@ -221,6 +221,9 @@ export function VideoControls() {
         case 'backgroundMusic':
           removeBackgroundMusic();
           break;
+        case 'videoSequence':
+          removeSegment(selectedAttachment.segmentId);
+      break;
         default:
           break;
       }
@@ -241,7 +244,7 @@ export function VideoControls() {
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (isSettingsOpen) {
         setIsSettingsOpen(false);
       }

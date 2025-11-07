@@ -1,4 +1,4 @@
-export type TimelineSegmentType = 'main' | 'insert';
+export type TimelineSegmentType = 'main' | 'insert' | 'cut';
 
 export interface TimelineSegment {
   id: string;

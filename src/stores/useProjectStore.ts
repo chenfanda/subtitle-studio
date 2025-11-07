@@ -81,6 +81,11 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => {
           state.duration = duration;
         });
+        const videoUrl = get().videoUrl;
+        if (videoUrl && duration > 0) {
+          const durationInMs = duration * 1000;
+          useVideoSequenceStore.getState().setMainVideo(videoUrl, durationInMs);
+        }
       },
       
       updateProjectTitle: (title) => {

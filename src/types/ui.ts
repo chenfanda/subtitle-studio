@@ -1,4 +1,3 @@
-// 1. (新增) 定义剪辑面板的任务类型
 export type ClipTask = 'subtitles' | 'videos';
 
 export type PanelType = 'clips' | 'media' | 'search' | 'audio' | 'text' | 'broll' | 'subtitles' | 'templates';
@@ -22,7 +21,11 @@ export type SelectedAttachment = {
 } | {
   type: 'backgroundMusic';
   subtitleId?: never; 
-}
+} | {
+  type: 'videoSequence';
+  segmentId: string; 
+  subtitleId?: never; 
+};
 
 
 export interface UIState {

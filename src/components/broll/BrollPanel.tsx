@@ -1,20 +1,15 @@
 import { useState } from 'react';
-// 导入 lucide-react 图标
 import { FileText, Clapperboard } from 'lucide-react'; 
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
-import { BrollDialog } from './BrollDialog';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 
 export function BrollPanel() {
-  const [showDialog, setShowDialog] = useState(false);
-  const [targetSubtitleId, setTargetSubtitleId] = useState<string>('');
-  
   const { setCurrentTime } = useProjectStore();
   const { subtitles, removeSubtitleBroll } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
-  const { setSelectedSubtitles } = useUIStore();
+  const { setSelectedSubtitles, openDialog } = useUIStore();
 
   const handleThumbnailClick = (subtitleId: string) => {
     const subtitle = subtitles.find(s => s.id === subtitleId);
@@ -26,8 +21,7 @@ export function BrollPanel() {
     if (subtitle.brollVideo) {
       removeSubtitleBroll(subtitleId);
     } else {
-      setTargetSubtitleId(subtitleId);
-      setShowDialog(true);
+      openDialog('broll', subtitleId);
     }
   };
 
@@ -112,12 +106,6 @@ export function BrollPanel() {
           </div>
         )}
       </div>
-
-      <BrollDialog
-        open={showDialog}
-        onClose={() => setShowDialog(false)}
-        targetSubtitleId={targetSubtitleId}
-      />
     </div>
   );
 }

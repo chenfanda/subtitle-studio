@@ -25,7 +25,7 @@ interface RichTextEditorProps {
   onClose: () => void;
 }
 
-export function RichTextEditor({ targetType, targetId, onClose }: RichTextEditorProps) {
+export default function RichTextEditor({ targetType, targetId, onClose }: RichTextEditorProps) {
   const {
     subtitles,
     applyStyleToAllSubtitles,

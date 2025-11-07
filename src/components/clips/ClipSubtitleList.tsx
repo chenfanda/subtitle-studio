@@ -8,7 +8,7 @@ import {
   Copy,
   PlusSquare,
   Combine,
-  XCircle,
+  Video,
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -16,6 +16,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import type { SubtitleItem } from '@/types/subtitle';
 
 export function ClipSubtitleList() {
@@ -43,25 +44,31 @@ export function ClipSubtitleList() {
     toggleSubtitleSelection,
     clearSelectedSubtitles,
     activeClipTask,
-    setActivePanel,
+    openDialog,
   } = useUIStore();
-
+  const { isInsertClip } = useVideoSourceSwitcher();
   const currentTimeMs = currentTime * 1000;
   const stopPlaybackTimer = useRef<NodeJS.Timeout | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  // (1. 这是上一步的修改，它是正确的，应该保留)
+  // 确保这里的逻辑 (<=) 与 storeUtils.ts 中的 findItemAtTime (<=) 保持一致
   const currentSubtitle = useMemo(() => {
-    return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs < s.endTime);
-  }, [currentTimeMs, subtitles]);
+    if (isInsertClip) return null;
+    return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs <= s.endTime);
+  }, [currentTimeMs, subtitles, isInsertClip]);
+
 
   const canSplit = useMemo(() => {
+    if (isInsertClip) return false;
+
     if (selectedSubtitleIds.length !== 1) return false;
     const subtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
     if (!subtitle) return false;
     return currentTimeMs > subtitle.startTime && currentTimeMs < subtitle.endTime;
-  }, [selectedSubtitleIds, subtitles, currentTimeMs]);
+  }, [selectedSubtitleIds, subtitles, currentTimeMs, isInsertClip]);
 
   useEffect(() => {
     if (!currentSubtitle || !scrollContainerRef.current) return;
@@ -82,7 +89,9 @@ export function ClipSubtitleList() {
         block: 'start',
       });
     }
-  }, [currentSubtitle]); 
+  }, [currentSubtitle?.id]); 
+
+
 
   useEffect(() => {
     return () => {
@@ -133,34 +142,15 @@ export function ClipSubtitleList() {
     }, adjustedDurationMs);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (selectedSubtitleIds.length === 0) return;
-
-    if (activeClipTask === 'videos') {
-      const selectedSubs = subtitles.filter(s => selectedSubtitleIds.includes(s.id));
-      useHistoryStore.getState().startBatch();
-      for (const sub of selectedSubs) {
-        addCutMarker(sub.startTime, sub.endTime);
-      }
-      useHistoryStore.getState().endBatch();
-    } else {
-      deleteSubtitles(selectedSubtitleIds);
-    }
-    
-    clearSelectedSubtitles();
-  };
 
   const handleAddBroll = (e: React.MouseEvent, subtitleId: string) => {
     e.stopPropagation();
-    setSelectedSubtitles([subtitleId]);
-    setActivePanel('broll');
+    openDialog('broll', subtitleId);
   };
   
   const handleAddVoiceover = (e: React.MouseEvent, subtitleId: string) => {
     e.stopPropagation();
-    setSelectedSubtitles([subtitleId]);
-    setActivePanel('audio');
+    openDialog('voiceover', subtitleId);
   };
   
   const handleDuplicate = (e: React.MouseEvent) => {
@@ -212,8 +202,6 @@ export function ClipSubtitleList() {
       <div className="p-3 border-b border-border-secondary flex-shrink-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           
-          {/* --- 更改开始 --- */}
-          {/* 仅在 'subtitles' (isLayerMode) 模式下显示这些按钮 */}
           {isLayerMode && (
             <>
               <button
@@ -255,26 +243,7 @@ export function ClipSubtitleList() {
               <div className="w-px h-4 bg-border-secondary mx-1" />
             </>
           )}
-          {/* --- 更改结束 --- */}
           
-          {/* 以下是两种模式共用的按钮 */}
-          <button
-            onClick={handleDelete}
-            disabled={selectedSubtitleIds.length === 0}
-            title={isAtomicMode ? "删除视频片段" : "删除字幕"}
-            className="p-1.5 rounded text-accent-red hover:bg-accent-red/10 disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
-          >
-            <Trash2 size={18} />
-          </button>
-          
-          <button
-            onClick={() => clearSelectedSubtitles()}
-            disabled={selectedSubtitleIds.length === 0}
-            title="取消选择"
-            className="p-1.5 rounded text-text-tertiary hover:bg-bg-tertiary disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
-          >
-            <XCircle size={18} />
-          </button>
         </div>
       </div>
 
@@ -348,21 +317,20 @@ export function ClipSubtitleList() {
                 )}
 
                 {isAtomicMode && isSelected && (
-                  <div className="flex-shrink-0 flex flex-row items-center gap-2 text-text-tertiary">
+                 <div className="flex-shrink-0 flex flex-row items-center gap-2 text-text-tertiary">
                     <button 
-                      title="播放" 
-                      onClick={(e) => handlePlay(e, subtitle)} 
-                      className="p-1 rounded hover:text-text-primary"
-                    >
-                      <Play className="w-4 h-4" />
-                    </button>
-                    <button 
-                      title="删除视频片段"
+                      title="插入视频" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        addCutMarker(subtitle.startTime, subtitle.endTime);
-                      }}
-                      className="p-1 rounded hover:text-accent-red"
+                        openDialog('insertVideo', subtitle.id);
+                      }} 
+                      className="p-1 rounded hover:text-text-primary"
+                    >
+                      <Video size={16} /> 
+                    </button>
+
+                    <button 
+                      title="删除视频片段"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

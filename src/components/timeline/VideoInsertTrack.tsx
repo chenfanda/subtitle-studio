@@ -8,11 +8,15 @@ export function VideoInsertTrack() {
   const segments = useVideoSequenceStore((state) => state.segments);
   const timelineZoom = useUIStore((state) => state.timelineZoom);
   const setCurrentTime = useProjectStore((state) => state.setCurrentTime);
-
+  const setSelectedAttachment = useUIStore((state) => state.setSelectedAttachment);
   const pixelsPerMillisecond = timelineZoom / 1000;
 
   const handleClipClick = (segment: TimelineSegment) => {
     setCurrentTime(segment.globalStartTime / 1000);
+    setSelectedAttachment({
+      type: 'videoSequence',
+      segmentId: segment.id
+    });
   };
 
   return (

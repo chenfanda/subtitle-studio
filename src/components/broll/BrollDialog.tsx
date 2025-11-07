@@ -9,7 +9,7 @@ interface BrollDialogProps {
   targetSubtitleId: string;
 }
 
-export function BrollDialog({ open, onClose, targetSubtitleId }: BrollDialogProps) {
+export default function BrollDialog({ open, onClose, targetSubtitleId }: BrollDialogProps) {
   const { dialogView, applyToSubtitle, resetDialog } = useBrollStore();
 
   useEffect(() => {

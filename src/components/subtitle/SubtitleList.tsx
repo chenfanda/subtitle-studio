@@ -10,6 +10,7 @@ import {
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { createRichTextFromPlainText } from '@/utils/textStyleUtils';
@@ -42,6 +43,7 @@ export function SubtitleList() {
     clearSelectedSubtitles
   } = useUIStore();
 
+  const { isInsertClip } = useVideoSourceSwitcher();
   const [localEditText, setLocalEditText] = useState("");
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [localStartTime, setLocalStartTime] = useState("");
@@ -55,8 +57,9 @@ export function SubtitleList() {
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const currentSubtitle = useMemo(() => {
+    if (isInsertClip) return null;
     return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs < s.endTime);
-  }, [currentTimeMs, subtitles]);
+  }, [currentTimeMs, subtitles, isInsertClip]);
 
   useEffect(() => {
     if (!currentSubtitle || !scrollContainerRef.current) return;

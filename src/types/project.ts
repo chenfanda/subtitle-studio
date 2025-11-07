@@ -6,6 +6,10 @@ export interface ProjectState {
   videoUrl: string;
   duration: number; // 秒
   currentTime: number; // 秒
+  
+  globalTime: number;
+  globalDuration: number;
+
   isPlaying: boolean;
   volume: number; // 0-100
   playbackRate: number; // 0.5, 1, 1.5, 2 等

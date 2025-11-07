@@ -2,7 +2,7 @@ import { useAudioStore, useBackgroundMusic } from '@/stores/useAudioStore';
 import { useEffect, useState } from 'react';
 import { useUIStore } from '@/stores/useUIStore';
 
-export function BackgroundMusicSettingsPanel() {
+export default function BackgroundMusicSettingsPanel() {
   const backgroundMusic = useBackgroundMusic();
   const adjustBackgroundVolume = useAudioStore(state => state.adjustBackgroundVolume);
 

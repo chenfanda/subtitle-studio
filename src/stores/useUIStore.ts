@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-// 1. (已修改) 导入我们新添加的 ClipTask 类型
 import type { 
   UIState, 
   PanelType, 
   RichTextSelection, 
   SelectedAttachment,
-  ClipTask // <-- 已添加
+  ClipTask
 } from '@/types/ui';
 import { APP_CONFIG } from '@/constants/config';
+
 
 
 interface VideoToolbarState {
@@ -20,6 +20,9 @@ interface VideoToolbarState {
 
 type TemplateCategory = 'custom' | 'featured' | 'dynamic' | 'static';
 
+
+type DialogType = 'broll' | 'voiceover' | 'insertVideo';
+
 interface UIStore extends UIState {
   richTextSelection: RichTextSelection | null;
   setRichTextSelection: (selection: RichTextSelection | null) => void;
@@ -29,7 +32,6 @@ interface UIStore extends UIState {
   templateTab: TemplateCategory;
   setTemplateTab: (tab: TemplateCategory) => void;
 
-  // 2. (新增) 添加 ClipsPanel 任务切换器状态
   setActiveClipTask: (task: ClipTask) => void;
   
   toggleLeftPanel: () => void;
@@ -82,6 +84,11 @@ interface UIStore extends UIState {
   
   setDragState: (isDragging: boolean, dragType?: UIState['dragType']) => void;
   clearDragState: () => void;
+
+  activeDialog: DialogType | null;
+  dialogTargetSubtitleId: string | null;
+  openDialog: (dialog: DialogType, targetId: string) => void;
+  closeDialog: () => void;
   
   focusNextSubtitle: () => void;
   focusPrevSubtitle: () => void;
@@ -90,7 +97,6 @@ interface UIStore extends UIState {
   resetUIState: () => void;
 }
 
-// 3. (已修改) 基于您上传的 ui.ts 和 config.ts
 const initialState: UIState = {
   activePanel: 'audio',
   leftPanelWidth: APP_CONFIG.LEFT_PANEL_WIDTH,
@@ -105,13 +111,14 @@ const initialState: UIState = {
   showHelpModal: false,
   isDragging: false,
   dragType: null,
-  activeClipTask: 'subtitles', // <-- (新增) 为新状态设置默认值
+  activeClipTask: 'subtitles',
 };
 
 export const useUIStore = create<UIStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
       ...initialState,
+      
       templateTab: 'featured',
       richTextSelection: null,
       selectedTextElementIds: [],
@@ -124,6 +131,9 @@ export const useUIStore = create<UIStore>()(
         targetType: null,
         targetId: null,
       },
+      
+      activeDialog: null,
+      dialogTargetSubtitleId: null,
       
       setRichTextSelection: (selection) =>
         set((state) => {
@@ -145,7 +155,6 @@ export const useUIStore = create<UIStore>()(
           state.templateTab = tab;
         }),
 
-      // 4. (新增) 添加 setter
       setActiveClipTask: (task) =>
         set((state) => {
           state.activeClipTask = task;
@@ -395,6 +404,18 @@ export const useUIStore = create<UIStore>()(
           state.dragType = null;
         }),
       
+      openDialog: (dialog, targetId) =>
+        set((state) => {
+          state.activeDialog = dialog;
+          state.dialogTargetSubtitleId = targetId;
+        }),
+
+      closeDialog: () =>
+        set((state) => {
+          state.activeDialog = null;
+          state.dialogTargetSubtitleId = null;
+        }),
+      
       focusNextSubtitle: () => {
         const { editingSubtitleId } = get();
         console.log('Focus next subtitle from:', editingSubtitleId);
@@ -409,13 +430,10 @@ export const useUIStore = create<UIStore>()(
         console.log('Select all subtitles');
       },
       
-      // 5. (已修正) 使用 'immer' 的突变方式重置状态，解决报错
       resetUIState: () => 
         set((state) => {
-          // 5a. 将 state 重置为 initialState
           Object.assign(state, initialState);
           
-          // 5b. 重置 initialState 中不包含的属性
           state.templateTab = 'featured';
           state.richTextSelection = null;
           state.selectedTextElementIds = [];
@@ -428,10 +446,13 @@ export const useUIStore = create<UIStore>()(
             targetType: null,
             targetId: null,
           };
+          state.activeDialog = null;
+          state.dialogTargetSubtitleId = null;
         }),
     }))
   )
 );
+
 
 export const useSelectedSubtitles = () => 
   useUIStore((state) => state.selectedSubtitleIds);

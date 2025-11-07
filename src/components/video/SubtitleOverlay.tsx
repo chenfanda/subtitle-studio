@@ -8,6 +8,7 @@ import { QuickToolbar } from './QuickToolbar';
 import { TransformBorder } from '../common/TransformBorder';
 import { convertToWebAnimation } from '@/utils/animationUtils';
 import { convertStyleToCSS } from '@/utils/textStyleUtils';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 
 export function SubtitleOverlay() {
   const { 
@@ -18,6 +19,7 @@ export function SubtitleOverlay() {
     getSubtitlePosition 
   } = useSubtitleStore();
   const { currentTime } = useProjectStore();
+  const { isInsertClip } = useVideoSourceSwitcher();
   const { 
     setSelectedSubtitles, 
     clearSelectedTextElements,
@@ -239,7 +241,7 @@ export function SubtitleOverlay() {
 
   return (
     <div className="absolute inset-0 pointer-events-none z-20">
-      {currentSubtitle && (
+      {currentSubtitle && !isInsertClip && (
         <div 
           ref={subtitleRef}
           className={`

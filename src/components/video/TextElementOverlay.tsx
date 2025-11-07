@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { TransformBorder } from '../common/TransformBorder';
 import { QuickToolbar } from './QuickToolbar';
@@ -24,14 +25,21 @@ export function TextElementOverlay() {
     setVideoToolbarVisible,
     showRichTextEditor
   } = useUIStore();
+  const { isInsertClip } = useVideoSourceSwitcher();
   const [isDragging, setIsDragging] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   
-  const visibleElements = textElements.filter(el => {
+  const visibleElements = useMemo(() => {
+    // ✅ 4. 添加哨兵检查
+    if (isInsertClip) return [];
+
     const currentTimeMs = currentTime * 1000;
-    return currentTimeMs >= el.startTime && currentTimeMs <= el.endTime;
-  });
+    return textElements.filter(el => {
+      return currentTimeMs >= el.startTime && currentTimeMs <= el.endTime;
+    });
+  // ✅ 5. 添加到依赖项
+  }, [textElements, currentTime, isInsertClip]);
   
   const handleElementClick = (element: TextElement, e: React.MouseEvent) => {
     if (e.detail === 2) return;

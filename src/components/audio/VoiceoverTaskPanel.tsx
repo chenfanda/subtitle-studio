@@ -2,19 +2,15 @@ import { useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
-import { VoiceoverDialog } from './VoiceoverDialog';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 import { FileText, Mic, Volume2 } from 'lucide-react';
 
 export function VoiceoverTaskPanel() {
-  const [showDialog, setShowDialog] = useState(false);
-  const [targetSubtitleId, setTargetSubtitleId] = useState<string>('');
-
   const { setCurrentTime } = useProjectStore();
   const { subtitles, removeSubtitleAudio } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
-  const { setSelectedSubtitles } = useUIStore();
+  const { setSelectedSubtitles, openDialog } = useUIStore();
   const resetVoiceoverDialog = useVoiceoverStore(state => state.resetDialog);
 
   const handleAudioClick = (subtitleId: string) => {
@@ -27,15 +23,9 @@ export function VoiceoverTaskPanel() {
     if (subtitle.audioTrack) {
       removeSubtitleAudio(subtitleId);
     } else {
-      setTargetSubtitleId(subtitleId);
-      setShowDialog(true);
+      openDialog('voiceover', subtitleId);
     }
   };
-
-  const handleCloseDialog = () => {
-    setShowDialog(false);
-    resetVoiceoverDialog();
-  }
 
   return (
     <div className="h-full flex flex-col bg-bg-primary">
@@ -116,12 +106,6 @@ export function VoiceoverTaskPanel() {
           </div>
         )}
       </div>
-
-      <VoiceoverDialog
-        open={showDialog}
-        onClose={handleCloseDialog}
-        targetSubtitleId={targetSubtitleId}
-      />
     </div>
   );
 }

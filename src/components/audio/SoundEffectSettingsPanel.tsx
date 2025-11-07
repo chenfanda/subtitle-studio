@@ -7,7 +7,7 @@ interface SoundEffectSettingsPanelProps {
   subtitleId: string;
 }
 
-export function SoundEffectSettingsPanel({ subtitleId }: SoundEffectSettingsPanelProps) {
+export default function SoundEffectSettingsPanel({ subtitleId }: SoundEffectSettingsPanelProps) {
   const subtitles = useSubtitleStore(state => state.subtitles);
   const setSubtitleSoundEffect = useSubtitleStore(state => state.setSubtitleSoundEffect);
 
