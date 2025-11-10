@@ -3,18 +3,18 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 
 export function PlayheadIndicator() {
-  const { currentTime, setCurrentTime, duration, isPlaying } = useProjectStore();
+  const { globalTime, setGlobalTime, globalDuration, isPlaying } = useProjectStore();
   const { pixelsPerSecond, scrollPosition, setScrollPosition, viewportWidth } = useTimelineStore();
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const playheadPosition = (currentTime || 0) * pixelsPerSecond - scrollPosition;
+  const playheadPosition = (globalTime || 0) * pixelsPerSecond - scrollPosition;
 
   useEffect(() => {
-    if (!isPlaying || isDragging) return;
+    if (isDragging) return;
 
     const timeoutId = setTimeout(() => {
-      const currentPixelPosition = (currentTime || 0) * pixelsPerSecond;
+      const currentPixelPosition = (globalTime || 0) * pixelsPerSecond;
       const visibleStart = scrollPosition;
       const visibleEnd = scrollPosition + (viewportWidth || 800);
       
@@ -40,7 +40,7 @@ export function PlayheadIndicator() {
     }, 100); 
 
     return () => clearTimeout(timeoutId);
-  }, [currentTime, isPlaying, isDragging]); 
+  }, [globalTime, isPlaying, isDragging]); 
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,14 +48,14 @@ export function PlayheadIndicator() {
     setIsDragging(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!containerRef.current || !duration) return;
+      if (!containerRef.current || !globalDuration) return;
       
       const rect = containerRef.current.getBoundingClientRect();
       const clientX = moveEvent.clientX - rect.left;
       const timelineX = clientX + scrollPosition;
-      const newTime = Math.max(0, Math.min(duration, timelineX / pixelsPerSecond));
+      const newTime = Math.max(0, Math.min(globalDuration, timelineX / pixelsPerSecond));
       
-      setCurrentTime(newTime);
+      setGlobalTime(newTime);
     };
 
     const handleMouseUp = () => {
@@ -70,14 +70,14 @@ export function PlayheadIndicator() {
 
   const handleTimelineClick = (e: React.MouseEvent) => {
     if (isDragging) return;
-    if (!containerRef.current || !duration) return;
+    if (!containerRef.current || !globalDuration) return;
     
     const rect = containerRef.current.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
     const timelineX = clientX + scrollPosition;
-    const newTime = Math.max(0, Math.min(duration, timelineX / pixelsPerSecond));
+    const newTime = Math.max(0, Math.min(globalDuration, timelineX / pixelsPerSecond));
     
-    setCurrentTime(newTime);
+    setGlobalTime(newTime);
   };
 
   return (

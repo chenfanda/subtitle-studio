@@ -1,18 +1,22 @@
+import { VideoOff } from 'lucide-react';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { Video } from 'lucide-react';
+import { useTimelineStore } from '@/stores/useTimelineStore';
 import type { TimelineSegment } from '@/types/videoSequence';
 
 export function VideoInsertTrack() {
   const segments = useVideoSequenceStore((state) => state.segments);
-  const timelineZoom = useUIStore((state) => state.timelineZoom);
-  const setCurrentTime = useProjectStore((state) => state.setCurrentTime);
-  const setSelectedAttachment = useUIStore((state) => state.setSelectedAttachment);
-  const pixelsPerMillisecond = timelineZoom / 1000;
+  const { pixelsPerSecond, scrollPosition } = useTimelineStore();
+  const { setGlobalTime } = useProjectStore();
+  const { setSelectedAttachment, selectedAttachment } = useUIStore();
+
+  const displaySegments = segments.filter(
+    s => s.type === 'insert' || s.type === 'cut'
+  );
 
   const handleClipClick = (segment: TimelineSegment) => {
-    setCurrentTime(segment.globalStartTime / 1000);
+    setGlobalTime(segment.globalStartTime / 1000);
     setSelectedAttachment({
       type: 'videoSequence',
       segmentId: segment.id
@@ -20,21 +24,31 @@ export function VideoInsertTrack() {
   };
 
   return (
-    <div className="flex h-9 border-b border-border-secondary">
-      <div className="w-32 flex-shrink-0 flex items-center justify-center 
-                    border-r border-border-secondary bg-bg-primary">
-        <Video size={16} className="text-text-secondary" />
-        <span className="ml-2 text-xs font-medium text-text-primary">
-          视频序列
-        </span>
-      </div>
+    <div className="h-full bg-bg-tertiary relative overflow-hidden">
+      <div 
+        className="relative h-full w-full flex items-center"
+        style={{ transform: `translateX(-${scrollPosition}px)` }}
+      >
+        {displaySegments.map((segment) => {
+          const left = (segment.globalStartTime / 1000) * pixelsPerSecond;
+          const width = (segment.duration / 1000) * pixelsPerSecond;
+          const isSelected = selectedAttachment?.type === 'videoSequence' && selectedAttachment?.segmentId === segment.id;
 
-      <div className="flex-1 relative overflow-hidden bg-bg-tertiary">
-        {segments.map((segment, index) => {
-          const left = segment.globalStartTime * pixelsPerMillisecond;
-          const width = segment.duration * pixelsPerMillisecond;
+          const isInsert = segment.type === 'insert';
+          const isCut = segment.type === 'cut';
 
-          const isMain = segment.type === 'main';
+          const cutStyle = `
+            bg-red-800/30 border border-red-600/70
+            bg-[repeating-linear-gradient(
+              45deg,
+              rgba(255,255,255,0.05),
+              rgba(255,255,255,0.05) 10px,
+              transparent 10px,
+              transparent 20px
+            )]
+          `;
+          
+          const insertStyle = 'bg-purple-800/50 border border-purple-600';
 
           return (
             <div
@@ -42,10 +56,10 @@ export function VideoInsertTrack() {
               className={`
                 absolute top-1/2 -translate-y-1/2 h-8 
                 flex items-center px-2 rounded 
-                cursor-pointer overflow-hidden
-                ${isMain 
-                  ? 'bg-blue-800/50 border border-blue-600' 
-                  : 'bg-purple-800/50 border border-purple-600'}
+                cursor-pointer overflow-hidden box-border
+                ${isInsert ? insertStyle : ''}
+                ${isCut ? cutStyle : ''}
+                ${isSelected ? (isInsert ? 'ring-2 ring-purple-400' : 'ring-2 ring-red-400') : ''}
               `}
               style={{
                 left: `${left}px`,
@@ -53,10 +67,19 @@ export function VideoInsertTrack() {
                 minWidth: '2px',
               }}
               onClick={() => handleClipClick(segment)}
+              title={isInsert ? `插入片段` : '跳播片段 (点击选中后可在播放器控件处删除)'}
             >
-              <span className="text-xs text-white font-medium truncate">
-                {isMain ? `主片段 #${index + 1}` : `插入片段 #${index + 1}`}
-              </span>
+              {isInsert && (
+                <span className="text-xs text-white font-medium truncate">
+                  {`插入片段`}
+                </span>
+              )}
+              {isCut && (
+                <div className="w-full h-full flex items-center justify-center text-red-300/80">
+                  <VideoOff size={14} /> 
+                  <span className="text-xs font-medium truncate ml-1">跳播</span>
+                </div>
+              )}
             </div>
           );
         })}

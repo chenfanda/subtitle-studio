@@ -5,24 +5,26 @@ import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 export interface VideoSourceState {
   activeSourceUrl: string;
   isInsertClip: boolean;
+  isCutSegment: boolean;
   playbackOffset: number;
   isGlobalTime: boolean;
   timeMapping: { globalStartTime: number; localStartTime: number } | null;
 }
 
 export function useVideoSourceSwitcher(): VideoSourceState {
-  const currentTime = useProjectStore((state) => state.currentTime);
+  const globalTime = useProjectStore((state) => state.globalTime);
   const videoUrl = useProjectStore((state) => state.videoUrl);
 
   const segments = useVideoSequenceStore((state) => state.segments);
 
-  const currentTimeMs = currentTime * 1000;
+  const currentTimeMs = globalTime * 1000;
 
   const activeSourceData = useMemo(() => {
     const defaultSource: VideoSourceState = {
       activeSourceUrl: videoUrl,
       isInsertClip: false,
-      playbackOffset: currentTime,
+      isCutSegment: false,
+      playbackOffset: globalTime,
       isGlobalTime: true,
       timeMapping: null,
     };
@@ -46,6 +48,7 @@ export function useVideoSourceSwitcher(): VideoSourceState {
         return {
           activeSourceUrl: lastSegment.sourceUrl,
           isInsertClip: lastSegment.type === 'insert',
+          isCutSegment: lastSegment.type === 'cut',
           playbackOffset: playbackOffset,
           isGlobalTime: false,
           timeMapping: { globalStartTime, localStartTime },
@@ -62,12 +65,13 @@ export function useVideoSourceSwitcher(): VideoSourceState {
     return {
       activeSourceUrl: activeSegment.sourceUrl,
       isInsertClip: activeSegment.type === 'insert',
+      isCutSegment: activeSegment.type === 'cut',
       playbackOffset: playbackOffset,
       isGlobalTime: false,
       timeMapping: { globalStartTime, localStartTime },
     };
 
-  }, [currentTime, currentTimeMs, segments, videoUrl]);
+  }, [globalTime, currentTimeMs, segments, videoUrl]);
 
   return activeSourceData;
 }

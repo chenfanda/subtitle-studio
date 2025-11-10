@@ -10,15 +10,20 @@ import {
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { createRichTextFromPlainText } from '@/utils/textStyleUtils';
+
+
 
 export function SubtitleList() {
   const { 
     currentTime, 
-    setCurrentTime, 
+    setCurrentTime,
+    setGlobalTime,
     setIsPlaying, 
     playbackRate 
   } = useProjectStore();
@@ -29,6 +34,8 @@ export function SubtitleList() {
     updateSubtitleRichText,
     deleteSubtitles,
   } = useSubtitleStore();
+
+  const segments = useVideoSequenceStore((state) => state.segments);
   
   const { 
     selectedSubtitleIds, 
@@ -103,7 +110,7 @@ export function SubtitleList() {
     try {
       const parts = timeStr.split(':');
       let totalMs = 0;
-      let cs: string | undefined; // 声明 cs 变量
+      let cs: string | undefined; 
       let ss: string;
 
       if (parts.length === 3) { // HH:MM:SS.CS
@@ -142,8 +149,12 @@ export function SubtitleList() {
         toggleSubtitleSelection(subtitleId);
       } else {
         setSelectedSubtitles([subtitleId]);
-        const validSplitTimeSec = (startTime / 1000) + 0.001;
-        setCurrentTime(validSplitTimeSec);
+        
+        const mainTimeSec = (startTime / 1000) + 0.001;
+        const globalTimeSec = findGlobalTimeFromMainTime(mainTimeSec, segments);
+        
+        setGlobalTime(globalTimeSec);
+        setCurrentTime(mainTimeSec);
         
         
         const subtitle = subtitles.find(s => s.id === subtitleId);
@@ -170,6 +181,8 @@ export function SubtitleList() {
     const rate = playbackRate || 1;
     const adjustedDurationMs = durationMs / rate;
 
+    const globalTimeSec = findGlobalTimeFromMainTime(startTimeSec, segments);
+    setGlobalTime(globalTimeSec);
     setCurrentTime(startTimeSec);
     setIsPlaying(true);
 
@@ -316,7 +329,6 @@ export function SubtitleList() {
     setShowRichTextEditor(true);
   };
 
-  // 2. 替换空状态的 emoji
   if (!subtitles.length) {
     return (
       <div className="h-full flex items-center justify-center text-text-tertiary">
@@ -440,7 +452,6 @@ export function SubtitleList() {
                   </div>
                 </div>
                 
-                {/* 3. 替换操作按钮的 emoji */}
                 {isSelected && (
                 <div className="flex-shrink-0 flex items-center gap-2 text-text-tertiary">
                   <button title="编辑" onClick={(e) => handleStartEditing(e, subtitle)} className="hover:text-text-primary">

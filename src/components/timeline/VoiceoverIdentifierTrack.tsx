@@ -1,9 +1,14 @@
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 import { useUIStore, useSelectedAttachment } from '@/stores/useUIStore';
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
+
+
 
 export function VoiceoverIdentifierTrack() {
   const { subtitles } = useSubtitleStore();
+  const segments = useVideoSequenceStore((state) => state.segments);
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { setSelectedAttachment } = useUIStore();
   const selectedAttachment = useSelectedAttachment();
@@ -21,8 +26,16 @@ export function VoiceoverIdentifierTrack() {
         style={{ transform: `translateX(-${scrollPosition}px)` }}
       >
         {audioSubtitles.map((subtitle) => {
-          const startPos = (subtitle.startTime / 1000) * pixelsPerSecond;
-          const width = Math.max(((subtitle.endTime - subtitle.startTime) / 1000) * pixelsPerSecond, 40);
+          
+          const mainStartTimeSec = subtitle.startTime / 1000;
+          const mainEndTimeSec = subtitle.endTime / 1000;
+
+          const globalStartTimeSec = findGlobalTimeFromMainTime(mainStartTimeSec, segments);
+          const globalEndTimeSec = findGlobalTimeFromMainTime(mainEndTimeSec, segments);
+          const globalDurationSec = globalEndTimeSec - globalStartTimeSec;
+
+          const startPos = globalStartTimeSec * pixelsPerSecond;
+          const width = Math.max(globalDurationSec * pixelsPerSecond, 40);
           
           const isSelected = selectedAttachment?.type === 'audio' && 
                              selectedAttachment?.subtitleId === subtitle.id;
@@ -34,7 +47,6 @@ export function VoiceoverIdentifierTrack() {
                 absolute h-6 rounded-sm cursor-pointer transition-all duration-150
                 flex items-center px-2 text-xs text-white
                 ${isSelected 
-                  // 📍 修复: 将 bg-blue-500 替换为 bg-accent-purple
                   ? 'bg-accent-purple border-2 border-white' 
                   : 'bg-teal-800 hover:bg-teal-700'
                 }

@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
-
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 interface TimeMark {
   time: number;
   position: number;
@@ -14,6 +15,7 @@ export function TimelineRuler() {
   const { duration } = useProjectStore();
   const { subtitles } = useSubtitleStore();
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
+  const segments = useVideoSequenceStore((state) => state.segments);
   
   const formatTime = (timeMs: number, showMilliseconds: boolean = false): string => {
     const totalMs = Math.floor(timeMs);
@@ -71,23 +73,27 @@ export function TimelineRuler() {
       if (endSeconds <= duration) keyTimes.add(endSeconds);
     });
     
-    Array.from(keyTimes).forEach(timeSeconds => {
-      const position = timeSeconds * pixelsPerSecond;
-      const hasExisting = marks.some(mark => 
-        Math.abs((mark.time / 1000) - timeSeconds) < minorIntervalSeconds / 2
-      );
-      
-      if (!hasExisting && timeSeconds <= duration) {
-        marks.push({
-          time: timeSeconds * 1000,
-          position,
-          isMainMark: false,
-          label: ''
-        });
-      }
-    });
-    
-    return marks.sort((a, b) => a.time - b.time);
+   Array.from(keyTimes).forEach(timeSeconds => {
+ 
+    const globalTimeSeconds = findGlobalTimeFromMainTime(timeSeconds, segments);
+
+    const position = globalTimeSeconds * pixelsPerSecond; 
+
+    const hasExisting = marks.some(mark => 
+      Math.abs((mark.time / 1000) - globalTimeSeconds) < minorIntervalSeconds / 2
+    );
+
+    if (!hasExisting && globalTimeSeconds <= duration) {
+      marks.push({
+        time: globalTimeSeconds * 1000, 
+        position,
+        isMainMark: false,
+        label: ''
+      });
+    }
+  });
+
+  return marks.sort((a, b) => a.time - b.time);
   }, [duration, pixelsPerSecond, subtitles]);
 
   return (

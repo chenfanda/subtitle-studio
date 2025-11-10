@@ -25,6 +25,9 @@ interface ProjectStore extends ProjectState {
   updateProjectTitle: (title: string) => void;
   
   setCurrentTime: (time: number) => void;
+  setGlobalTime: (time: number) => void;
+  setGlobalDuration: (duration: number) => void;
+
   setIsPlaying: (isPlaying: boolean) => void;
   togglePlayback: () => void;
   setVolume: (volume: number) => void;
@@ -48,6 +51,8 @@ const initialState: ProjectState = {
   videoUrl: '',
   duration: 0,
   currentTime: 0,
+  globalTime: 0,
+  globalDuration: 0,
   isPlaying: false,
   volume: APP_CONFIG.DEFAULT_VOLUME,
   playbackRate: APP_CONFIG.DEFAULT_PLAYBACK_RATE,
@@ -80,6 +85,7 @@ export const useProjectStore = create<ProjectStore>()(
       setDuration: (duration) => {
         set((state) => {
           state.duration = duration;
+          state.globalDuration = duration;
         });
         const videoUrl = get().videoUrl;
         if (videoUrl && duration > 0) {
@@ -98,6 +104,18 @@ export const useProjectStore = create<ProjectStore>()(
       setCurrentTime: (time) => {
         set((state) => {
           state.currentTime = Math.max(0, Math.min(time, state.duration));
+        });
+      },
+
+      setGlobalTime: (time) => {
+        set((state) => {
+          state.globalTime = Math.max(0, Math.min(time, state.globalDuration));
+        });
+      },
+
+      setGlobalDuration: (duration) => {
+        set((state) => {
+          state.globalDuration = duration;
         });
       },
       
@@ -214,6 +232,7 @@ export const useProjectStore = create<ProjectStore>()(
           state.title = project.metadata.title;
           state.videoUrl = project.video.url;
           state.duration = project.video.duration;
+          state.globalDuration = project.video.duration;
           state.saveStatus = 'saved';
         });
         

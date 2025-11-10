@@ -109,9 +109,9 @@ export function VideoControls() {
     volume, 
     togglePlayback, 
     setVolume, 
-    currentTime, 
-    duration, 
-    setCurrentTime,
+    globalTime,
+    globalDuration,
+    setGlobalTime,
     playbackRate,
     setPlaybackRate 
   } = useProjectStore();
@@ -137,17 +137,17 @@ export function VideoControls() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
   const progressRef = useRef<HTMLDivElement>(null);
 
-  const currentTimeFormatted = formatTime(currentTime || 0);
-  const durationFormatted = formatTime(duration || 0);
-  const progressPercentage = duration ? (currentTime || 0) / duration * 100 : 0;
+  const currentTimeFormatted = formatTime(globalTime || 0);
+  const durationFormatted = formatTime(globalDuration || 0);
+  const progressPercentage = globalDuration ? (globalTime || 0) / globalDuration * 100 : 0;
 
   const handleProgressClick = (e: React.MouseEvent) => {
-    if (!progressRef.current || !duration) return;
+    if (!progressRef.current || !globalDuration) return;
     const rect = progressRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
-    const newTime = percentage * duration;
-    setCurrentTime(Math.max(0, Math.min(duration, newTime)));
+    const newTime = percentage * globalDuration;
+    setGlobalTime(Math.max(0, Math.min(globalDuration, newTime)));
   };
 
   const handleProgressMouseDown = (e: React.MouseEvent) => {
@@ -155,12 +155,12 @@ export function VideoControls() {
     setIsDragging(true);
     handleProgressClick(e);
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!progressRef.current || !duration) return;
+      if (!progressRef.current || !globalDuration) return;
       const rect = progressRef.current.getBoundingClientRect();
       const moveX = moveEvent.clientX - rect.left;
       const percentage = Math.max(0, Math.min(1, moveX / rect.width));
-      const newTime = percentage * duration;
-      setCurrentTime(newTime);
+      const newTime = percentage * globalDuration;
+      setGlobalTime(newTime);
     };
     const handleMouseUp = () => {
       setIsDragging(false);
@@ -176,8 +176,8 @@ export function VideoControls() {
   };
 
   const handleSkip = (seconds: number) => {
-    const newTime = Math.max(0, Math.min(duration || 0, (currentTime || 0) + seconds));
-    setCurrentTime(newTime);
+    const newTime = Math.max(0, Math.min(globalDuration || 0, (globalTime || 0) + seconds));
+    setGlobalTime(newTime);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +186,6 @@ export function VideoControls() {
   };
 
   const toggleMute = () => {
-    // 📍 修复 1: 将 0.8 改为 80 (或 APP_CONFIG.DEFAULT_VOLUME)
     setVolume(volume > 0 ? 0 : 80); 
   };
 
@@ -211,11 +210,11 @@ export function VideoControls() {
       const { type, subtitleId } = selectedAttachment;
       switch (type) {
         case 'audio':
-          // @ts-ignore (subtitleId 存在)
+          // @ts-ignore
           removeSubtitleAudio(subtitleId);
           break;
         case 'soundEffect':
-          // @ts-ignore (subtitleId 存在)
+          // @ts-ignore
           removeSubtitleSoundEffect(subtitleId);
           break;
         case 'backgroundMusic':
@@ -259,7 +258,6 @@ export function VideoControls() {
   
   return (
     <div className="w-full bg-transparent">
-      {/* 1. 进度条 (不变) */}
       <div 
         ref={progressRef}
         className="w-full h-2 bg-white/20 cursor-pointer relative" 
@@ -276,10 +274,8 @@ export function VideoControls() {
         />
       </div>
 
-      {/* 2. 控制栏 */}
       <div className="flex items-center p-2 bg-gradient-to-t from-black/80 to-transparent relative">
         
-        {/* --- 左侧组 (不变) --- */}
         <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleTimeline}
@@ -303,7 +299,6 @@ export function VideoControls() {
           </button>
         </div>
 
-        {/* --- 中心组 (不变) --- */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center space-x-4">
           <span className="text-white text-sm font-mono w-16 text-right">{currentTimeFormatted}</span>
           
@@ -321,7 +316,6 @@ export function VideoControls() {
           <span className="text-white/80 text-sm font-mono w-16 text-left">{durationFormatted}</span>
         </div>
 
-        {/* --- 右侧组 (音量条已修复) --- */}
         <div className="flex items-center space-x-2 ml-auto">
           <div 
             className="flex items-center space-x-2"
@@ -340,7 +334,6 @@ export function VideoControls() {
             }`}>
               <input
                 type="range"
-                // 📍 修复 2: 将 max="1" 改为 max="100"
                 min="0"
                 max="100"
                 step="1"
@@ -351,7 +344,6 @@ export function VideoControls() {
             </div>
           </div>
 
-          {/* ... (设置和全屏按钮不变) ... */}
           <div className="relative">
             <button 
               onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(prev => !prev); }}

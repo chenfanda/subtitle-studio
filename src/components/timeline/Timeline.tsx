@@ -1,6 +1,5 @@
 import { TimelineRuler } from './TimelineRuler';
 import { SubtitleTrack } from './SubtitleTrack';
-// 1. (新增) 导入我们新创建的视频轨道
 import { VideoInsertTrack } from './VideoInsertTrack';
 import { VoiceoverIdentifierTrack } from './VoiceoverIdentifierTrack';
 import { SoundEffectIdentifierTrack } from './SoundEffectIdentifierTrack';

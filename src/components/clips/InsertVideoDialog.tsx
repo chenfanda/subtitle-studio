@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { InsertVideoLocalView } from './InsertVideoLocalView';
 import { InsertVideoEditView } from './InsertVideoEditView';
 import { UploadCloud, Clapperboard, Link } from 'lucide-react';
@@ -13,7 +14,9 @@ type DialogView = 'local' | 'library' | 'url' | 'edit';
 export default function InsertVideoDialog() {
   const { activeDialog, dialogTargetSubtitleId, closeDialog } = useUIStore();
   const { subtitles } = useSubtitleStore();
-  const { addInsertSegment } = useVideoSequenceStore();
+  const addInsertSegment = useVideoSequenceStore((state) => state.addInsertSegment);
+  const segments = useVideoSequenceStore((state) => state.segments);
+
   
   const [activeTab, setActiveTab] = useState<InsertVideoTab>('local');
   const [dialogView, setDialogView] = useState<DialogView>('local');
@@ -54,12 +57,13 @@ export default function InsertVideoDialog() {
   };
 
   const handleApply = () => {
-    if (!selectedVideo) return;
-
-    const insertAtTime = targetSubtitle.endTime; 
+    if (!selectedVideo || !targetSubtitle) return;
+    const mainTimeSec = targetSubtitle.endTime / 1000;
+    const globalInsertTimeMs = findGlobalTimeFromMainTime(mainTimeSec, segments) * 1000;
+    // const insertAtTime = targetSubtitle.endTime; 
     const durationInMs = Math.floor(selectedVideo.duration * 1000);
     
-    addInsertSegment(selectedVideo.url, durationInMs, insertAtTime);
+    addInsertSegment(selectedVideo.url, durationInMs, globalInsertTimeMs);
     handleClose();
   };
 

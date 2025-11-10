@@ -9,6 +9,7 @@ import {
   PlusSquare,
   Combine,
   Video,
+  VideoOff,
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -16,13 +17,17 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import type { SubtitleItem } from '@/types/subtitle';
+
+
 
 export function ClipSubtitleList() {
   const { 
     currentTime, 
     setCurrentTime, 
+    setGlobalTime,
     setIsPlaying, 
     playbackRate 
   } = useProjectStore();
@@ -36,6 +41,7 @@ export function ClipSubtitleList() {
     mergeSubtitles,
   } = useSubtitleStore();
   
+  const segments = useVideoSequenceStore((state) => state.segments);
   const { addCutMarker } = useVideoSequenceStore();
   
   const { 
@@ -53,8 +59,6 @@ export function ClipSubtitleList() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // (1. 这是上一步的修改，它是正确的，应该保留)
-  // 确保这里的逻辑 (<=) 与 storeUtils.ts 中的 findItemAtTime (<=) 保持一致
   const currentSubtitle = useMemo(() => {
     if (isInsertClip) return null;
     return subtitles.find(s => currentTimeMs >= s.startTime && currentTimeMs <= s.endTime);
@@ -67,8 +71,10 @@ export function ClipSubtitleList() {
     if (selectedSubtitleIds.length !== 1) return false;
     const subtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
     if (!subtitle) return false;
-    return currentTimeMs > subtitle.startTime && currentTimeMs < subtitle.endTime;
-  }, [selectedSubtitleIds, subtitles, currentTimeMs, isInsertClip]);
+    
+    const mainTimeMs = currentTime * 1000;
+    return mainTimeMs > subtitle.startTime && mainTimeMs < subtitle.endTime;
+  }, [selectedSubtitleIds, subtitles, currentTime, isInsertClip]);
 
   useEffect(() => {
     if (!currentSubtitle || !scrollContainerRef.current) return;
@@ -115,8 +121,11 @@ export function ClipSubtitleList() {
       toggleSubtitleSelection(subtitleId);
     } else {
       setSelectedSubtitles([subtitleId]);
-      const validSplitTimeSec = (startTime / 1000) + 0.001;
-      setCurrentTime(validSplitTimeSec);
+      const mainTimeSec = (startTime / 1000) + 0.001;
+      const globalTimeSec = findGlobalTimeFromMainTime(mainTimeSec, segments);
+      
+      setGlobalTime(globalTimeSec);
+      setCurrentTime(mainTimeSec);
     }
   };
 
@@ -130,6 +139,8 @@ export function ClipSubtitleList() {
     const rate = playbackRate || 1;
     const adjustedDurationMs = durationMs / rate;
 
+    const globalTimeSec = findGlobalTimeFromMainTime(startTimeSec, segments);
+    setGlobalTime(globalTimeSec);
     setCurrentTime(startTimeSec);
     setIsPlaying(true);
 
@@ -179,6 +190,32 @@ export function ClipSubtitleList() {
     if (selectedSubtitleIds.length > 1) {
       mergeSubtitles(selectedSubtitleIds);
       clearSelectedSubtitles();
+    }
+  };
+
+  const handleDeleteSelectedSubtitles = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedSubtitleIds.length > 0) {
+      deleteSubtitles(selectedSubtitleIds);
+      clearSelectedSubtitles();
+    }
+  };
+
+  const handleDeleteVideoSegment = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedSubtitleIds.length !== 1) return;
+    
+    const subtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
+    if (!subtitle) return;
+    
+    const mainStartTimeSec = subtitle.startTime / 1000;
+    const mainEndTimeSec = subtitle.endTime / 1000;
+
+    const globalStartTimeMs = findGlobalTimeFromMainTime(mainStartTimeSec, segments) * 1000;
+    const globalEndTimeMs = findGlobalTimeFromMainTime(mainEndTimeSec, segments) * 1000;
+
+    if (globalEndTimeMs > globalStartTimeMs) {
+      addCutMarker(globalStartTimeMs, globalEndTimeMs);
     }
   };
 
@@ -238,6 +275,14 @@ export function ClipSubtitleList() {
                 className="p-1.5 rounded text-text-primary hover:bg-bg-tertiary disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
               >
                 <Combine size={18} />
+              </button>
+              <button
+                onClick={handleDeleteSelectedSubtitles}
+                disabled={selectedSubtitleIds.length === 0}
+                title="删除字幕"
+                className="p-1.5 rounded text-text-primary hover:bg-accent-red hover:text-white disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
+              >
+                <Trash2 size={18} />
               </button>
               
               <div className="w-px h-4 bg-border-secondary mx-1" />
@@ -330,9 +375,12 @@ export function ClipSubtitleList() {
                     </button>
 
                     <button 
-                      title="删除视频片段"
+                      title="删除视频片段 (跳播)"
+                      onClick={handleDeleteVideoSegment}
+                      disabled={selectedSubtitleIds.length !== 1}
+                      className="p-1 rounded hover:text-accent-red disabled:text-text-tertiary disabled:hover:text-text-tertiary"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <VideoOff className="w-4 h-4" />
                     </button>
                   </div>
                 )}

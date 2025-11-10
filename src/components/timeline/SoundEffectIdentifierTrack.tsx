@@ -1,9 +1,14 @@
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTimelineStore } from '@/stores/useTimelineStore';
 import { useUIStore, useSelectedAttachment } from '@/stores/useUIStore';
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
+
+
 
 export function SoundEffectIdentifierTrack() {
   const { subtitles } = useSubtitleStore();
+  const segments = useVideoSequenceStore((state) => state.segments);
   const { pixelsPerSecond, scrollPosition } = useTimelineStore();
   const { setSelectedAttachment } = useUIStore();
   const selectedAttachment = useSelectedAttachment();
@@ -22,10 +27,12 @@ export function SoundEffectIdentifierTrack() {
       >
         {sfxSubtitles.map((subtitle) => {
           if (!subtitle.soundEffect) return null;
+          
+          const mainStartTimeSec = subtitle.startTime / 1000;
+          const globalStartTimeSec = findGlobalTimeFromMainTime(mainStartTimeSec, segments);
 
-          const startPos = (subtitle.startTime / 1000) * pixelsPerSecond;
+          const startPos = globalStartTimeSec * pixelsPerSecond;
 
-          // 关键区别：宽度基于音效时长，而不是字幕 endTime
           const width = Math.max(
             (subtitle.soundEffect.track.duration * pixelsPerSecond), 
             40

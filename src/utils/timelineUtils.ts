@@ -1,4 +1,4 @@
-// src/utils/timelineUtils.ts
+import type { TimelineSegment } from '@/types/videoSequence';
 export interface TimeMarkData {
   time: number;
   position: number;
@@ -76,4 +76,88 @@ function calculateOptimalInterval(visibleDuration: number): number {
   if (visibleDuration <= 600) return 10;
   if (visibleDuration <= 1800) return 30;
   return 60;
+}
+
+export function findGlobalTimeFromMainTime(mainTimeSec: number, segments: TimelineSegment[]): number {
+  const mainTimeMs = mainTimeSec * 1000;
+
+  if (!segments) {
+    return mainTimeSec;
+  }
+
+  const mainSegments = segments
+    .filter(s => s.type === 'main')
+    .sort((a, b) => a.sourceStartTime - b.sourceStartTime);
+
+  if (mainSegments.length === 0) {
+    return mainTimeSec;
+  }
+
+  let anchorSegment: TimelineSegment | null = null;
+  for (const segment of mainSegments) {
+    if (segment.sourceStartTime <= mainTimeMs) {
+      anchorSegment = segment;
+    } else {
+      break;
+    }
+  }
+
+  if (anchorSegment === null) {
+    return mainSegments[0].globalStartTime / 1000;
+  }
+
+  const anchorMainEndTime = anchorSegment.sourceStartTime + anchorSegment.duration;
+  const anchorGlobalEndTime = (anchorSegment.globalStartTime + anchorSegment.duration) / 1000;
+
+  if (mainTimeMs < anchorMainEndTime) {
+    const offsetInSegment = mainTimeMs - anchorSegment.sourceStartTime;
+    return (anchorSegment.globalStartTime + offsetInSegment) / 1000;
+  } else {
+    return anchorGlobalEndTime;
+  }
+}
+
+export function findMainTimeFromGlobalTime(globalTimeSec: number, segments: TimelineSegment[]): number {
+  const globalTimeMs = globalTimeSec * 1000;
+
+  if (!segments) {
+    return globalTimeSec;
+  }
+
+  const sortedSegments = segments.sort((a, b) => a.globalStartTime - b.globalStartTime);
+
+  if (sortedSegments.length === 0) {
+    return globalTimeSec;
+  }
+
+  let lastKnownMainTime = 0;
+  let lastKnownMainTimeEnd = 0;
+
+  for (const segment of sortedSegments) {
+    const segmentGlobalStartTime = segment.globalStartTime;
+    const segmentGlobalEndTime = segment.globalStartTime + segment.duration;
+
+    if (segment.type === 'main') {
+      if (globalTimeMs >= segmentGlobalStartTime && globalTimeMs < segmentGlobalEndTime) {
+    
+        const offsetInSegment = globalTimeMs - segmentGlobalStartTime;
+        return (segment.sourceStartTime + offsetInSegment) / 1000;
+      }
+      lastKnownMainTime = segment.sourceStartTime;
+      lastKnownMainTimeEnd = segment.sourceStartTime + segment.duration;
+    } else {
+    
+      if (globalTimeMs >= segmentGlobalStartTime && globalTimeMs < segmentGlobalEndTime) {
+        
+        return lastKnownMainTimeEnd / 1000;
+      }
+    }
+  }
+
+  
+  if (globalTimeMs >= sortedSegments[sortedSegments.length - 1].globalStartTime + sortedSegments[sortedSegments.length - 1].duration) {
+     return lastKnownMainTimeEnd / 1000;
+  }
+
+  return lastKnownMainTime / 1000;
 }
