@@ -3,8 +3,7 @@ import { useTimelineStore } from '@/stores/useTimelineStore';
 import { useUIStore, useSelectedAttachment } from '@/stores/useUIStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
-
-
+import { Volume2 } from 'lucide-react';
 
 export function SoundEffectIdentifierTrack() {
   const { subtitles } = useSubtitleStore();
@@ -29,14 +28,14 @@ export function SoundEffectIdentifierTrack() {
           if (!subtitle.soundEffect) return null;
           
           const mainStartTimeSec = subtitle.startTime / 1000;
+          const mainEndTimeSec = subtitle.endTime / 1000;
+
           const globalStartTimeSec = findGlobalTimeFromMainTime(mainStartTimeSec, segments);
 
           const startPos = globalStartTimeSec * pixelsPerSecond;
 
-          const width = Math.max(
-            (subtitle.soundEffect.track.duration * pixelsPerSecond), 
-            40
-          );
+          const durationSec = mainEndTimeSec - mainStartTimeSec;
+          const width = Math.max(durationSec * pixelsPerSecond, 40);
 
           const isSelected = selectedAttachment?.type === 'soundEffect' && 
                              selectedAttachment?.subtitleId === subtitle.id;
@@ -48,8 +47,8 @@ export function SoundEffectIdentifierTrack() {
                 absolute h-6 rounded-sm cursor-pointer transition-all duration-150
                 flex items-center px-2 text-xs text-white
                 ${isSelected 
-                  ? 'bg-purple-600 border-2 border-white' 
-                  : 'bg-green-800 hover:bg-green-700'
+                  ? 'bg-accent-purple border-2 border-white' 
+                  : 'bg-orange-800 hover:bg-orange-700'
                 }
               `}
               style={{ 
@@ -58,8 +57,9 @@ export function SoundEffectIdentifierTrack() {
               }}
               onClick={() => handleIdentifierClick(subtitle.id)}
             >
+              <Volume2 className="w-3 h-3 mr-1" />
               <div className="truncate text-xs">
-                🔊 {subtitle.soundEffect.track.name || 'Sound Effect'}
+                {subtitle.soundEffect.track.name || 'Sound Effect'}
               </div>
             </div>
           );

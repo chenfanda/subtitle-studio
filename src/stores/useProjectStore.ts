@@ -5,7 +5,7 @@ import type { ProjectState, ProjectExport } from '@/types/project';
 import type { ProjectSnapshot } from '@/types/history';
 import { APP_CONFIG } from '@/constants/config';
 import { generateId } from '@/utils/storeUtils';
-import { useHistoryStore } from './useHistoryStore';
+
 import { useSubtitleStore } from './useSubtitleStore';
 import { useTextElementStore } from './useTextElementStore';
 import { useMediaStore } from './useMediaStore';
@@ -13,6 +13,7 @@ import { useBrollStore } from './useBrollStore';
 import { useAudioStore } from './useAudioStore';
 import { useSettingsStore } from './useSettingsStore';
 import { useVideoSequenceStore } from './useVideoSequenceStore';
+import { useUIStore } from './useUIStore';
 
 export type AppStage = 'upload' | 'processing' | 'editing';
 
@@ -99,6 +100,7 @@ export const useProjectStore = create<ProjectStore>()(
           state.title = title;
           state.saveStatus = 'unsaved';
         });
+        
       },
       
       setCurrentTime: (time) => {
@@ -135,12 +137,14 @@ export const useProjectStore = create<ProjectStore>()(
         set((state) => {
           state.volume = Math.max(0, Math.min(100, volume));
         });
+        
       },
       
       setPlaybackRate: (rate) => {
         set((state) => {
           state.playbackRate = rate;
         });
+      
       },
       
       markUnsaved: () => {
@@ -161,8 +165,12 @@ export const useProjectStore = create<ProjectStore>()(
           state.saveStatus = status;
         });
       },
-      
+
       toSnapshot: () => {
+        const state = get();
+        const settingsStore = useSettingsStore.getState();
+        const uiStore = useUIStore.getState();
+        
         const subtitleStore = useSubtitleStore.getState();
         const textElementStore = useTextElementStore.getState();
         const mediaStore = useMediaStore.getState();
@@ -171,6 +179,24 @@ export const useProjectStore = create<ProjectStore>()(
         const videoSequenceStore = useVideoSequenceStore.getState();
         
         return {
+          projectState: {
+            title: state.title,
+            volume: state.volume,
+            playbackRate: state.playbackRate,
+          },
+          settingsState: {
+            watermark: settingsStore.watermark,
+          },
+          uiState: {
+            selectedSubtitleIds: uiStore.selectedSubtitleIds,
+            selectedTextElementIds: uiStore.selectedTextElementIds,
+            selectedAttachment: uiStore.selectedAttachment,
+            timelineZoom: uiStore.timelineZoom,
+            timelineScrollLeft: uiStore.timelineScrollLeft,
+            activePanel: uiStore.activePanel,
+            activeClipTask: uiStore.activeClipTask,
+          },
+          
           subtitles: subtitleStore.subtitles,
           textElements: textElementStore.textElements,
           placedMedia: mediaStore.placedMedia,
@@ -247,7 +273,6 @@ export const useProjectStore = create<ProjectStore>()(
         
         useSettingsStore.getState().updateWatermark(project.settings.watermark);
         
-        useHistoryStore.getState().clearHistory();
       },
       
       resetProject: () => {

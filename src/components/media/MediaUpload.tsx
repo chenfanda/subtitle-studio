@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { validateMediaFile, createMediaItem } from '@/utils/mediaUtils';
+import { Loader2, CloudUpload } from 'lucide-react'; // <-- 1. 导入图标
 
 export function MediaUpload() {
   const [isUploading, setIsUploading] = useState(false);
@@ -43,9 +44,17 @@ export function MediaUpload() {
         className="w-full py-2 px-4 bg-accent-purple hover:bg-accent-purple/80 disabled:bg-accent-purple/50 text-white text-sm rounded transition-colors flex items-center justify-center gap-2"
       >
         {isUploading ? (
-          <>⏳ 上传中...</>
+          // <-- 2. 替换为 Lucide 加载图标
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            上传中...
+          </>
         ) : (
-          <>☁️ 上传</>
+          // <-- 3. 替换为 Lucide 上传图标
+          <>
+            <CloudUpload className="h-4 w-4" />
+            上传
+          </>
         )}
       </button>
 

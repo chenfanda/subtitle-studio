@@ -1,22 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUturnLeftIcon, ArrowUturnRightIcon } from '@heroicons/react/24/outline';
-// 1. 导入 lucide-react 图标
 import {
   Cloud,
   Loader2,
   Circle,
   XCircle,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Save // 1. 导入 Save 图标
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
+import { useProjectSaver } from '@/hooks/useProjectSaver'; // 2. 导入 Project Saver
+import { useExportStore } from '@/stores/useExportStore'; // 3. 导入 Export Store
 
 export function HeaderBar() {
   const { title, saveStatus, updateProjectTitle } = useProjectStore();
   const { toggleLeftPanel } = useUIStore();
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
+  const { isSaving, saveProjectToFile } = useProjectSaver(); // 4. 获取保存状态和方法
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,6 +35,14 @@ export function HeaderBar() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditingTitle) return;
       
+      // 添加保存快捷键 (Ctrl+S)
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (saveStatus !== 'saved' && !isSaving) {
+          saveProjectToFile();
+        }
+      }
+      
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
@@ -45,7 +56,7 @@ export function HeaderBar() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isEditingTitle]);
+  }, [isEditingTitle, isSaving, saveStatus]); // 依赖项中加入 isSaving 和 saveStatus
 
   const handleTitleSubmit = () => {
     const trimmedTitle = editingTitle.trim();
@@ -74,7 +85,6 @@ export function HeaderBar() {
     redo();
   };
 
-  // 2. 将 'icon' 属性从 string (emoji) 替换为 JSX (React.ReactNode)
   const getSaveStatusInfo = () => {
     switch (saveStatus) {
       case 'saved':
@@ -91,7 +101,6 @@ export function HeaderBar() {
         };
       case 'unsaved':
         return { 
-          // 使用一个小的、实心的、当前颜色的圆圈
           icon: <Circle className="w-3 h-3 fill-current" />, 
           text: '未保存',
           className: 'text-accent-yellow'
@@ -148,11 +157,6 @@ export function HeaderBar() {
               {title}
             </h1>
           )}
-          
-          {/* (这个小黄点现在由 getSaveStatusInfo() 统一处理) */}
-          {/* {saveStatus === 'unsaved' && (
-            <span className="ml-2 text-accent-yellow text-sm">•</span>
-          )} */}
         </div>
       </div>
 
@@ -188,13 +192,11 @@ export function HeaderBar() {
           </button>
         </div>
 
-        {/* 3. 状态信息图标现在会正确渲染 JSX */}
         <div className={`flex items-center space-x-2 ${saveInfo.className}`}>
           <span className="text-sm flex items-center justify-center w-4 h-4">{saveInfo.icon}</span>
           <span className="text-sm font-medium">{saveInfo.text}</span>
         </div>
 
-        {/* 4. 替换按钮图标 */}
         <div className="flex items-center space-x-2">
           <button 
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
@@ -212,10 +214,25 @@ export function HeaderBar() {
             <HelpCircle className="w-5 h-5" />
           </button>
 
+          {/* 5. (新增) 保存按钮 */}
+          <button
+            className={`w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors ${
+              (isSaving || saveStatus === 'saved')
+                ? 'text-text-disabled cursor-not-allowed'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+            title={saveStatus === 'saved' ? "项目已保存" : "保存项目 (Ctrl+S)"}
+            onClick={saveProjectToFile}
+            disabled={isSaving || saveStatus === 'saved'}
+          >
+            <Save className="w-5 h-5" />
+          </button>
+
           <button 
             className="px-3 py-1.5 bg-accent-purple hover:bg-purple-600 text-white text-sm font-medium rounded transition-colors"
             title="导出项目"
-            onClick={() => useUIStore.getState().setShowExportModal(true)}
+            // 6. (修改) 修正 onClick 事件
+            onClick={() => useExportStore.getState().setShowExportModal(true)}
           >
             导出
           </button>

@@ -6,6 +6,7 @@ import { VideoControls } from '../video/VideoControls';
 import { TimelineArea } from '../layout/TimelineArea';
 import { AudioPlayer } from '../audio/AudioPlayer';
 import { useProjectStore } from '@/stores/useProjectStore';
+import GlobalModals from '../common/GlobalModals';
 import { 
   useLeftPanelCollapsed, 
   useTimelineCollapsed,
@@ -21,7 +22,8 @@ const VoiceoverSettingsPanel = lazy(() => import('../audio/VoiceoverSettingsPane
 const SoundEffectSettingsPanel = lazy(() => import('../audio/SoundEffectSettingsPanel'));
 const BackgroundMusicSettingsPanel = lazy(() => import('../audio/BackgroundMusicSettingsPanel'));
 const RichTextEditor = lazy(() => import('../common/RichTextEditor'));
-// --- (修改结束) ---
+
+
 
 export function EditingStage() {
   const collapsed = useLeftPanelCollapsed();
@@ -157,7 +159,9 @@ export function EditingStage() {
         {activeDialog === 'insertVideo' && (
           <InsertVideoDialog />
         )}
+
       </Suspense>
+      <GlobalModals />
     </div>
   );
 }

@@ -27,8 +27,6 @@ import {
 } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
 
-
-// (SettingsMenu 组件保持不变...)
 function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
   onSkip: (seconds: number) => void;
   onSetRate: (rate: number) => void;
@@ -116,7 +114,11 @@ export function VideoControls() {
     setPlaybackRate 
   } = useProjectStore();
   
-  const { removeSubtitleAudio, removeSubtitleSoundEffect } = useSubtitleStore();
+  const { 
+    removeSubtitleAudio, 
+    removeSubtitleSoundEffect, 
+    removeSubtitleBroll 
+  } = useSubtitleStore();
   const { deleteTextElement } = useTextElementStore();
   const { removeBackgroundMusic } = useAudioStore();
   const { removeSegment } = useVideoSequenceStore();
@@ -217,12 +219,16 @@ export function VideoControls() {
           // @ts-ignore
           removeSubtitleSoundEffect(subtitleId);
           break;
+        case 'broll':
+          // @ts-ignore
+          removeSubtitleBroll(subtitleId);
+          break;
         case 'backgroundMusic':
           removeBackgroundMusic();
           break;
         case 'videoSequence':
           removeSegment(selectedAttachment.segmentId);
-      break;
+          break;
         default:
           break;
       }

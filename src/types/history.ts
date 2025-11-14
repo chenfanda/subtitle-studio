@@ -1,13 +1,41 @@
 import type { SubtitleItem } from './subtitle';
 import type { TextElement } from './textElement';
 import type { TimelineSegment } from './videoSequence';
+import type { AudioTrack } from './audio';
+import type { WatermarkConfig } from './settings';
+import type { ProjectState } from './project';
+import type { UIState } from './ui';
+
+type Snapshot_ProjectState = Pick<ProjectState, 'title' | 'volume' | 'playbackRate'>;
+
+type Snapshot_SettingsState = {
+  watermark: WatermarkConfig;
+};
+
+type Snapshot_UIState = Pick<UIState, 
+  | 'selectedSubtitleIds' 
+  | 'selectedAttachment'
+  | 'timelineZoom' 
+  | 'timelineScrollLeft'
+  | 'activePanel'
+  | 'activeClipTask'
+> & {
+  selectedTextElementIds: string[];
+};
+
 export interface ProjectSnapshot {
+  projectState: Snapshot_ProjectState;
+  settingsState: Snapshot_SettingsState;
+
   subtitles: SubtitleItem[];
   textElements: TextElement[];
   placedMedia: any[];
   placedBrolls: any[];
-  backgroundMusic: any | null;
+  backgroundMusic: AudioTrack | null;
   videoSequenceSegments: TimelineSegment[];
+
+  uiState: Snapshot_UIState;
+
   timestamp: number;
 }
 
