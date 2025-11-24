@@ -33,19 +33,24 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
 
-    // --- (这是新增的配置) ---
-    // 明确允许服务器访问 FFMPEG 的文件
     fs: {
       allow: [
-        // 允许访问项目根目录 (..)
+      
         path.resolve(__dirname, '.'),
-        // 允许访问 FFMPEG 包的特定目录
+        
         path.resolve(__dirname, 'node_modules/@ffmpeg/ffmpeg/dist'),
         path.resolve(__dirname, 'node_modules/@ffmpeg/util/dist'),
       ],
     },
-    // --- (新增配置结束) ---
+    
   },
+
+  preview: {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    },
 
   build: {
     target: 'esnext',
