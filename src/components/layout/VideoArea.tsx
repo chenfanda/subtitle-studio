@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { SubtitleOverlay } from '../video/SubtitleOverlay';
 import { TextElementOverlay } from '../video/TextElementOverlay';
@@ -44,7 +44,8 @@ export function VideoArea() {
       setEditingTextElement(null);
     }
   };
-
+  const setEditorHeight = useProjectStore((state) => state.setEditorHeight);
+  const containerRef = useRef<HTMLDivElement>(null);
   if (appStage !== 'editing' || !videoUrl) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-900">
@@ -56,10 +57,23 @@ export function VideoArea() {
       </div>
     );
   }
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setEditorHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [setEditorHeight]);
 
   return (
     <div className="h-full flex items-center justify-center p-6 bg-gray-900">
       <div 
+        ref={containerRef}
         className="relative w-full video-container" 
         style={{ 
           aspectRatio: '16/9',

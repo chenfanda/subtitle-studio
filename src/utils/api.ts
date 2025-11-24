@@ -1,46 +1,56 @@
 import type { ProjectExport } from '@/types/project';
 
-// (修改) 假设您的后端 API 部署在 /api 路径下
-const API_BASE_URL = '/api/export';
+const API_BASE_URL = 'http://localhost:8000/api';
 
-// (修改) 移除所有模拟代码
-const api = {
-  startExportJob: async (projectData: ProjectExport): Promise<{ jobId: string }> => {
-    console.log('API: 正在发送导出作业到后端...');
-    
-    const response = await fetch(`${API_BASE_URL}/start`, {
+export const api = {
+  startExportJob: async (projectData: ProjectExport, signal?: AbortSignal): Promise<{ jobId: string }> => {
+    const response = await fetch(`${API_BASE_URL}/export`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(projectData),
+      signal,
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`启动后端导出失败: ${errorBody}`);
+      const contentType = response.headers.get("content-type");
+      let errorMessage = response.statusText;
+      
+      try {
+        if (contentType && contentType.includes("application/json")) {
+          const errorJson = await response.json();
+          errorMessage = errorJson.error || errorMessage;
+        } else {
+          errorMessage = await response.text();
+        }
+      } catch(e) {}
+
+      throw new Error(`启动后端导出失败: ${errorMessage}`);
     }
     
-    const result = await response.json();
-    console.log('API: 已创建作业 ID:', result.jobId);
-    return result;
+    return await response.json();
   },
 
-  getJobStatus: async (jobId: string): Promise<{ status: string, url?: string }> => {
-    console.log('API: 正在检查作业状态', jobId);
-    
-    const response = await fetch(`${API_BASE_URL}/status/${jobId}`);
+  getJobStatus: async (jobId: string, signal?: AbortSignal): Promise<{ status: string, url?: string, progress?: number, error?: string }> => {
+    const response = await fetch(`${API_BASE_URL}/status/${jobId}`, {
+      signal
+    });
     
     if (!response.ok) {
       throw new Error(`检查作业状态失败: ${response.statusText}`);
     }
     
-    const result = await response.json();
-    // 假设后端返回:
-    // { status: 'processing' }
-    // { status: 'completed', url: 'https://...' }
-    // { status: 'error', message: '...' }
-    return result;
+    return await response.json();
+  },
+
+  cancelExportJob: async (jobId: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ jobId }),
+    });
   }
 };
-export { api };

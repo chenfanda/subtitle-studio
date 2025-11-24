@@ -15,6 +15,7 @@ export interface ProjectState {
   playbackRate: number; // 0.5, 1, 1.5, 2 等
   lastSaved: Date | null;
   saveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
+  editorHeight: number;
 }
 
 /**
@@ -56,7 +57,8 @@ export interface ProjectExport {
   
 
   settings: {
-    watermark: any;           
+    watermark: any;
+    referenceHeight?: number;          
   };
 }
 

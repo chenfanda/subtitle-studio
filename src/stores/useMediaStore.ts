@@ -38,7 +38,7 @@ interface MediaStore {
   getUploadedMedia: () => UploadedMediaItem[];
   
   placeOnTimeline: (media: MediaItem, startTime: number, endTime: number, x?: number, y?: number) => void;
-  updateMediaPosition: (mediaId: string, x: number, y: number, scaleX?: number, scaleY?: number, rotation?: number) => void;
+  updateMediaPosition: (mediaId: string, x: number, y: number, scaleX?: number, scaleY?: number, rotation?: number, width?: number) => void;
   updateMediaTiming: (mediaId: string, startTime: number, endTime: number) => void;
   removeMedia: (mediaId: string) => void;
   
@@ -205,17 +205,18 @@ export const useMediaStore = create<MediaStore>()(
       useHistoryStore.getState().pushState();
     },
     
-    updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation) =>
-      set((state) => {
-        const media = state.placedMedia.find(item => item.media.id === mediaId);
-        if (media) {
-          media.position.x = x;
-          media.position.y = y;
-          if (scaleX !== undefined) media.position.scaleX = scaleX;
-          if (scaleY !== undefined) media.position.scaleY = scaleY;
-          if (rotation !== undefined) media.position.rotation = rotation;
-        }
-      }),
+    updateMediaPosition: (mediaId, x, y, scaleX, scaleY, rotation, width) =>
+          set((state) => {
+            const media = state.placedMedia.find(item => item.media.id === mediaId);
+            if (media) {
+              media.position.x = x;
+              media.position.y = y;
+              if (scaleX !== undefined) media.position.scaleX = scaleX;
+              if (scaleY !== undefined) media.position.scaleY = scaleY;
+              if (rotation !== undefined) media.position.rotation = rotation;
+              if (width !== undefined) media.position.width = width;
+            }
+          }),
     
     updateMediaTiming: (mediaId, startTime, endTime) => {
       set((state) => {

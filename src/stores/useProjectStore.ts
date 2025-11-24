@@ -44,6 +44,7 @@ interface ProjectStore extends ProjectState {
   loadProject: (project: ProjectExport) => void;
   
   resetProject: () => void;
+  setEditorHeight: (height: number) => void;
 }
 
 const initialState: ProjectState = {
@@ -59,6 +60,7 @@ const initialState: ProjectState = {
   playbackRate: APP_CONFIG.DEFAULT_PLAYBACK_RATE,
   lastSaved: null,
   saveStatus: 'saved',
+  editorHeight: 540,
 };
 
 export const useProjectStore = create<ProjectStore>()(
@@ -165,6 +167,13 @@ export const useProjectStore = create<ProjectStore>()(
           state.saveStatus = status;
         });
       },
+      setEditorHeight: (height) => { 
+        set((state) => {
+          if (Math.abs(state.editorHeight - height) > 1) {
+            state.editorHeight = height;
+          }
+        });
+      },
 
       toSnapshot: () => {
         const state = get();
@@ -248,7 +257,8 @@ export const useProjectStore = create<ProjectStore>()(
             videoSequenceSegments: videoSequenceStore.segments
           },
           settings: {
-            watermark: settingsStore.watermark
+            watermark: settingsStore.watermark,
+            referenceHeight: state.editorHeight
           }
         };
       },

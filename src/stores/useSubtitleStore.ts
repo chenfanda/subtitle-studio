@@ -105,17 +105,25 @@ export const useSubtitleStore = create<SubtitleStore>()(
         useHistoryStore.getState().pushState();
       },
 
-      updateSubtitle: (id, updates) => {
+     updateSubtitle: (id, updates) => {
         set((state) => {
           const subtitle = findById(state.subtitles, id);
           if (!subtitle) return;
 
           if (updates.richText) {
             updates.text = convertRichTextToPlainText(updates.richText);
-          } 
-          else if (updates.text && updates.text !== subtitle.text) { 
+          } else if (updates.text && updates.text !== subtitle.text) {
             const baseStyle = subtitle.style || DEFAULT_SUBTITLE_STYLE;
             updates.richText = createRichTextFromPlainText(updates.text, baseStyle);
+          }
+
+          if (updates.style && subtitle.richText && subtitle.richText.length > 0) {
+            subtitle.richText.forEach(segment => {
+              if (!segment.style) {
+                segment.style = { ...DEFAULT_SUBTITLE_STYLE };
+              }
+              Object.assign(segment.style, updates.style);
+            });
           }
 
           Object.assign(subtitle, updates);

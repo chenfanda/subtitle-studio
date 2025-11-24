@@ -13,7 +13,7 @@ interface UserActions {
 }
 
 export const useUserStore = create<UserState & UserActions>()((set) => ({
-  isPremium: false, // 默认所有用户都是免费版
+  isPremium: true, // 默认所有用户都是免费版
   // userProfile: null,
   
   _temp_togglePremium: () => {

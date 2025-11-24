@@ -26,14 +26,23 @@ interface ExportStore {
   exportSettings: ExportSettings;
   jobId: string | null;
   downloadUrl: string | null;
+  statusMessage: string;
+  abortController: AbortController | null;
+  startTime: number | null;
 
   setShowExportModal: (visible: boolean) => void;
   setExportStatus: (status: ExportStatus) => void;
   setExportProgress: (progress: number) => void;
+  setStatusMessage: (msg: string) => void;
   setExportError: (error: string | null) => void;
   updateExportSettings: (settings: Partial<ExportSettings>) => void;
   setJobId: (jobId: string) => void;
   setDownloadUrl: (url: string) => void;
+  
+  // 新增：初始化导出，返回控制器用于传递给异步任务
+  initExport: () => AbortController;
+  // 新增：取消导出
+  cancelExport: () => void;
   
   monitorJob: () => Promise<void>;
   resetExport: () => void;
@@ -43,6 +52,7 @@ const initialState = {
   showExportModal: false,
   exportStatus: 'idle' as ExportStatus,
   exportProgress: 0,
+  statusMessage: '',
   exportError: null,
   exportSettings: {
     resolution: 1080,
@@ -51,6 +61,8 @@ const initialState = {
   },
   jobId: null,
   downloadUrl: null,
+  abortController: null,
+  startTime: null,
 };
 
 export const useExportStore = create<ExportStore>()(
@@ -66,6 +78,9 @@ export const useExportStore = create<ExportStore>()(
           state.exportError = null;
           state.jobId = null;
           state.downloadUrl = null;
+          state.statusMessage = '';
+          state.abortController = null;
+          state.startTime = null;
         }
       });
     },
@@ -82,10 +97,17 @@ export const useExportStore = create<ExportStore>()(
       });
     },
 
+    setStatusMessage: (msg) => {
+      set((state) => {
+        state.statusMessage = msg;
+      });
+    },
+
     setExportError: (error) => {
       set((state) => {
         state.exportStatus = 'error';
         state.exportError = error;
+        state.abortController = null;
       });
     },
 
@@ -107,6 +129,34 @@ export const useExportStore = create<ExportStore>()(
       });
     },
 
+    initExport: () => {
+      const controller = new AbortController();
+      set((state) => {
+        state.exportStatus = 'preparing';
+        state.exportProgress = 0;
+        state.statusMessage = '初始化中...';
+        state.exportError = null;
+        state.abortController = controller;
+        state.startTime = Date.now();
+      });
+      return controller;
+    },
+
+    cancelExport: () => {
+      const { abortController } = get();
+      if (abortController) {
+        abortController.abort();
+      }
+      set((state) => {
+        state.exportStatus = 'idle';
+        state.statusMessage = '已取消';
+        state.abortController = null;
+        state.jobId = null;
+        state.exportProgress = 0;
+        state.startTime = null;
+      });
+    },
+
     resetExport: () => {
       set(() => initialState);
     },
@@ -117,38 +167,69 @@ export const useExportStore = create<ExportStore>()(
 
       set((state) => {
         state.exportStatus = 'polling';
+        state.statusMessage = '等待云端处理...';
       });
 
       try {
         const interval = setInterval(async () => {
-          const state = get();
-          if (state.exportStatus !== 'polling' || !state.jobId) {
+          const currentState = get();
+          
+          // 检查是否应该停止轮询 (已取消、已完成、或出错)
+          if (currentState.exportStatus !== 'polling' || !currentState.jobId) {
             clearInterval(interval);
             return;
           }
 
-          const response = await api.getJobStatus(state.jobId);
+          try {
+            // 传递 signal 以支持取消
+            const response = await api.getJobStatus(
+              currentState.jobId, 
+              currentState.abortController?.signal
+            );
 
-          if (response.status === 'completed') {
-            clearInterval(interval);
-            set((state) => {
-              state.exportStatus = 'success';
-              state.downloadUrl = response.url || null;
-            });
-          } else if (response.status === 'failed') {
-            clearInterval(interval);
-            set((state) => {
-              state.exportStatus = 'error';
-              state.exportError = '后端渲染失败';
-            });
+            if (response.status === 'completed') {
+              clearInterval(interval);
+              set((state) => {
+                state.exportStatus = 'success';
+                state.exportProgress = 1;
+                state.statusMessage = '渲染完成';
+                state.downloadUrl = response.url || null;
+                state.abortController = null;
+              });
+            } else if (response.status === 'failed') {
+              clearInterval(interval);
+              set((state) => {
+                state.exportStatus = 'error';
+                state.exportError = response.error || '后端渲染失败';
+                state.abortController = null;
+              });
+            } else {
+              // 处理进度更新 (如果后端返回了 progress 字段)
+              set((state) => {
+                if (typeof response.progress === 'number') {
+                  // 假设后端返回 0-100
+                  state.exportProgress = response.progress / 100;
+                  state.statusMessage = `云端渲染中... ${Math.floor(response.progress)}%`;
+                } else {
+                  state.statusMessage = '云端渲染中...';
+                }
+              });
+            }
+          } catch (e) {
+            // 如果是 AbortError，说明是用户取消，interval 会在下一次循环通过状态检查自动停止
+            if (e instanceof Error && e.name === 'AbortError') {
+                return; 
+            }
+            // 忽略临时网络错误，继续轮询
+            console.warn('Poll warning:', e);
           }
           
-        }, 5000);
+        }, 3000);
 
       } catch (error) {
         set((state) => {
           state.exportStatus = 'error';
-          state.exportError = '轮询作业状态时发生网络错误';
+          state.exportError = '轮询启动失败';
         });
       }
     },

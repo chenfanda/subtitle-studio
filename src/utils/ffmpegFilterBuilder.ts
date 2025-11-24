@@ -1,9 +1,7 @@
-// utils/ffmpegFilterBuilder.ts
-
 import type { ProjectExport } from '@/types/project';
 import type { TimelineSegment } from '@/types/videoSequence';
 import type { SubtitleItem, SubtitleStyle } from '@/types/subtitle';
-import { DEFAULT_SUBTITLE_STYLE,DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
+import { DEFAULT_SUBTITLE_STYLE, DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import type { TextElement } from '@/types/textElement';
 import type { PlacedMediaItem } from '@/types/media';
 import type { WatermarkConfig } from '@/types/settings';
@@ -42,7 +40,8 @@ export const buildVideoTrack = (
       `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`,
       `pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
       `trim=start=${msToS(segment.sourceStartTime)}:duration=${msToS(segment.duration)}`,
-      `setpts=PTS-STARTPTS`
+      `setpts=PTS-STARTPTS`,
+      `setsar=1`
     ];
 
     const vSeg = `[v_seg_${i}]`;
@@ -152,7 +151,10 @@ export const buildMediaTrack = (
   mediaItems: PlacedMediaItem[],
   lastStream: string,
   mapper: InputMapper,
-  getNewTime: GetNewTimeFn
+  getNewTime: GetNewTimeFn,
+  targetW: number,
+  _targetH: number,
+  scaleFactor: number
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
   let currentStream = lastStream;
@@ -166,15 +168,39 @@ export const buildMediaTrack = (
 
     const newStartTimeS = msToS(getNewTime(pos.startTime));
     const newEndTimeS = msToS(getNewTime(pos.endTime));
+    const durationS = newEndTimeS - newStartTimeS;
+
+    const baseWidth = item.media.width || 0;
+    const baseHeight = item.media.height || 0;
     
+    let scaleFilterString = '';
+
+    if (pos.width && pos.width > 0) {
+      const targetPixelW = Math.trunc(targetW * (pos.width / 100) * pos.scaleX / 2) * 2;
+      scaleFilterString = `scale=${targetPixelW > 0 ? targetPixelW : -1}:-1:flags=bicubic`;
+    } else if (baseWidth > 0 && baseHeight > 0) {
+      const targetPixelW = Math.trunc(baseWidth * pos.scaleX * scaleFactor / 2) * 2;
+      const targetPixelH = Math.trunc(baseHeight * pos.scaleY * scaleFactor / 2) * 2;
+      scaleFilterString = `scale=${targetPixelW > 0 ? targetPixelW : -1}:${targetPixelH > 0 ? targetPixelH : -1}:flags=bicubic`;
+    } else {
+       scaleFilterString = `scale=trunc(iw*${scaleFactor}*${pos.scaleX}/2)*2:-1:flags=bicubic`;
+    }
+
     const transformFilters = [
-      `scale=iw*${pos.scaleX}:ih*${pos.scaleY}`,
+      `format=rgba`,
+      `loop=-1:32767:0`, 
+      `trim=duration=${durationS}`,
+      `setpts=PTS-STARTPTS+${newStartTimeS}/TB`, 
+      `setsar=1`,
+      scaleFilterString,
       `rotate=${pos.rotation}*PI/180:c=none:ow=rotw(iw):oh=roth(ih)`
     ];
+    
     filters.push(`${mediaInput}${transformFilters.join(',')}${processedMedia}`);
 
-    const x = `(W - iw) / 2 + (W * (${pos.x} - 50) / 100)`;
-    const y = `(H - ih) / 2 + (H * (${pos.y} - 50) / 100)`;
+    const x = `W*${pos.x}/100-w/2`;
+    const y = `H*${pos.y}/100-h/2`;
+    
     filters.push(
       `${currentStream}${processedMedia}overlay=x='${x}':y='${y}':enable='between(t,${newStartTimeS},${newEndTimeS})'${nextV}`
     );
@@ -185,6 +211,7 @@ export const buildMediaTrack = (
 };
 
 export const buildBrollTrack = (
+  
   subtitles: SubtitleItem[],
   lastStream: string,
   mapper: InputMapper,
@@ -207,21 +234,26 @@ export const buildBrollTrack = (
       const nextV = `[v_broll_${i}]`;
       let brollStream = `[broll_pre_${i}]`;
 
+      
       brollRanges.push(`between(t,${newStartTimeS},${newEndTimeS})`);
       
       const trimStartS = msToS(broll.startOffset || 0);
       const durationS = newEndTimeS - newStartTimeS;
-      const trimFilter = `trim=start=${trimStartS}:duration=${durationS},setpts=PTS-STARTPTS`;
+    
+      const preProcessFilter = `trim=start=${trimStartS}:duration=${durationS},setpts=PTS-STARTPTS`;
       
       let transitionFilter = '';
       if (broll.transition === 'fade') {
+        
         transitionFilter = `,fade=type=in:st=0:d=0.3,fade=type=out:st=${durationS - 0.3}:d=0.3`;
       } else if (broll.transition === 'glow') {
         const brightness = `'if(lt(t,0.3), 1 + 0.3*t/0.3, if(gt(t,${durationS - 0.3}), 1 + 0.3 - 0.3*(t-${durationS - 0.3})/0.3, 1))'`;
         transitionFilter = `,eq=brightness=${brightness}`;
       }
       
-      filters.push(`${brollInput}${trimFilter}${transitionFilter}${brollStream}`);
+      const timeShiftFilter = `,setpts=PTS+${newStartTimeS}/TB,setsar=1`;
+
+      filters.push(`${brollInput}${preProcessFilter}${transitionFilter}${timeShiftFilter}${brollStream}`);
       
       filters.push(
         `${currentStream}${brollStream}overlay=enable='between(t,${newStartTimeS},${newEndTimeS})'${nextV}`
@@ -263,7 +295,8 @@ export const buildTextTrack = (
   segments: TimelineSegment[],
   lastStream: string,
   target: FFmpegTarget,
-  getNewTime: GetNewTimeFn
+  getNewTime: GetNewTimeFn,
+  scaleFactor: number = 1.0
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
   let currentStream = lastStream;
@@ -301,7 +334,7 @@ export const buildTextTrack = (
       const nextV = `[v_sub_${i}_${j}]`;
       const escapedText = escapeFfmpegText(seg.text);
       
-      let textFilter = buildTextStyle(segStyle, pos, target);
+      let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
       
       const yMatch = textFilter.match(/y=([^:]+)/);
       const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;
@@ -332,7 +365,7 @@ export const buildTextTrack = (
       const nextV = `[v_txt_${i}_${j}]`;
       const escapedText = escapeFfmpegText(seg.text);
       
-      let textFilter = buildTextStyle(segStyle, pos, target);
+      let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
       
       const yMatch = textFilter.match(/y=([^:]+)/);
       const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;

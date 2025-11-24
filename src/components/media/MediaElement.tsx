@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { TransformBorder } from '../common/TransformBorder';
 import type { PlacedMediaItem } from '@/types/media';
@@ -13,6 +13,39 @@ export function MediaElement({ item }: MediaElementProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   
   const { updateMediaPosition, removeMedia } = useMediaStore();
+
+  useEffect(() => {
+    if (!elementRef.current?.parentElement) return;
+
+    const calculateAndSyncWidth = () => {
+      const parent = elementRef.current!.parentElement!;
+      const parentWidth = parent.offsetWidth;
+      const elementWidth = elementRef.current!.offsetWidth;
+      
+      if (parentWidth > 0) {
+        const widthPercent = (elementWidth / parentWidth) * 100;
+        
+        if (!item.position.width || Math.abs(item.position.width - widthPercent) > 0.01) {
+          updateMediaPosition(
+            item.media.id,
+            item.position.x,
+            item.position.y,
+            item.position.scaleX,
+            item.position.scaleY,
+            item.position.rotation,
+            widthPercent
+          );
+        }
+      }
+    };
+
+    calculateAndSyncWidth();
+
+    const observer = new ResizeObserver(calculateAndSyncWidth);
+    observer.observe(elementRef.current.parentElement);
+    
+    return () => observer.disconnect();
+  }, [item.media.id]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,7 +80,8 @@ export function MediaElement({ item }: MediaElementProps) {
         clampedY, 
         item.position.scaleX,
         item.position.scaleY,
-        item.position.rotation
+        item.position.rotation,
+        item.position.width
       );
     };
 
@@ -102,7 +136,8 @@ export function MediaElement({ item }: MediaElementProps) {
             item.position.y,
             scaleX,
             scaleY,
-            item.position.rotation
+            item.position.rotation,
+            item.position.width
           );
         }}
         minScale={0.3}

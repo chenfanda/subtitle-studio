@@ -1,31 +1,25 @@
-// utils/ffmpegUtils.ts
-
 export type FFmpegTarget = 'frontend' | 'backend';
 
 const FONT_MAP: Record<string, string> = {
-  'AlibabaPuHuiTi-3-105-Heavy': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
-  'AlibabaPuHuiTi-3-115-Black': 'AlibabaPuHuiTi-3-115-Black.ttf',
-  'ZCOOL_Addict_Italic': 'ZCOOL_Addict_Italic.ttf',
-  'ZcoolKuaiLe-Regular': 'ZcoolKuaiLe-Regular.ttf',
-  'ZcoolkuheiT-Regular': 'ZcoolkuheiT-Regular.ttf',
-  'ZcoolQingKeHuangYou-Regular': 'ZcoolQingKeHuangYou-Regular.ttf',
-  'ZcoolwenyiT-Regular': 'ZcoolwenyiT-Regular.ttf',
-  'Zcoolxiaowei-LOGOT': 'Zcoolxiaowei-LOGOT.ttf',
-  'ZcoolYuYangT-Bold': 'ZcoolYuYangT-Bold.ttf',
-  'ZcoolYuYangT-Regular': 'ZcoolYuYangT-Regular.ttf',
-  
-  'Microsoft YaHei': 'MicrosoftYaHei-Bold.ttf', 
-
+  'Alibaba PuHuiTi': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
   '"Alibaba PuHuiTi", sans-serif': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
-  '"ZcoolKuaiLe", sans-serif': 'ZcoolKuaiLe-Regular.ttf',
-  '"ZcoolkuheiT", sans-serif': 'ZcoolkuheiT-Regular.ttf',
-  '"ZcoolYuYangT", sans-serif': 'ZcoolYuYangT-Regular.ttf',
-  '"ZcoolQingKeHuangYou", sans-serif': 'ZcoolQingKeHuangYou-Regular.ttf',
-  '"ZcoolwenyiT", sans-serif': 'ZcoolwenyiT-Regular.ttf',
-  '"Zcoolxiaowei", sans-serif': 'Zcoolxiaowei-LOGOT.ttf',
+  'ZCOOL Addict': 'ZCOOL_Addict_Italic.ttf',
   '"ZCOOL Addict", sans-serif': 'ZCOOL_Addict_Italic.ttf',
-
+  'ZcoolKuaiLe': 'ZcoolKuaiLe-Regular.ttf',
+  '"ZcoolKuaiLe", sans-serif': 'ZcoolKuaiLe-Regular.ttf',
+  'ZcoolkuheiT': 'ZcoolkuheiT-Regular.ttf',
+  '"ZcoolkuheiT", sans-serif': 'ZcoolkuheiT-Regular.ttf',
+  'ZcoolQingKeHuangYou': 'ZcoolQingKeHuangYou-Regular.ttf',
+  '"ZcoolQingKeHuangYou", sans-serif': 'ZcoolQingKeHuangYou-Regular.ttf',
+  'ZcoolwenyiT': 'ZcoolwenyiT-Regular.ttf',
+  '"ZcoolwenyiT", sans-serif': 'ZcoolwenyiT-Regular.ttf',
+  'Zcoolxiaowei': 'Zcoolxiaowei-LOGOT.ttf',
+  '"Zcoolxiaowei", sans-serif': 'Zcoolxiaowei-LOGOT.ttf',
+  'ZcoolYuYangT': 'ZcoolYuYangT-Regular.ttf',
+  '"ZcoolYuYangT", sans-serif': 'ZcoolYuYangT-Regular.ttf',
+  'Microsoft YaHei': 'MicrosoftYaHei-Bold.ttf',
   '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif': 'MicrosoftYaHei-Bold.ttf',
+  'Arial': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
 };
 
 export class InputMapper {
@@ -77,7 +71,7 @@ export const convertHexToFfmpegHex = (hex: string): string => {
 };
 
 export const parseCssColor = (cssColor: string): { hex: string; alpha: string } => {
-  if (cssColor === 'transparent') {
+  if (!cssColor || cssColor === 'transparent') {
     return { hex: '0x000000', alpha: '0.0' };
   }
 
@@ -110,7 +104,6 @@ export const parseCssColor = (cssColor: string): { hex: string; alpha: string } 
     return { hex: `0x${r}${g}${b}`, alpha: a };
   }
 
-  console.warn(`无法解析颜色: ${cssColor}, 使用默认值`);
   return { hex: '0x000000', alpha: '0.5' };
 };
 
@@ -127,15 +120,14 @@ export const getFontPath = (fontFamily: string, target: FFmpegTarget): string =>
   let fontFile = FONT_MAP[fontFamily];
 
   if (!fontFile) {
-    const mainFont = fontFamily.split(',')[0].replace(/"/g, '');
-    fontFile = FONT_MAP[mainFont];
+    const cleanFontName = fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+    fontFile = FONT_MAP[cleanFontName];
   }
-  
+
   if (!fontFile) {
-    console.warn(`Font not found: ${fontFamily}. Defaulting to ZcoolKuaiLe.`);
-    fontFile = FONT_MAP['ZcoolKuaiLe-Regular'];
+    fontFile = FONT_MAP['ZcoolKuaiLe-Regular'] || 'ZcoolKuaiLe-Regular.ttf';
   }
-  
+
   if (target === 'frontend') {
     return `/fonts/${fontFile}`;
   } else {

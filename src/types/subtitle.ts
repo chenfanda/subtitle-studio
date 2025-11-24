@@ -84,7 +84,7 @@ export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontSize: 24,
-  fontFamily: '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", sans-serif',
+  fontFamily: '"Alibaba PuHuiTi", sans-serif',
   fontWeight: 600,
   fontStyle: 'normal',
   color: '#ffffff',

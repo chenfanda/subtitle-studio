@@ -1,5 +1,3 @@
-// utils/ffmpegStyleBuilder.ts
-
 import type { SubtitleStyle, SubtitlePosition } from '@/types/subtitle';
 import type { TextElementPosition } from '@/types/textElement';
 import type { WatermarkConfig } from '@/types/settings';
@@ -13,14 +11,15 @@ import {
 export const buildTextStyle = (
   style: SubtitleStyle,
   position: SubtitlePosition | TextElementPosition,
-  target: FFmpegTarget
+  target: FFmpegTarget,
+  scaleFactor: number = 1.0
 ): string => {
   const filters: string[] = [];
 
   filters.push(`fontfile='${getFontPath(style.fontFamily, target)}'`);
   
   const scale = (position as SubtitlePosition).scale || (position as TextElementPosition).scaleY || 1.0;
-  const finalFontSize = (style.fontSize || 24) * scale;
+  const finalFontSize = (style.fontSize || 24) * scale * scaleFactor;
   filters.push(`fontsize=${finalFontSize}`);
   
   filters.push(`fontcolor=${convertHexToFfmpegHex(style.color)}`);
@@ -66,8 +65,8 @@ export const buildTextStyle = (
     filters.push(`shadowy=0`);
   } else if (style.shadow?.enabled) {
     filters.push(`shadowcolor=${convertHexToFfmpegHex(style.shadow.color)}`);
-    filters.push(`shadowx=${style.shadow.offsetX}`);
-    filters.push(`shadowy=${style.shadow.offsetY}`);
+    filters.push(`shadowx=${style.shadow.offsetX * scaleFactor}`);
+    filters.push(`shadowy=${style.shadow.offsetY * scaleFactor}`);
   }
 
   if (style.backgroundColor && style.backgroundColor !== 'transparent') {
@@ -82,7 +81,7 @@ export const buildTextStyle = (
 
   const subPosWidth = (position as SubtitlePosition).width;
   if (subPosWidth && subPosWidth > 0) {
-    const finalWrapWidth = subPosWidth * scale; 
+    const finalWrapWidth = subPosWidth * scale * scaleFactor; 
     filters.push(`text_shaping=1`);
     filters.push(`wrap_width=${finalWrapWidth}`);
   }
@@ -112,8 +111,8 @@ export const buildWatermarkStyle = (
 
   let x, y;
   if (config.positionMode === 'custom') {
-    x = `(w - text_w) / 2 + (w * (${config.customPosition.x || 50} - 50) / 100)`;
-    y = `(h - text_h) / 2 + (h * (${config.customPosition.y || 50} - 50) / 100)`;
+    x = `(w-text_w)/2+(w*(${config.customPosition.x || 50}-50)/100)`;
+    y = `(h-text_h)/2+(h*(${config.customPosition.y || 50}-50)/100)`;
   } else {
     switch (config.position) {
       case 'top-left':
@@ -121,19 +120,19 @@ export const buildWatermarkStyle = (
         y = '10';
         break;
       case 'top-right':
-        x = 'w - text_w - 10';
+        x = 'w-text_w-10';
         y = '10';
         break;
       case 'bottom-left':
         x = '10';
-        y = 'h - text_h - 10';
+        y = 'h-text_h-10';
         break;
       case 'bottom-right':
-        x = 'w - text_w - 10';
-        y = 'h - text_h - 10';
+        x = 'w-text_w-10';
+        y = 'h-text_h-10';
         break;
       default:
-        x = 'w - text_w - 10';
+        x = 'w-text_w-10';
         y = '10';
     }
   }

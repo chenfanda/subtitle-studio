@@ -1,18 +1,58 @@
-/**
- * 模拟将 Blob 上传到云存储
- * @param blob 
- * @param type 
- * @returns {string} 返回一个模拟的 HTTPS URL
- */
-const uploadBlob = async (blobUrl: string, type: 'video' | 'audio' | 'media'): Promise<string> => {
-  console.log(`UPLOADER: 开始上传 ${type} (Blob: ${blobUrl.substring(0, 30)}...)`);
-  // 模拟 fetch blob
-  // const blob = await fetch(blobUrl).then(r => r.blob());
-  // const sizeInMB = blob.size / 1024 / 1024;
-  await new Promise(resolve => setTimeout(resolve, 500)); // 模拟上传时间
-  const mockUrl = `https://mock-storage.com/${type}/${Date.now()}.mp4`;
-  console.log('UPLOADER: 上传完成', mockUrl);
-  return mockUrl;
+const API_UPLOAD_URL = 'http://localhost:8000/api/upload';
+
+const uploadBlob = async (
+  blobUrl: string,
+  _type: string,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal
+): Promise<string> => {
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
+
+  const formData = new FormData();
+  const ext = blob.type.split('/')[1] || 'dat';
+  formData.append('file', blob, `file.${ext}`);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    if (signal) {
+      if (signal.aborted) {
+        return reject(new Error('Aborted'));
+      }
+      signal.addEventListener('abort', () => {
+        xhr.abort();
+        reject(new Error('Aborted'));
+      });
+    }
+
+    xhr.open('POST', API_UPLOAD_URL);
+
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress(event.loaded / event.total);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.url);
+        } catch (e) {
+          reject(new Error('Invalid JSON response'));
+        }
+      } else {
+        reject(new Error(`Upload failed: ${xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error'));
+
+    xhr.send(formData);
+  });
 };
 
 export const fileUploader = {

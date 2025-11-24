@@ -2,77 +2,94 @@ import { api } from '@/utils/api';
 import { fileUploader } from '@/utils/cloudUploader';
 import type { ProjectExport } from '@/types/project';
 
-// (修改) 这是一个新的辅助函数，用于递归上传所有 blob
-async function uploadAllBlobs(projectContent: ProjectExport['content']) {
-  const uploadTasks: Promise<any>[] = [];
+const checkAbort = (signal?: AbortSignal) => {
+  if (signal?.aborted) {
+    throw new Error('Aborted');
+  }
+};
 
-  const processUrl = async (obj: any, key: string) => {
-    if (obj[key] && typeof obj[key] === 'string' && obj[key].startsWith('blob:')) {
-      const blobUrl = obj[key];
-      // 上传 blob 并替换 URL
-      obj[key] = await fileUploader.uploadBlob(blobUrl, 'media');
+function collectUploadTasks(content: ProjectExport['content']) {
+  const tasks: { obj: any; key: string; url: string }[] = [];
+
+  const checkAndAdd = (obj: any, key: string) => {
+    if (obj && obj[key] && typeof obj[key] === 'string' && obj[key].startsWith('blob:')) {
+      tasks.push({ obj, key, url: obj[key] });
     }
   };
 
-  // 1. 遍历视频序列
-  if (projectContent.videoSequenceSegments) {
-    for (const seg of projectContent.videoSequenceSegments) {
-      uploadTasks.push(processUrl(seg, 'sourceUrl'));
-    }
-  }
+  content.videoSequenceSegments?.forEach(seg => checkAndAdd(seg, 'sourceUrl'));
+  content.placedMedia?.forEach(item => checkAndAdd(item.media, 'url'));
   
-  // 2. 遍历媒体元素
-  if (projectContent.placedMedia) {
-    for (const item of projectContent.placedMedia) {
-      uploadTasks.push(processUrl(item.media, 'url'));
-    }
+  content.subtitles?.forEach(sub => {
+    if (sub.brollVideo) checkAndAdd(sub.brollVideo.video, 'url');
+    if (sub.audioTrack) checkAndAdd(sub.audioTrack.track, 'url');
+    if (sub.soundEffect) checkAndAdd(sub.soundEffect.track, 'url');
+  });
+
+  if (content.backgroundMusic) {
+    checkAndAdd(content.backgroundMusic, 'url');
   }
 
-  // 3. 遍历字幕附件
-  if (projectContent.subtitles) {
-    for (const sub of projectContent.subtitles) {
-      if (sub.brollVideo) {
-        uploadTasks.push(processUrl(sub.brollVideo.video, 'url'));
-      }
-      if (sub.audioTrack) {
-        uploadTasks.push(processUrl(sub.audioTrack.track, 'url'));
-      }
-      if (sub.soundEffect) {
-        uploadTasks.push(processUrl(sub.soundEffect.track, 'url'));
-      }
-    }
-  }
-
-  // 4. 处理背景音乐
-  if (projectContent.backgroundMusic) {
-    uploadTasks.push(processUrl(projectContent.backgroundMusic, 'url'));
-  }
-  
-  // 等待所有上传任务完成
-  await Promise.all(uploadTasks);
+  return tasks;
 }
 
-/**
- * 遍历 Project JSON, 上传所有 blob: URL, 并返回一个 "服务器就绪" 的 JSON
- */
-export const prepareProjectForExport = async (project: ProjectExport): Promise<ProjectExport> => {
+export const prepareProjectForExport = async (
+  project: ProjectExport,
+  onProgress?: (percent: number, msg: string) => void,
+  signal?: AbortSignal
+): Promise<ProjectExport> => {
   const serverReadyProject = JSON.parse(JSON.stringify(project));
+  const tasks = collectUploadTasks(serverReadyProject.content);
+  const total = tasks.length;
   
-  // (修改) 调用新的辅助函数来处理所有媒体
-  await uploadAllBlobs(serverReadyProject.content);
+  if (total === 0) {
+    onProgress?.(1, '资源准备就绪');
+    return serverReadyProject;
+  }
 
+  let completedCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    checkAbort(signal);
+    const task = tasks[i];
+    
+    onProgress?.(
+      (completedCount / total) * 0.9, 
+      `正在上传资源 (${completedCount + 1}/${total})`
+    );
+
+    const uploadedUrl = await fileUploader.uploadBlob(
+      task.url, 
+      'media',
+      (filePercent) => {
+        const totalPercent = (completedCount + filePercent) / total;
+        onProgress?.(totalPercent * 0.9, `正在上传资源 (${completedCount + 1}/${total})`);
+      },
+      signal
+    );
+
+    task.obj[task.key] = uploadedUrl;
+    completedCount++;
+  }
+
+  checkAbort(signal);
   return serverReadyProject;
 };
 
-
-/**
- * 触发后端导出
- */
-export const runBackendExport = async (project: ProjectExport): Promise<string> => {
+export const runBackendExport = async (
+  project: ProjectExport,
+  onProgress?: (percent: number, msg: string) => void,
+  signal?: AbortSignal
+): Promise<string> => {
   
-  const serverReadyProject = await prepareProjectForExport(project);
+  onProgress?.(0, '正在分析资源...');
   
-  const { jobId } = await api.startExportJob(serverReadyProject);
+  const serverReadyProject = await prepareProjectForExport(project, onProgress, signal);
+  
+  checkAbort(signal);
+  onProgress?.(0.95, '正在提交渲染任务...');
+  
+  const { jobId } = await api.startExportJob(serverReadyProject, signal);
   
   return jobId;
 };

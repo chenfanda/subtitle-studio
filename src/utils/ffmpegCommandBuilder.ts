@@ -1,9 +1,7 @@
-// utils/ffmpegCommandBuilder.ts
-
 import type { ProjectExport } from '@/types/project';
 import type { ExportSettings } from '@/stores/useExportStore';
 import type { TimelineSegment } from '@/types/videoSequence';
-import { InputMapper, FFmpegTarget, msToS } from './ffmpegUtils';
+import { InputMapper, FFmpegTarget} from './ffmpegUtils';
 import {
   buildVideoTrack,
   buildAudioTrack,
@@ -125,6 +123,8 @@ const scanProjectInputs = (project: ProjectExport, mapper: InputMapper) => {
   }
 };
 
+const PREVIEW_REFERENCE_HEIGHT = 540;
+
 export const buildFfmpegCommand = (
   project: ProjectExport,
   settings: ExportSettings,
@@ -147,6 +147,8 @@ export const buildFfmpegCommand = (
   }
   const isGif = settings.format === 'gif';
   const targetH = finalResolution;
+  const refHeight = project.settings.referenceHeight || PREVIEW_REFERENCE_HEIGHT;
+  const scaleFactor = targetH / refHeight;
   const targetW = Math.round(targetH * 16 / 9) & ~1;
 
   const {
@@ -168,7 +170,15 @@ export const buildFfmpegCommand = (
   const {
     videoStream: mediaStream,
     filters: mediaFilters
-  } = buildMediaTrack(project.content.placedMedia, currentStream, mapper, getNewTime);
+  } = buildMediaTrack(
+    project.content.placedMedia, 
+    currentStream, 
+    mapper, 
+    getNewTime, 
+    targetW, 
+    targetH,
+    scaleFactor
+  );
   allVideoFilters.push(...mediaFilters);
   currentStream = mediaStream;
 
@@ -189,7 +199,8 @@ export const buildFfmpegCommand = (
     project.content.videoSequenceSegments,
     currentStream, 
     target, 
-    getNewTime
+    getNewTime,
+    scaleFactor
   );
   allVideoFilters.push(...textFilters);
   currentStream = textStream;
@@ -220,9 +231,10 @@ export const buildFfmpegCommand = (
       '-map', finalVideoStream,
       '-map', finalAudioStream,
       '-c:v', 'libx264',
-      '-preset', 'fast',
+      '-preset', 'ultrafast',
+      '-r', '30',
       '-c:a', 'aac',
-      '-b:a', '192k',
+      '-b:a', '128k',
       '-shortest',
       '-f', 'mp4', 'output.mp4'
     );

@@ -15,8 +15,8 @@ const generateMockId = () => `mock-${Date.now()}-${Math.random().toString(36).su
 
 const createMockMediaItem = (type: 'sticker' | 'gif', index: number): MediaItem => ({
   id: generateMockId(),
-  url: `https://via.placeholder.com/200x200/${type === 'gif' ? 'ff6b6b' : '4ecdc4'}/ffffff?text=${type.toUpperCase()}+${index}`,
-  preview: `https://via.placeholder.com/100x100/${type === 'gif' ? 'ff6b6b' : '4ecdc4'}/ffffff?text=${type.toUpperCase()}+${index}`,
+  url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  preview: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   tags: ['mock', type, 'placeholder'],
   width: 200,
   height: 200,

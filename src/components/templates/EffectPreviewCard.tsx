@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, useMemo, Fragment } from 'react';
 import {
   useTemplateStore,
   useSelectedTemplate,
-  type AnyTemplate, // Import AnyTemplate
-  isDynamicTemplate, // Import type guards
+  type AnyTemplate,
+  isDynamicTemplate,
   isStaticTemplate,
   isAnimationTemplate,
   isRichTextStyleTemplate
@@ -24,7 +24,7 @@ import { Modal } from '@/components/common/Modal';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 
 interface EffectPreviewCardProps {
-  template: AnyTemplate; // Use imported AnyTemplate
+  template: AnyTemplate;
   targetSubtitleId?: string;
 }
 
@@ -40,7 +40,6 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   const globalRichTextSelection = useRichTextSelection();
 
   const selectedSubtitleIds = targetSubtitleId ? [targetSubtitleId] : globalSelectedSubtitleIds;
-
   const hasSelectedSubtitles = selectedSubtitleIds.length > 0;
 
   const selectedSubtitle = useSubtitleStore((state) =>
@@ -79,13 +78,11 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
 
   const templateStyle = useMemo(() => {
     if (isRichTextStyleTemplate(template)) {
-        // For rich text, maybe preview the style of the first segment?
         return template.segments[0]?.style || DEFAULT_SUBTITLE_STYLE;
     }
     if (isDynamicTemplate(template) || isStaticTemplate(template)) {
       return convertTemplateToSubtitleStyle(template.style);
     }
-    // For pure animation templates, use the selected subtitle's style for preview
     return selectedSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
   }, [template, selectedSubtitle]);
 
@@ -97,7 +94,6 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
 
   const primaryEffect = useMemo((): AnimationEffect | null => {
     if (isRichTextStyleTemplate(template)) {
-        // For rich text, maybe preview the animation of the first segment?
         return template.segments[0]?.animation || null;
     }
     if (isDynamicTemplate(template)) {
@@ -110,20 +106,15 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   }, [template]);
 
   useEffect(() => {
-    // Determine hasThisEffect based on template type
     if (selectedSubtitle?.richText && primaryEffect) {
         const effectName = primaryEffect.name;
         const hasAnimationEffect = selectedSubtitle.richText.some(
             (segment) => segment.animation?.name === effectName
         );
-        // How to check if a rich text style template is applied? Complex comparison needed.
-        // For now, base hasThisEffect primarily on animation for simplicity in rich text cases.
         setHasThisEffect(hasAnimationEffect);
     } else if (isStaticTemplate(template) && selectedSubtitle?.style) {
-        // Rough check for static style (needs deep comparison utility)
         const currentStyle = selectedSubtitle.style || DEFAULT_SUBTITLE_STYLE;
         const templateStyleConverted = convertTemplateToSubtitleStyle(template.style);
-        // This is a shallow comparison, a deep equal function would be better
         const stylesMatch = Object.keys(templateStyleConverted).every(
             key => currentStyle[key as keyof typeof currentStyle] === templateStyleConverted[key as keyof typeof templateStyleConverted]
         );
@@ -134,14 +125,12 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     }
   }, [selectedSubtitle, template, primaryEffect, richTextSelection, isSelected]);
 
-
   useEffect(() => {
     if (isSelected && previewRef.current && primaryEffect) {
       playAnimation();
     } else {
       stopAnimation();
     }
-
     return () => stopAnimation();
   }, [isSelected, selectedSubtitle, richTextSelection, primaryEffect]);
 
@@ -184,11 +173,11 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   };
 
   const handleApply = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // 阻止冒泡仍然很重要
 
     const applyFn = hasThisEffect ? removeTemplateFromSubtitle : applyTemplateToSubtitle;
 
-    if (hasRichTextSelection && !isRichTextStyleTemplate(template)) { // Rich text templates ignore selection
+    if (hasRichTextSelection && !isRichTextStyleTemplate(template)) {
       applyFn(
         richTextSelection.subtitleId,
         template,
@@ -197,7 +186,7 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
       );
     } else {
       selectedSubtitleIds.forEach(subtitleId => {
-        applyFn(subtitleId, template); // Rich text applies to whole subtitle implicitly here
+        applyFn(subtitleId, template);
       });
     }
 
@@ -224,7 +213,6 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     if (isApplied) {
       return '✓ 已应用';
     }
-     // Rich text templates ignore selection for application
     return hasRichTextSelection && !isRichTextStyleTemplate(template) ? '应用到选中片段' : '应用到整个字幕';
   };
 
@@ -242,15 +230,25 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
 
   return (
     <Fragment>
-      <button
+      {/* 🟢 修复：将外层 <button> 改为 <div> 并添加交互属性 */}
+      <div
         onClick={handleCardClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleCardClick();
+          }
+        }}
         className={`
           relative w-full h-24 rounded-lg border-2 transition-all duration-200
-          hover:scale-105 overflow-hidden group
+          hover:scale-105 overflow-hidden group cursor-pointer
           ${isSelected
             ? 'border-accent-purple shadow-lg shadow-accent-purple/20'
             : 'border-border-secondary hover:border-border-primary'
-          }\n      `}
+          }
+        `}
       >
         <div className="absolute inset-0 bg-bg-secondary flex items-center justify-center p-2">
           <div
@@ -266,6 +264,7 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
           <div className="absolute top-1 right-1 w-3 h-3 bg-accent-purple rounded-full" />
         )}
 
+        {/* 内部按钮 1：删除按钮 */}
         {isCustomTemplate && (
           <button
             onClick={handleRemoveClick}
@@ -284,11 +283,13 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
           <div className="absolute top-1 left-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
         )}
 
+        {/* 内部按钮 2：应用按钮 */}
         {isSelected && hasSelectedSubtitles && (
           <div className="absolute bottom-1 left-1 right-1">
             <button
               onClick={handleApply}
-              className={`w-full py-1 px-2 text-xs rounded transition-colors ${getButtonStyle()}`}          >
+              className={`w-full py-1 px-2 text-xs rounded transition-colors ${getButtonStyle()}`}
+            >
               {getButtonText()}
             </button>
           </div>
@@ -301,7 +302,7 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
             </div>
           </div>
         )}
-      </button>
+      </div>
 
       {isDeleteConfirmOpen && (
         <Modal

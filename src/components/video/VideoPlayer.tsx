@@ -3,6 +3,10 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 
+interface VideoPlayerProps {
+  isMutedOverride?: boolean;
+}
+
 const safePlay = (video: HTMLVideoElement) => {
   const promise = video.play();
   if (promise !== undefined) {
@@ -18,7 +22,7 @@ const safePause = (video: HTMLVideoElement) => {
   }
 };
 
-export function VideoPlayer() {
+export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
   const { 
     isPlaying, 
     volume, 
@@ -31,7 +35,7 @@ export function VideoPlayer() {
 
   const { 
     activeSourceUrl, 
-    isInsertClip,
+    isInsertClip, 
     isCutSegment,
     playbackOffset,
     isGlobalTime,
@@ -56,18 +60,14 @@ export function VideoPlayer() {
       
       const activeSegment = segments.find(segment => {
         const endTime = segment.globalStartTime + segment.duration;
-        // 使用 <= 来处理边界，确保能找到
         return segment.type === 'cut' && 
                currentTimeMs >= segment.globalStartTime && 
                currentTimeMs <= endTime;
       });
 
       if (activeSegment) {
-        // [修复 1] 移除 + 0.01
-        // 精确地跳到片段的末尾
         const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000;
         
-        // 检查以防止无限循环
         if (Math.abs(storeTime - segmentEndTime) > 0.001) {
           setGlobalTime(segmentEndTime);
         }
@@ -79,7 +79,7 @@ export function VideoPlayer() {
     const inactivePlayer = isInsertClip ? mainPlayer : insertPlayer;
 
     activePlayer.style.display = 'block';
-    activePlayer.muted = false;
+    activePlayer.muted = isMutedOverride;
     activePlayer.volume = volume / 100;
     activePlayer.playbackRate = playbackRate;
 
@@ -117,7 +117,8 @@ export function VideoPlayer() {
     playbackRate,
     isCutSegment, 
     segments,     
-    setGlobalTime 
+    setGlobalTime,
+    isMutedOverride
   ]);
 
   const handleInsertEnded = () => {
@@ -127,21 +128,15 @@ export function VideoPlayer() {
       const storeTime = useProjectStore.getState().globalTime;
       const currentTimeMs = storeTime * 1000;
       
-      // [修复 2] 修复 handleInsertEnded 的边界逻辑
       const activeSegment = segments.find(segment => {
         const endTime = segment.globalStartTime + segment.duration;
-        // 确保 (1) 它是 'insert' 类型
-        // 确保 (2) 我们使用 <= endTime 来捕获 'onEnded' 时的精确边界
-        // 使用一个小的容差（epsilon）来防止浮点数误差
-        const epsilon = 10; // 10ms 容差
+        const epsilon = 10; 
         return segment.type === 'insert' && 
                currentTimeMs >= segment.globalStartTime - epsilon && 
                currentTimeMs <= endTime + epsilon;
       });
 
       if (activeSegment) {
-        // [修复 3] 移除 + 0.01
-        // 精确地跳到片段的末尾
         const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000;
         
         setGlobalTime(segmentEndTime);
@@ -152,7 +147,6 @@ export function VideoPlayer() {
   };
 
   const handleTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
-    // ... (此函数保持不变)
     const activePlayer = isInsertClip ? insertVideoRef.current : mainVideoRef.current;
     
     if (event.currentTarget === activePlayer && activePlayer) {
@@ -190,7 +184,6 @@ export function VideoPlayer() {
   };
   
   const handleMetadataLoaded = (_event: React.SyntheticEvent<HTMLVideoElement>) => {
-    // ... (此函数保持不变)
     const mainPlayer = mainVideoRef.current;
     if (mainPlayer && mainPlayer.duration) {
       const newDuration = mainPlayer.duration;
@@ -207,7 +200,7 @@ export function VideoPlayer() {
         ref={mainVideoRef}
         className="w-full h-full object-contain"
         playsInline
-        muted
+        muted={true}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleMetadataLoaded} 
       />
@@ -216,7 +209,7 @@ export function VideoPlayer() {
         className="w-full h-full object-contain"
         style={{ display: 'none' }}
         playsInline
-        muted
+        muted={true}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleInsertEnded}
       />

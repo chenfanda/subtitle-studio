@@ -129,7 +129,7 @@ export const createContinuousEffect = (type: string, duration: number = 2000): A
   };
 };
 
-const createKeyframe = (name: string, effect: AnimationEffect): string => {
+export const createKeyframe = (name: string, effect: AnimationEffect): string => {
   const steps: string[] = [];
   
   Object.entries(effect.properties).forEach(([property, values]) => {
