@@ -17,7 +17,7 @@ export const getCodecConfig = (): {
   return {
     codec: 'h264',
     ffmpegOverride: ({ args }) => {
-      return args;
+      return [...args,'-preset', 'veryfast','-threads', '0','-x264-params', 'no-deblock:no-cabac'];
     }
   };
 };

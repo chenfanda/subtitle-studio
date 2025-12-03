@@ -12,6 +12,11 @@ const API_BASE_URL = `http://localhost:${API_PORT}`;
 let currentTempDir: string | null = null;
 let currentBundlePath: string | null = null;
 
+interface ExportSettings {
+  resolution: number;
+  format: 'mp4' | 'gif';
+}
+
 const handleTermination = (signal: string) => {
   try {
     if (currentTempDir && fs.existsSync(currentTempDir)) {
@@ -80,6 +85,7 @@ const normalizeProjectUrls = (rawProject: ProjectExport): ProjectExport => {
 export const renderVideo = async (
   rawProject: ProjectExport, 
   jobId: string,
+  exportSettings?: ExportSettings, 
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   
@@ -125,6 +131,11 @@ export const renderVideo = async (
       }
     });
 
+    let scale = 1;
+    if (exportSettings?.resolution && composition.height) {
+      scale = exportSettings.resolution / composition.height;
+    }
+
     const outputLocation = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
     const codecConfig = getCodecConfig();
     const fps = composition.fps || 30;
@@ -133,23 +144,26 @@ export const renderVideo = async (
     if (durationInFrames > 0) {
       composition.durationInFrames = durationInFrames;
     }
+    
 
+    const cpuCount = os.cpus().length;
+    const optimalConcurrency = Math.max(1, cpuCount - 4); 
     await renderMedia({
       composition,
       serveUrl: bundleLocation,
       outputLocation,
       inputProps: { project },
+      scale,
       codec: 'h264',
       audioCodec: 'aac',
       chromiumOptions: {
         headless: true, 
         ignoreCertificateErrors: true,
         userDataDir: tempDir,
-        concurrency: Math.max(2, os.cpus().length - 1),
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--enable-gpu-rasterization', '--enable-zero-copy']
       },
       ...(codecConfig.ffmpegOverride ? { ffmpegOverride: codecConfig.ffmpegOverride } : {}),
-      concurrency: 1,
+      concurrency: optimalConcurrency,
       onProgress: ({ progress }: { progress: number }) => {
         if (onProgress) onProgress(Math.round(progress * 100));
       },
@@ -176,9 +190,9 @@ export const renderVideo = async (
 if (process.env.IS_RENDER_CHILD === 'true') {
   process.on('message', async (msg: any) => {
     if (msg.type === 'start') {
-      const { project, jobId } = msg;
+      const { project, jobId , exportSettings } = msg;
       try {
-        const url = await renderVideo(project, jobId, (progress) => {
+        const url = await renderVideo(project, jobId, exportSettings,(progress) => {
           if (process.send) process.send({ type: 'progress', value: progress });
         });
         if (process.send) process.send({ type: 'success', url });

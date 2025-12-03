@@ -2,10 +2,15 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import type { ProjectExport } from '../src/types/project';
 
-// Redis 连接配置 (后续可移至 .env)
+export interface ExportSettings {
+  resolution: number;
+  format: 'mp4' | 'gif';
+  forceBackend: boolean;
+}
+
 export const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
+  port: parseInt(process.env.REDIS_PORT || '6380'),
   maxRetriesPerRequest: null,
 };
 
@@ -15,6 +20,7 @@ export const connection = new Redis(redisConfig);
 export interface RenderJobData {
   project: ProjectExport;
   jobId: string;
+  exportSettings?: ExportSettings;
 }
 
 // 创建队列实例

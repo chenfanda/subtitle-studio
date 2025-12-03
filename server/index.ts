@@ -46,8 +46,11 @@ const upload = multer({
 
 const downloadsDir = path.join(process.cwd(), 'public', 'downloads');
 if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
-
-app.use('/uploads', express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir, {
+  acceptRanges: true, 
+  lastModified: true, 
+  etag: true 
+}));
 app.use('/downloads', express.static(downloadsDir));
 
 app.post('/api/upload', (req, res) => {
@@ -72,8 +75,10 @@ app.post('/api/upload', (req, res) => {
 
 app.post('/api/export', async (req, res) => {
   try {
-    const project = req.body;
+    const body = req.body;
     
+    const project = body.project || body;
+    const exportSettings = body.exportSettings || { resolution: 1080, format: 'mp4' };
     if (!project || !project.content) {
       return res.status(400).json({ error: '无效的项目数据' });
     }
@@ -82,7 +87,8 @@ app.post('/api/export', async (req, res) => {
 
     await renderQueue.add('render', {
       project,
-      jobId
+      jobId,
+      exportSettings
     }, {
       jobId, 
       removeOnComplete: 100,
