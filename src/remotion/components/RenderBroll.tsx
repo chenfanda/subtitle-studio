@@ -1,5 +1,5 @@
 import React from 'react';
-import { Video, useCurrentFrame, useVideoConfig, interpolate } from 'remotion';
+import { OffthreadVideo, useCurrentFrame, useVideoConfig, interpolate } from 'remotion';
 import type { BrollVideoData } from '@/types/broll';
 import type { SubtitleItem } from '@/types/subtitle';
 
@@ -90,7 +90,7 @@ export const RenderBroll: React.FC<RenderBrollProps> = ({
   const finalVolume = (brollData.volume / 100) * volume;
 
   return (
-    <Video
+    <OffthreadVideo
       src={brollData.video.url}
       style={baseStyle}
       // startFrom: 支持 B-roll 的 startOffset (剪辑起始点)

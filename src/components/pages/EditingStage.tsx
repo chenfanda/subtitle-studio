@@ -4,7 +4,9 @@ import { LeftSidebar } from '../layout/LeftSidebar';
 import { VideoArea } from '../layout/VideoArea';
 import { VideoControls } from '../video/VideoControls';
 import { TimelineArea } from '../layout/TimelineArea';
-import { AudioPlayer } from '../audio/AudioPlayer';
+import { BackgroundMusicPlayer } from '../audio/BackgroundMusicPlayer';
+import { SoundEffectPlayer } from '../audio/SoundEffectPlayer';
+import { AudioPreviewPlayer } from '../audio/AudioPreviewPlayer';
 import { useProjectStore } from '@/stores/useProjectStore';
 import GlobalModals from '../common/GlobalModals';
 import { 
@@ -14,7 +16,6 @@ import {
   useSelectedAttachment 
 } from '@/stores/useUIStore';
 
-// --- (修改) 懒加载所有动态面板和弹窗 ---
 const BrollDialog = lazy(() => import('../broll/BrollDialog'));
 const VoiceoverDialog = lazy(() => import('../audio/VoiceoverDialog'));
 const InsertVideoDialog = lazy(() => import('../clips/InsertVideoDialog'));
@@ -137,7 +138,9 @@ export function EditingStage() {
         </div>
       </div>
 
-      <AudioPlayer />
+      <BackgroundMusicPlayer /> 
+      <SoundEffectPlayer />
+      <AudioPreviewPlayer /> 
 
       {/* --- (修改) 用 Suspense 包裹弹窗 --- */}
       <Suspense fallback={null}>

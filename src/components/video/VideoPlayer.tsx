@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
+import { SourceAudioMixer } from '@/components/audio/SourceAudioMixer';
 
 interface VideoPlayerProps {
   isMutedOverride?: boolean;
@@ -10,9 +11,7 @@ interface VideoPlayerProps {
 const safePlay = (video: HTMLVideoElement) => {
   const promise = video.play();
   if (promise !== undefined) {
-    promise.catch(error => {
-      console.warn("Video play interrupted:", error);
-    });
+    promise.catch(() => {});
   }
 };
 
@@ -30,7 +29,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     setCurrentTime,
     setGlobalTime,
     globalDuration,
-    setDuration 
+    setDuration,
   } = useProjectStore();
 
   const { 
@@ -46,13 +45,14 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
   const insertVideoRef = useRef<HTMLVideoElement>(null);
   const segments = useVideoSequenceStore((state) => state.segments);
 
+  const isSeekingRef = useRef(false);
+  const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     const mainPlayer = mainVideoRef.current;
     const insertPlayer = insertVideoRef.current;
 
-    if (!mainPlayer || !insertPlayer) {
-      return;
-    }
+    if (!mainPlayer || !insertPlayer) return;
 
     if (isCutSegment) {
       const storeTime = useProjectStore.getState().globalTime;
@@ -67,7 +67,6 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
       if (activeSegment) {
         const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000;
-        
         if (Math.abs(storeTime - segmentEndTime) > 0.001) {
           setGlobalTime(segmentEndTime);
         }
@@ -79,16 +78,21 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     const inactivePlayer = isInsertClip ? mainPlayer : insertPlayer;
 
     activePlayer.style.display = 'block';
-    activePlayer.muted = isMutedOverride;
-    activePlayer.volume = volume / 100;
+    
+    if (isInsertClip) {
+      activePlayer.volume = isMutedOverride ? 0 : (volume / 100);
+      activePlayer.muted = isMutedOverride || (volume === 0);
+  
+    } else {
+      activePlayer.muted = true; 
+    }
+    
     activePlayer.playbackRate = playbackRate;
 
     inactivePlayer.style.display = 'none';
-    inactivePlayer.muted = true;
     safePause(inactivePlayer);
 
     let needsSeek = false;
-    
     if (activeSourceUrl && activePlayer.src !== activeSourceUrl) {
       activePlayer.src = activeSourceUrl;
       needsSeek = true;
@@ -96,9 +100,14 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
     if (activeSourceUrl) {
       const timeDiff = Math.abs(activePlayer.currentTime - playbackOffset);
-      
-      if (needsSeek || timeDiff > 0.05) {
+      if (needsSeek || timeDiff > 0.2) {
+        isSeekingRef.current = true;
         activePlayer.currentTime = playbackOffset;
+
+        if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+        seekTimeoutRef.current = setTimeout(() => {
+          isSeekingRef.current = false;
+        }, 250);
       }
 
       if (isPlaying) {
@@ -107,27 +116,15 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
         safePause(activePlayer);
       }
     }
-
   }, [
-    activeSourceUrl, 
-    isInsertClip, 
-    playbackOffset,
-    isPlaying, 
-    volume, 
-    playbackRate,
-    isCutSegment, 
-    segments,     
-    setGlobalTime,
-    isMutedOverride
+    activeSourceUrl, isInsertClip, playbackOffset, isPlaying, 
+    volume, playbackRate, isCutSegment, segments, setGlobalTime, isMutedOverride
   ]);
 
   const handleInsertEnded = () => {
     if (isInsertClip) {
-      console.warn('Video Sequence clip finished. Forcing time update.');
-      
       const storeTime = useProjectStore.getState().globalTime;
       const currentTimeMs = storeTime * 1000;
-      
       const activeSegment = segments.find(segment => {
         const endTime = segment.globalStartTime + segment.duration;
         const epsilon = 10; 
@@ -138,17 +135,17 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
       if (activeSegment) {
         const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000;
-        
         setGlobalTime(segmentEndTime);
-      } else {
-        console.error("handleInsertEnded: Could not find the active insert segment to jump from.", { currentTimeMs });
       }
     }
   };
 
   const handleTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (isSeekingRef.current) {
+      return;
+    }
+
     const activePlayer = isInsertClip ? insertVideoRef.current : mainVideoRef.current;
-    
     if (event.currentTarget === activePlayer && activePlayer) {
       const playerTime = activePlayer.currentTime;
       const storeGlobalTime = useProjectStore.getState().globalTime;
@@ -187,7 +184,6 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     const mainPlayer = mainVideoRef.current;
     if (mainPlayer && mainPlayer.duration) {
       const newDuration = mainPlayer.duration;
-      
       if (useProjectStore.getState().duration !== newDuration) {
         setDuration(newDuration);
       }
@@ -200,19 +196,20 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
         ref={mainVideoRef}
         className="w-full h-full object-contain"
         playsInline
-        muted={true}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleMetadataLoaded} 
+        onLoadedMetadata={handleMetadataLoaded}
+        muted
       />
       <video
         ref={insertVideoRef}
         className="w-full h-full object-contain"
         style={{ display: 'none' }}
         playsInline
-        muted={true}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleInsertEnded}
       />
+
+      <SourceAudioMixer />
     </div>
   );
 }

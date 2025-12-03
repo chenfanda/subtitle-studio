@@ -16,7 +16,7 @@ import {
   applyStyleToSegments,
 } from '@/utils/textStyleUtils';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
-// 导入 Lucide 图标
+import type { AnimationEffect } from '@/types/animation';
 import { Target, Hourglass, Check } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -60,6 +60,14 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       setLocalText(currentObject.text);
     }
   }, [currentObject?.text]);
+  
+
+  const currentAnimation = useMemo(() => {
+    if (targetType === 'subtitle' && currentObject?.richText?.[0]?.animation) {
+      return currentObject.richText[0].animation;
+    }
+    return undefined;
+  }, [currentObject, targetType]);
 
   const handleClose = () => {
     clearRichTextSelection();
@@ -136,11 +144,11 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     }
   };
 
-  const handleApplyToAll = () => {
+   const handleApplyToAll = () => {
     setApplyState('loading');
 
     if (targetType === 'subtitle') {
-      applyStyleToAllSubtitles(currentStyle);
+      applyStyleToAllSubtitles(currentStyle, currentAnimation);
     } else {
       const elementType = getTextElementType(targetId);
       applyStyleToAllTextElementsOfType(elementType, currentStyle);

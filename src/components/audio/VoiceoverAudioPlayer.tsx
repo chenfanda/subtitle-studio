@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import type { SubtitleAudioData, SubtitleItem } from '@/types/subtitle';
 
 interface VoiceoverAudioPlayerProps {
@@ -9,29 +10,32 @@ interface VoiceoverAudioPlayerProps {
 
 export function VoiceoverAudioPlayer({ audioData, subtitle }: VoiceoverAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { currentTime, isPlaying, volume } = useProjectStore();
+  const { isPlaying, volume } = useProjectStore();
+  const { isInsertClip, playbackOffset } = useVideoSourceSwitcher();
 
   useEffect(() => {
     if (!audioRef.current) return;
 
-    if (isPlaying) {
+    const shouldPlay = isPlaying && !isInsertClip;
+
+    if (shouldPlay) {
       audioRef.current.play().catch(console.error);
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, isInsertClip]);
 
   useEffect(() => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || isInsertClip) return;
 
-    const currentTimeMs = currentTime * 1000;
-    const subtitleProgress = currentTimeMs - subtitle.startTime;
+    const currentSourceTimeMs = playbackOffset * 1000;
+    const subtitleProgress = currentSourceTimeMs - subtitle.startTime;
     const audioTime = subtitleProgress / 1000;
 
     if (Math.abs(audioRef.current.currentTime - audioTime) > 0.1) {
       audioRef.current.currentTime = Math.max(0, audioTime);
     }
-  }, [currentTime, subtitle.startTime]);
+  }, [playbackOffset, subtitle.startTime, isInsertClip]);
 
   useEffect(() => {
     if (!audioRef.current) return;

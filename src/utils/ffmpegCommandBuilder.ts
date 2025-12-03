@@ -11,6 +11,7 @@ import {
   buildWatermarkTrack
 } from './ffmpegFilterBuilder';
 
+// TimeWarpMap class remains unchanged...
 class TimeWarpMap {
   private mappingPoints: { global: number, new: number }[] = [];
 
@@ -97,10 +98,19 @@ class TimeWarpMap {
   }
 }
 
+// --- MODIFIED: scanProjectInputs ---
 const scanProjectInputs = (project: ProjectExport, mapper: InputMapper) => {
   (project.content.videoSequenceSegments || []).forEach(seg => {
     mapper.addInput(seg.sourceUrl);
   });
+
+  // NEW: Scan for separated audio tracks
+  if (project.content.sourceResources?.audioVocals) {
+    mapper.addInput(project.content.sourceResources.audioVocals);
+  }
+  if (project.content.sourceResources?.audioBacking) {
+    mapper.addInput(project.content.sourceResources.audioBacking);
+  }
 
   (project.content.placedMedia || []).forEach(item => {
     mapper.addInput(item.media.url);
@@ -125,6 +135,7 @@ const scanProjectInputs = (project: ProjectExport, mapper: InputMapper) => {
 
 const PREVIEW_REFERENCE_HEIGHT = 540;
 
+// --- MODIFIED: buildFfmpegCommand ---
 export const buildFfmpegCommand = (
   project: ProjectExport,
   settings: ExportSettings,
@@ -151,14 +162,24 @@ export const buildFfmpegCommand = (
   const scaleFactor = targetH / refHeight;
   const targetW = Math.round(targetH * 16 / 9) & ~1;
 
+  // MODIFIED: Call to buildVideoTrack
   const {
     videoStream: baseVideoStream,
     audioStream: baseAudioStream,
+    vocalsStream, // <-- Receive new stream
+    backingStream, // <-- Receive new stream
     filters: videoTrackFilters
-  } = buildVideoTrack(project.content.videoSequenceSegments, mapper, targetW, targetH);
+  } = buildVideoTrack(
+    project.content.videoSequenceSegments, 
+    project.content.sourceResources, // <-- Pass new argument
+    mapper, 
+    targetW, 
+    targetH
+  );
   
+  // This logic to split filters remains the same
   videoTrackFilters.forEach(f => {
-    if (f.includes('atrim') || f.includes('asetpts') || (f.includes('concat=n=') && f.includes(':a=1'))) {
+    if (f.includes('atrim') || f.includes('asetpts') || f.includes('acopy') || (f.includes('concat=n=') && f.includes(':a=1'))) {
       allAudioFilters.push(f);
     } else {
       allVideoFilters.push(f);
@@ -167,6 +188,7 @@ export const buildFfmpegCommand = (
   
   let currentStream = baseVideoStream;
 
+  // ... (media, broll, text, watermark sections are unchanged) ...
   const {
     videoStream: mediaStream,
     filters: mediaFilters
@@ -211,15 +233,26 @@ export const buildFfmpegCommand = (
   } = buildWatermarkTrack(project.settings.watermark, isPremium, currentStream, target);
   allVideoFilters.push(...watermarkFilters);
 
+  // MODIFIED: Call to buildAudioTrack
   const {
     audioStream: finalAudioStream,
     filters: audioFilters
-  } = buildAudioTrack(project.content, baseAudioStream, mapper, getNewTime);
+  } = buildAudioTrack(
+    project.content, 
+    { // <-- Pass new object structure
+      baseAudio: baseAudioStream,
+      vocals: vocalsStream,
+      backing: backingStream,
+    },
+    mapper, 
+    getNewTime
+  );
   allAudioFilters.push(...audioFilters);
 
   const filterComplex = [...allVideoFilters, ...allAudioFilters].join(';');
   const command = ['-filter_complex', filterComplex];
 
+  // ... (final command assembly logic is unchanged) ...
   if (isGif) {
     const gifFilters = `${filterComplex};${finalVideoStream}split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse[v_gif_out]`;
     command[1] = gifFilters;

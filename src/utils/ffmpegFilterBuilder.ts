@@ -21,10 +21,17 @@ type GetNewTimeFn = (globalTime: number) => number;
 
 export const buildVideoTrack = (
   segments: TimelineSegment[],
+  sourceResources: ProjectExport['content']['sourceResources'],
   mapper: InputMapper,
   targetW: number,
   targetH: number
-): { videoStream: string; audioStream: string; filters: string[] } => {
+): { 
+  videoStream: string; 
+  audioStream: string; 
+  vocalsStream?: string; 
+  backingStream?: string; 
+  filters: string[] 
+} => {
   const filters: string[] = [];
   const videoSegmentStreams: string[] = [];
   const audioSegmentStreams: string[] = [];
@@ -69,81 +76,225 @@ export const buildVideoTrack = (
     );
   }
 
+  let vocalsStream: string | undefined;
+  let backingStream: string | undefined;
+  if (sourceResources?.audioVocals && sourceResources?.audioBacking) {
+    const vocalsInput = `[${mapper.getIndex(sourceResources.audioVocals)}:a]`;
+    const backingInput = `[${mapper.getIndex(sourceResources.audioBacking)}:a]`;
+    vocalsStream = '[base_vocals]';
+    backingStream = '[base_backing]';
+    filters.push(`${vocalsInput}acopy${vocalsStream}`);
+    filters.push(`${backingInput}acopy${backingStream}`);
+  }
+
   return {
     videoStream: '[base_v]',
     audioStream: '[base_a]',
+    vocalsStream,
+    backingStream,
     filters,
   };
 };
 
 export const buildAudioTrack = (
   content: ProjectExport['content'],
-  baseAudioStream: string,
+  audioInputs: {
+    baseAudio: string;
+    vocals?: string;
+    backing?: string;
+  },
   mapper: InputMapper,
   getNewTime: GetNewTimeFn
 ): { audioStream: string; filters: string[] } => {
   const filters: string[] = [];
-  
-  let currentBaseAudio = baseAudioStream;
-  const voiceoverStreams: string[] = [];
-  const sfxStreams: string[] = [];
-  const muteRanges: string[] = [];
+  const hasSeparatedTracks = !!(audioInputs.vocals && audioInputs.backing);
+  const UNIFIED_AUDIO_FORMAT = 'aformat=sample_rates=44100:channel_layouts=stereo';
 
-  (content.subtitles || []).forEach((sub: SubtitleItem, i) => {
-    if (sub.audioTrack) {
-      const newStartTimeS = msToS(getNewTime(sub.startTime));
-      const newEndTimeS = msToS(getNewTime(sub.endTime));
-      
-      if (newEndTimeS <= newStartTimeS) return;
+  const volumeChanges: { start: number; end: number; vocalsVol: number; backingVol: number }[] = [];
 
-      muteRanges.push(`between(t,${newStartTimeS},${newEndTimeS})`);
+  interface AudioLaneItem {
+    url: string;
+    start: number;
+    end: number;
+    volume: number;
+    id: string;
+  }
+  const audioClips: AudioLaneItem[] = [];
 
-      const track = sub.audioTrack.track;
-      const audioInput = `[${mapper.getIndex(track.url)}:a]`;
-      const streamName = `[voice_${i}]`;
-      filters.push(
-        `${audioInput}adelay=${newStartTimeS * 1000}|${newStartTimeS * 1000},volume=${sub.audioTrack.volume}${streamName}`
-      );
-      voiceoverStreams.push(streamName);
+  (content.subtitles || []).forEach((sub, i) => {
+    const newStartTimeS = msToS(getNewTime(sub.startTime));
+    const newEndTimeS = msToS(getNewTime(sub.endTime));
+
+    if (newEndTimeS <= newStartTimeS) return;
+
+    if (sub.sourceMix) {
+      volumeChanges.push({
+        start: newStartTimeS,
+        end: newEndTimeS,
+        vocalsVol: sub.sourceMix.originalVocalVolume ?? 1,
+        backingVol: sub.sourceMix.backingVolume ?? 1
+      });
     }
-    
+
+    if (sub.audioTrack) {
+      audioClips.push({
+        url: sub.audioTrack.track.url,
+        start: newStartTimeS,
+        end: newEndTimeS,
+        volume: sub.audioTrack.volume ?? 1,
+        id: `vo_${i}`
+      });
+    }
+
     if (sub.soundEffect) {
-      const newStartTimeMs = getNewTime(sub.startTime);
-      const track = sub.soundEffect.track;
-      const audioInput = `[${mapper.getIndex(track.url)}:a]`;
-      const streamName = `[sfx_${i}]`;
-      filters.push(
-        `${audioInput}adelay=${newStartTimeMs}|${newStartTimeMs},volume=${sub.soundEffect.volume}${streamName}`
-      );
-      sfxStreams.push(streamName);
+      audioClips.push({
+        url: sub.soundEffect.track.url,
+        start: newStartTimeS,
+        end: newEndTimeS,
+        volume: sub.soundEffect.volume ?? 1,
+        id: `sfx_${i}`
+      });
     }
   });
 
-  if (muteRanges.length > 0) {
-    const muteExpr = muteRanges.join('+');
-    filters.push(
-      `${baseAudioStream}volume=enable='${muteExpr}':volume=0[muted_base_a]`
-    );
-    currentBaseAudio = '[muted_base_a]';
+  const streamsToMix: string[] = [];
+
+  if (audioClips.length > 0) {
+    audioClips.sort((a, b) => a.start - b.start);
+
+    const lanes: AudioLaneItem[][] = [];
+
+    for (const clip of audioClips) {
+      let placed = false;
+      for (const lane of lanes) {
+        const lastClip = lane[lane.length - 1];
+        if (clip.start >= lastClip.end - 0.05) {
+          lane.push(clip);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        lanes.push([clip]);
+      }
+    }
+
+    lanes.forEach((lane, laneIndex) => {
+      const segmentStreams: string[] = [];
+      let currentTime = 0;
+
+      lane.forEach((clip, clipIndex) => {
+        if (clip.start > currentTime + 0.01) {
+          const gapDuration = clip.start - currentTime;
+          const gapStream = `[gap_${laneIndex}_${clipIndex}]`;
+          filters.push(`anullsrc=channel_layout=stereo:sample_rate=44100:duration=${gapDuration},${UNIFIED_AUDIO_FORMAT}${gapStream}`);
+          segmentStreams.push(gapStream);
+        }
+
+        const inputIndex = mapper.getIndex(clip.url);
+        const clipDuration = clip.end - clip.start;
+        const clipStream = `[clip_${laneIndex}_${clipIndex}]`;
+
+        filters.push(
+          `[${inputIndex}:a]atrim=start=0:duration=${clipDuration},asetpts=PTS-STARTPTS,volume=${clip.volume},${UNIFIED_AUDIO_FORMAT}${clipStream}`
+        );
+        segmentStreams.push(clipStream);
+
+        currentTime = clip.end;
+      });
+
+      const laneStream = `[lane_${laneIndex}]`;
+      if (segmentStreams.length > 0) {
+        filters.push(`${segmentStreams.join('')}concat=n=${segmentStreams.length}:v=0:a=1${laneStream}`);
+        streamsToMix.push(laneStream);
+      }
+    });
   }
-  
-  const bgmStreams: string[] = [];
+
+  if (hasSeparatedTracks && audioInputs.vocals && audioInputs.backing) {
+    let vocalsVolumeExpr = '1';
+    for (let i = volumeChanges.length - 1; i >= 0; i--) {
+      const change = volumeChanges[i];
+      if (Math.abs(change.vocalsVol - 1) > 0.01) {
+        vocalsVolumeExpr = `if(between(t,${change.start},${change.end}),${change.vocalsVol},${vocalsVolumeExpr})`;
+      }
+    }
+    filters.push(`${audioInputs.vocals}volume='${vocalsVolumeExpr}':eval=frame,${UNIFIED_AUDIO_FORMAT}[processed_vocals]`);
+    streamsToMix.push('[processed_vocals]');
+
+    let backingVolumeExpr = '1';
+    for (let i = volumeChanges.length - 1; i >= 0; i--) {
+      const change = volumeChanges[i];
+      if (Math.abs(change.backingVol - 1) > 0.01) {
+        backingVolumeExpr = `if(between(t,${change.start},${change.end}),${change.backingVol},${backingVolumeExpr})`;
+      }
+    }
+    filters.push(`${audioInputs.backing}volume='${backingVolumeExpr}':eval=frame,${UNIFIED_AUDIO_FORMAT}[processed_backing]`);
+    streamsToMix.push('[processed_backing]');
+
+    const insertSegments = (content.videoSequenceSegments || []).filter(seg => seg.type === 'insert');
+
+    if (insertSegments.length > 0) {
+      let insertVolumeExpr = '0';
+      let currentTimeCursor = 0;
+      const allSegments = content.videoSequenceSegments || [];
+
+      allSegments.forEach(seg => {
+        const segDurationS = msToS(seg.duration);
+        const startS = msToS(currentTimeCursor);
+        const endS = startS + segDurationS;
+
+        if (seg.type === 'insert') {
+          insertVolumeExpr = `if(between(t,${startS},${endS}),1,${insertVolumeExpr})`;
+        }
+
+        if (seg.type !== 'cut') {
+          currentTimeCursor += seg.duration;
+        }
+      });
+
+      filters.push(`${audioInputs.baseAudio}volume='${insertVolumeExpr}':eval=frame,${UNIFIED_AUDIO_FORMAT}[processed_inserts]`);
+      streamsToMix.push('[processed_inserts]');
+    }
+
+  } else {
+    let mainVolumeExpr = '1';
+    for (let i = volumeChanges.length - 1; i >= 0; i--) {
+      const change = volumeChanges[i];
+      if (Math.abs(change.backingVol - 1) > 0.01) {
+        mainVolumeExpr = `if(between(t,${change.start},${change.end}),${change.backingVol},${mainVolumeExpr})`;
+      }
+    }
+    filters.push(`${audioInputs.baseAudio}volume='${mainVolumeExpr}':eval=frame,${UNIFIED_AUDIO_FORMAT}[processed_base_a]`);
+    streamsToMix.push('[processed_base_a]');
+  }
+
   if (content.backgroundMusic) {
+    const totalDurationMs = (content.videoSequenceSegments || []).reduce((sum, seg) => {
+      
+      return seg.type !== 'cut' ? sum + seg.duration : sum;
+    }, 0);
+    
+    const totalDurationS = msToS(totalDurationMs) || 1;
     const bgm = content.backgroundMusic;
     const bgmInput = `[${mapper.getIndex(bgm.url)}:a]`;
-    filters.push(`${bgmInput}volume=${bgm.volume}[bgm]`);
-    bgmStreams.push('[bgm]');
+    const bgmVolume = bgm.volume ?? 1;
+    filters.push(
+      `${bgmInput}aloop=-1:size=2e+09,atrim=duration=${totalDurationS},asetpts=PTS-STARTPTS,volume=${bgmVolume},${UNIFIED_AUDIO_FORMAT}[bgm]`
+    );
+    streamsToMix.push('[bgm]');
   }
 
-  const allStreamsToMix = [currentBaseAudio, ...bgmStreams, ...voiceoverStreams, ...sfxStreams];
-
-  if (allStreamsToMix.length > 1) {
+  if (streamsToMix.length > 1) {
     filters.push(
-      `${allStreamsToMix.join('')}amix=inputs=${allStreamsToMix.length}[final_a]`
+      `${streamsToMix.join('')}amix=inputs=${streamsToMix.length}:duration=longest:dropout_transition=0[final_a]`
     );
     return { audioStream: '[final_a]', filters };
+  } else if (streamsToMix.length === 1) {
+    return { audioStream: streamsToMix[0], filters };
   } else {
-    return { audioStream: baseAudioStream, filters };
+    filters.push(`anullsrc=channel_layout=stereo:sample_rate=44100[final_a]`);
+    return { audioStream: '[final_a]', filters };
   }
 };
 
@@ -211,7 +362,6 @@ export const buildMediaTrack = (
 };
 
 export const buildBrollTrack = (
-  
   subtitles: SubtitleItem[],
   lastStream: string,
   mapper: InputMapper,
@@ -234,7 +384,6 @@ export const buildBrollTrack = (
       const nextV = `[v_broll_${i}]`;
       let brollStream = `[broll_pre_${i}]`;
 
-      
       brollRanges.push(`between(t,${newStartTimeS},${newEndTimeS})`);
       
       const trimStartS = msToS(broll.startOffset || 0);
@@ -244,7 +393,6 @@ export const buildBrollTrack = (
       
       let transitionFilter = '';
       if (broll.transition === 'fade') {
-        
         transitionFilter = `,fade=type=in:st=0:d=0.3,fade=type=out:st=${durationS - 0.3}:d=0.3`;
       } else if (broll.transition === 'glow') {
         const brightness = `'if(lt(t,0.3), 1 + 0.3*t/0.3, if(gt(t,${durationS - 0.3}), 1 + 0.3 - 0.3*(t-${durationS - 0.3})/0.3, 1))'`;

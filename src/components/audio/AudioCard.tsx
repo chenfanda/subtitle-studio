@@ -16,11 +16,11 @@ export function AudioCard({ track }: AudioCardProps) {
   const [hasThisAudio, setHasThisAudio] = useState(false);
 
   const { 
-    currentTrack, 
-    isPlaying, 
-    currentTime,
-    playAudio, 
-    pauseAudio,
+    previewTrack: currentTrack,   
+    isPreviewPlaying: isPlaying, 
+    previewCurrentTime: currentTime, 
+    playPreview: playAudio,
+    pausePreview: pauseAudio,    
     setBackgroundMusic,
     removeBackgroundMusic
   } = useAudioStore();

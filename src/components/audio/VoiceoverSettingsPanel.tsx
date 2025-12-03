@@ -1,187 +1,135 @@
+import React, { useCallback } from 'react';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
-import { useEffect, useState, useMemo } from 'react';
-import type { SubtitleAudioData } from '@/types/subtitle';
-import { useUIStore } from '@/stores/useUIStore';
+import { useProjectStore } from '@/stores/useProjectStore';
+import { Volume2, Mic, Music, Info } from 'lucide-react';
+import type { SourceMixConfig } from '@/types/subtitle';
 
-function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!enabled)}
-      className={`
-        relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer 
-        rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out
-        ${enabled ? 'bg-accent-purple' : 'bg-gray-600'}
-        focus:outline-none
-      `}
-    >
-      <span
-        className={`
-          pointer-events-none inline-block h-5 w-5 
-          transform rounded-full bg-white shadow ring-0 
-          transition duration-200 ease-in-out
-          ${enabled ? 'translate-x-5' : 'translate-x-0'}
-        `}
-      />
-    </button>
-  );
-}
-
-interface AudioSettingsPanelProps {
+interface VoiceoverSettingsPanelProps {
   subtitleId: string;
 }
 
-export default function VoiceoverSettingsPanel({ subtitleId }: AudioSettingsPanelProps) {
-  const subtitles = useSubtitleStore(state => state.subtitles);
-  const setSubtitleAudio = useSubtitleStore(state => state.setSubtitleAudio);
+const VoiceoverSettingsPanel: React.FC<VoiceoverSettingsPanelProps> = ({ subtitleId }) => {
+  const subtitle = useSubtitleStore((state) => state.subtitles.find((s) => s.id === subtitleId));
+  const updateSubtitle = useSubtitleStore((state) => state.updateSubtitle);
   
-  const subtitle = useMemo(() => 
-    subtitles.find(s => s.id === subtitleId),
-  [subtitles, subtitleId]);
+  const sourceResources = useProjectStore((state) => state.sourceResources);
+  const hasSeparatedTracks = !!(sourceResources?.audioVocals && sourceResources?.audioBacking);
 
-  const setSelectedAttachment = useUIStore(state => state.setSelectedAttachment);
-  
-  const [volume, setVolume] = useState(subtitle?.audioTrack?.volume || 0.7);
-  const [fadeIn, setFadeIn] = useState(subtitle?.audioTrack?.fadeIn || 0);
-  const [fadeOut, setFadeOut] = useState(subtitle?.audioTrack?.fadeOut || 0);
-
-  const handleClose = () => {
-    setSelectedAttachment(null);
+  const sourceMix: SourceMixConfig = subtitle?.sourceMix || {
+    originalVocalVolume: 1,
+    backingVolume: 1,
   };
 
-  useEffect(() => {
-    if (subtitle?.audioTrack) {
-      setVolume(subtitle.audioTrack.volume);
-      setFadeIn(subtitle.audioTrack.fadeIn);
-      setFadeOut(subtitle.audioTrack.fadeOut);
-    }
-  }, [subtitle?.audioTrack]);
+  const handleVolumeChange = useCallback((value: number[]) => {
+    if (!subtitle?.audioTrack) return;
+    const newVolume = value[0];
+    updateSubtitle(subtitleId, {
+      audioTrack: {
+        ...subtitle.audioTrack,
+        volume: newVolume / 100,
+      },
+    });
+  }, [subtitle, subtitleId, updateSubtitle]);
 
-  useEffect(() => {
-    if (!subtitle) {
-      handleClose();
-    }
-  }, [subtitle]);
+  const handleSourceMixChange = useCallback((key: keyof SourceMixConfig, value: number[]) => {
+    const newValue = value[0] / 100;
+    updateSubtitle(subtitleId, {
+      sourceMix: {
+        ...sourceMix,
+        [key]: newValue,
+      },
+    });
+  }, [subtitleId, sourceMix, updateSubtitle]);
 
-  const updateStore = (updates: Partial<SubtitleAudioData>) => {
-    if (subtitle?.audioTrack) {
-      setSubtitleAudio(subtitleId, { ...subtitle.audioTrack, ...updates });
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    updateStore({ volume: newVolume });
-  };
-  
-  const handleFadeInChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFadeIn = parseFloat(e.target.value);
-    setFadeIn(newFadeIn);
-    updateStore({ fadeIn: newFadeIn });
-  };
-  
-  const handleFadeOutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFadeOut = parseFloat(e.target.value);
-    setFadeOut(newFadeOut);
-    updateStore({ fadeOut: newFadeOut });
-  };
-
-  const handleFadeInToggle = (enabled: boolean) => {
-    const newFadeIn = enabled ? 1.0 : 0.0;
-    setFadeIn(newFadeIn);
-    updateStore({ fadeIn: newFadeIn });
-  };
-
-  const handleFadeOutToggle = (enabled: boolean) => {
-    const newFadeOut = enabled ? 1.0 : 0.0;
-    setFadeOut(newFadeOut);
-    updateStore({ fadeOut: newFadeOut });
-  };
-
-  if (!subtitle) {
-    return null;
+  if (!subtitle?.audioTrack) {
+    return (
+      <div className="p-4 text-center text-text-secondary">
+        请先生成或上传配音
+      </div>
+    );
   }
 
-  const isFadeInEnabled = fadeIn > 0;
-  const isFadeOutEnabled = fadeOut > 0;
+  const voiceoverVolume = subtitle.audioTrack.volume ?? 0.7;
 
   return (
-    <div className="w-50 bg-bg-primary p-4 flex-shrink-0 flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-white text-lg font-semibold">音频</h3>
-        <button 
-          onClick={handleClose} 
-          className="text-gray-400 hover:text-white text-2xl"
-        >
-          &times;
-        </button>
+    <div className="p-4 space-y-6">
+      <div className="flex items-center gap-2 pb-2 border-b border-border-secondary">
+        <Mic size={18} className="text-accent-purple" />
+        <h3 className="font-medium text-text-primary">配音设置</h3>
       </div>
-      
-      <div className="flex-1 overflow-y-auto space-y-6">
-        <div>
-          <label className="block text-sm text-gray-300 mb-2">音量</label>
-          <div className="flex items-center space-x-3">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
-            />
-            <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
-              {Math.round(volume * 100)}%
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm text-gray-300">淡入</label>
-            <ToggleSwitch enabled={isFadeInEnabled} onChange={handleFadeInToggle} />
-          </div>
-          {isFadeInEnabled && (
-            <div className="flex items-center space-x-3 mt-2">
-              <input
-                type="range"
-                min="0"
-                max="5"
-                step="0.1"
-                value={fadeIn}
-                onChange={handleFadeInChange}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
-              />
-              <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
-                {fadeIn.toFixed(1)}s
-              </div>
-            </div>
-          )}
-        </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm text-gray-300">淡出</label>
-            <ToggleSwitch enabled={isFadeOutEnabled} onChange={handleFadeOutToggle} />
-          </div>
-          {isFadeOutEnabled && (
-            <div className="flex items-center space-x-3 mt-2">
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <label className="text-sm text-text-secondary flex items-center gap-2">
+            <Volume2 size={14} />
+            配音音量
+          </label>
+          <span className="text-xs text-text-tertiary font-mono">
+            {Math.round(voiceoverVolume * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="200"
+          value={voiceoverVolume * 100}
+          onChange={(e) => handleVolumeChange([Number(e.target.value)])}
+          className="w-full h-1.5 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-accent-purple hover:accent-accent-purple-hover transition-all"
+        />
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+          原声混合 (当前片段)
+        </h4>
+
+        {hasSeparatedTracks ? (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-text-secondary flex items-center gap-1">
+                  <Mic size={12} /> 原声人声
+                </span>
+                <span className="text-text-tertiary">{Math.round((sourceMix.originalVocalVolume ?? 1) * 100)}%</span>
+              </div>
               <input
                 type="range"
                 min="0"
-                max="5"
-                step="0.1"
-                value={fadeOut}
-                onChange={handleFadeOutChange}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
+                max="100"
+                value={(sourceMix.originalVocalVolume ?? 1) * 100}
+                onChange={(e) => handleSourceMixChange('originalVocalVolume', [Number(e.target.value)])}
+                className="w-full h-1 bg-bg-tertiary rounded appearance-none cursor-pointer accent-green-500"
               />
-              <div className="w-16 flex-shrink-0 text-center bg-gray-800 text-white rounded-md px-2 py-1 text-sm">
-                {fadeOut.toFixed(1)}s
-              </div>
             </div>
-          )}
-        </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-text-secondary flex items-center gap-1">
+                  <Music size={12} /> 原声背景
+                </span>
+                <span className="text-text-tertiary">{Math.round((sourceMix.backingVolume ?? 1) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={(sourceMix.backingVolume ?? 1) * 100}
+                onChange={(e) => handleSourceMixChange('backingVolume', [Number(e.target.value)])}
+                className="w-full h-1 bg-bg-tertiary rounded appearance-none cursor-pointer accent-orange-500"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="p-3 bg-bg-secondary rounded-md text-xs text-text-tertiary flex items-start gap-2">
+            <Info size={14} className="flex-shrink-0 mt-0.5" />
+            <span>
+              未检测到分离音轨，无法独立调节原声的人声和背景音。原声将以默认音量播放。
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default VoiceoverSettingsPanel;

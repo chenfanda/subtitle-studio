@@ -7,10 +7,9 @@ import { SFX_LIBRARY } from '@/constants/sfxCategories';
 import { useSubtitleStore } from './useSubtitleStore';
 import { useHistoryStore } from './useHistoryStore';
 import { useProjectStore } from './useProjectStore';
-
 export type AudioTaskType = 'voiceover' | 'bgm' | 'sfx';
 
-interface AudioStore extends AudioState {
+interface AudioStore extends Omit<AudioState, 'isPlaying' | 'currentTrack' | 'volume' | 'currentTime'> {
   activeAudioTask: AudioTaskType;
   activeCategory: AudioCategory;
   activeSfxCategory: SoundEffectCategory;
@@ -18,17 +17,22 @@ interface AudioStore extends AudioState {
   backgroundMusic: AudioTrack | null;
   uploadedTracks: AudioTrack[];
 
+  previewTrack: AudioTrack | null;
+  isPreviewPlaying: boolean;
+  previewVolume: number;
+  previewCurrentTime: number;
+
   setActiveAudioTask: (task: AudioTaskType) => void;
   setActiveCategory: (category: AudioCategory) => void;
   setActiveSfxCategory: (category: SoundEffectCategory) => void;
   selectTrack: (track: AudioTrack) => void;
   clearSelection: () => void;
 
-  playAudio: (track: AudioTrack) => void;
-  pauseAudio: () => void;
-  stopAudio: () => void;
-  setVolume: (volume: number) => void;
-  setCurrentTime: (time: number) => void;
+  playPreview: (track: AudioTrack) => void;
+  pausePreview: () => void;
+  stopPreview: () => void;
+  setPreviewVolume: (volume: number) => void;
+  setPreviewCurrentTime: (time: number) => void;
 
   setBackgroundMusic: (track: AudioTrack) => void;
   removeBackgroundMusic: () => void;
@@ -51,10 +55,10 @@ export const useAudioStore = create<AudioStore>()(
     backgroundMusic: null,
     uploadedTracks: [],
 
-    isPlaying: false,
-    currentTrack: null,
-    volume: 80,
-    currentTime: 0,
+    previewTrack: null,
+    isPreviewPlaying: false,
+    previewVolume: 80,
+    previewCurrentTime: 0,
 
     setActiveAudioTask: (task) =>
       set((state) => {
@@ -62,7 +66,7 @@ export const useAudioStore = create<AudioStore>()(
         state.selectedTrack = null;
       }),
 
-    setActiveCategory: (category) => 
+    setActiveCategory: (category) =>
       set((state) => {
         state.activeCategory = category;
         state.selectedTrack = null;
@@ -74,45 +78,45 @@ export const useAudioStore = create<AudioStore>()(
         state.selectedTrack = null;
       }),
 
-    selectTrack: (track) => 
+    selectTrack: (track) =>
       set((state) => {
         state.selectedTrack = track;
       }),
 
-    clearSelection: () => 
+    clearSelection: () =>
       set((state) => {
         state.selectedTrack = null;
       }),
 
-    playAudio: (track) => 
+    playPreview: (track) =>
       set((state) => {
-        state.currentTrack = track;
-        state.isPlaying = true;
-        state.currentTime = 0;
-        state.volume = track.volume * 100;
+        state.previewTrack = track;
+        state.isPreviewPlaying = true;
+        state.previewCurrentTime = 0;
+        state.previewVolume = track.volume * 100;
       }),
 
-    pauseAudio: () => 
+    pausePreview: () =>
       set((state) => {
-        state.isPlaying = false;
+        state.isPreviewPlaying = false;
       }),
 
-    stopAudio: () => 
+    stopPreview: () =>
       set((state) => {
-        state.isPlaying = false;
-        state.currentTrack = null;
-        state.currentTime = 0;
+        state.isPreviewPlaying = false;
+        state.previewTrack = null;
+        state.previewCurrentTime = 0;
       }),
 
-    setVolume: (volume) => 
+    setPreviewVolume: (volume) =>
       set((state) => {
-        state.volume = Math.max(0, Math.min(100, volume));
+        state.previewVolume = Math.max(0, Math.min(100, volume));
       }),
 
-    setCurrentTime: (time) => 
+    setPreviewCurrentTime: (time) =>
       set((state) => {
-        if (state.currentTrack) {
-          state.currentTime = Math.max(0, Math.min(time, state.currentTrack.duration));
+        if (state.previewTrack) {
+          state.previewCurrentTime = Math.max(0, Math.min(time, state.previewTrack.duration));
         }
       }),
 
@@ -181,7 +185,6 @@ export const useAudioStore = create<AudioStore>()(
         return new Promise((resolve, reject) => {
           audio.onloadedmetadata = () => {
             const { activeAudioTask, activeCategory, activeSfxCategory } = get();
-
             const category = activeAudioTask === 'sfx' ? activeSfxCategory : activeCategory;
 
             const newTrack: AudioTrack = {
@@ -216,53 +219,58 @@ export const useAudioStore = create<AudioStore>()(
       }
     },
 
- deleteUploadedTrack: (trackId) => 
-  set((state) => {
-    const trackToDelete = state.uploadedTracks.find(track => track.id === trackId);
-    if (trackToDelete && trackToDelete.url.startsWith('blob:')) {
-      URL.revokeObjectURL(trackToDelete.url);
-    }
+    deleteUploadedTrack: (trackId) =>
+      set((state) => {
+        const trackToDelete = state.uploadedTracks.find(track => track.id === trackId);
+        if (trackToDelete && trackToDelete.url.startsWith('blob:')) {
+          URL.revokeObjectURL(trackToDelete.url);
+        }
 
-    state.uploadedTracks = state.uploadedTracks.filter(track => track.id !== trackId);
+        state.uploadedTracks = state.uploadedTracks.filter(track => track.id !== trackId);
 
-    if (state.selectedTrack?.id === trackId) {
-      state.selectedTrack = null;
-    }
+        if (state.selectedTrack?.id === trackId) {
+          state.selectedTrack = null;
+        }
 
-    if (state.backgroundMusic?.id === trackId) {
-      state.backgroundMusic = null;
-    }
+        if (state.backgroundMusic?.id === trackId) {
+          state.backgroundMusic = null;
+        }
 
-    if (state.currentTrack?.id === trackId) {
-      state.isPlaying = false;
-      state.currentTrack = null;
-      state.currentTime = 0;
-    }
-  }),
+        if (state.previewTrack?.id === trackId) {
+          state.isPreviewPlaying = false;
+          state.previewTrack = null;
+          state.previewCurrentTime = 0;
+        }
+      }),
   }))
 );
 
 export const useActiveAudioTask = () =>
   useAudioStore((state) => state.activeAudioTask);
 
-export const useActiveCategory = () => 
+export const useActiveCategory = () =>
   useAudioStore((state) => state.activeCategory);
 
 export const useActiveSfxCategory = () =>
   useAudioStore((state) => state.activeSfxCategory);
 
-export const useSelectedTrack = () => 
+export const useSelectedTrack = () =>
   useAudioStore((state) => state.selectedTrack);
 
-export const useBackgroundMusic = () => 
+export const useBackgroundMusic = () =>
   useAudioStore((state) => state.backgroundMusic);
 
-export const useAudioPlayState = () => 
+export const useAudioPreviewState = () =>
   useAudioStore((state) => ({
-    isPlaying: state.isPlaying,
-    currentTrack: state.currentTrack,
-    volume: state.volume,
-    currentTime: state.currentTime
+    isPlaying: state.isPreviewPlaying,
+    currentTrack: state.previewTrack,
+    volume: state.previewVolume,
+    currentTime: state.previewCurrentTime,
+    play: state.playPreview,
+    pause: state.pausePreview,
+    stop: state.stopPreview,
+    setVolume: state.setPreviewVolume,
+    setCurrentTime: state.setPreviewCurrentTime,
   }));
 
 export const useTracksForActiveTask = () => {
@@ -276,7 +284,7 @@ export const useTracksForActiveTask = () => {
       const libraryTracks = AUDIO_LIBRARY[activeCategory] || [];
       const userTracks = uploadedTracks.filter(track => track.category === activeCategory);
       return [...libraryTracks, ...userTracks];
-    } 
+    }
 
     if (activeAudioTask === 'sfx') {
       const libraryTracks = SFX_LIBRARY[activeSfxCategory] || [];

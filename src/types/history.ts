@@ -6,7 +6,7 @@ import type { WatermarkConfig } from './settings';
 import type { ProjectState } from './project';
 import type { UIState } from './ui';
 
-type Snapshot_ProjectState = Pick<ProjectState, 'title' | 'volume' | 'playbackRate'>;
+type Snapshot_ProjectState = Pick<ProjectState, 'title' | 'volume' | 'playbackRate' | 'audioMix'>;
 
 type Snapshot_SettingsState = {
   watermark: WatermarkConfig;

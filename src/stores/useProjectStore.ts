@@ -1,7 +1,8 @@
-import { create } from 'zustand';
+import { create, StateCreator } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { ProjectState, ProjectExport } from '@/types/project';
+import type { ProjectState, ProjectExport, AudioMix } from '@/types/project';
+import { DEFAULT_AUDIO_MIX } from '@/types/project';
 import type { ProjectSnapshot } from '@/types/history';
 import { APP_CONFIG } from '@/constants/config';
 import { generateId } from '@/utils/storeUtils';
@@ -21,6 +22,15 @@ interface ProjectStore extends ProjectState {
   appStage: AppStage;
   setAppStage: (stage: AppStage) => void;
   
+  pendingUploadFile: File | null;
+  setPendingUploadFile: (file: File | null) => void;
+  setProcessedResources: (resources: {
+    video: string;
+    audioVocals: string;
+    audioBacking: string;
+  }) => void;
+
+  setAudioMix: (mix: Partial<AudioMix>) => void;
   setVideoUrl: (url: string) => void;
   setDuration: (duration: number) => void;
   updateProjectTitle: (title: string) => void;
@@ -47,8 +57,7 @@ interface ProjectStore extends ProjectState {
   setEditorHeight: (height: number) => void;
 }
 
-const initialState: ProjectState = {
-  id: generateId(),
+const initialState: Omit<ProjectState, 'id'> = {
   title: 'Untitled Project',
   videoUrl: '',
   duration: 0,
@@ -61,238 +70,273 @@ const initialState: ProjectState = {
   lastSaved: null,
   saveStatus: 'saved',
   editorHeight: 540,
+  sourceResources: null,
+  audioMix: DEFAULT_AUDIO_MIX,
 };
+
+const projectStoreCreator: StateCreator<
+  ProjectStore,
+  [["zustand/subscribeWithSelector", never], ["zustand/immer", never]]
+> = (set, get) => ({
+  id: generateId(),
+  ...initialState,
+  appStage: 'upload' as AppStage,
+  pendingUploadFile: null,
+
+  setAppStage: (stage) => {
+    set((state) => {
+      state.appStage = stage;
+    });
+  },
+
+  setPendingUploadFile: (file) => {
+    set((state) => {
+      state.pendingUploadFile = file;
+    });
+  },
+  
+  setProcessedResources: (resources) => {
+    set((state) => {
+      state.sourceResources = resources;
+    });
+  },
+
+  setAudioMix: (mix) => {
+    set((state) => {
+      state.audioMix = { ...state.audioMix, ...mix };
+      state.saveStatus = 'unsaved';
+    });
+  },
+
+  setVideoUrl: (url) => {
+    set((state) => {
+      state.videoUrl = url;
+      state.saveStatus = 'unsaved';
+      if (url && state.appStage === 'upload') {
+        state.appStage = 'processing';
+      }
+    });
+  },
+  
+  setDuration: (duration) => {
+    set((state) => {
+      state.duration = duration;
+      state.globalDuration = duration;
+    });
+    const videoUrl = get().videoUrl;
+    if (videoUrl && duration > 0) {
+      const durationInMs = duration * 1000;
+      useVideoSequenceStore.getState().setMainVideo(videoUrl, durationInMs);
+    }
+  },
+  
+  updateProjectTitle: (title) => {
+    set((state) => {
+      state.title = title;
+      state.saveStatus = 'unsaved';
+    });
+  },
+  
+  setCurrentTime: (time) => {
+    set((state) => {
+      state.currentTime = Math.max(0, Math.min(time, state.duration));
+    });
+  },
+
+  setGlobalTime: (time) => {
+    set((state) => {
+      state.globalTime = Math.max(0, Math.min(time, state.globalDuration));
+    });
+  },
+
+  setGlobalDuration: (duration) => {
+    set((state) => {
+      state.globalDuration = duration;
+    });
+  },
+  
+  setIsPlaying: (isPlaying) => {
+    set((state) => {
+      state.isPlaying = isPlaying;
+    });
+  },
+  
+  togglePlayback: () => {
+    set((state) => {
+      state.isPlaying = !state.isPlaying;
+    });
+  },
+  
+  setVolume: (volume) => {
+    set((state) => {
+      state.volume = Math.max(0, Math.min(100, volume));
+    });
+  },
+  
+  setPlaybackRate: (rate) => {
+    set((state) => {
+      state.playbackRate = rate;
+    });
+  },
+  
+  markUnsaved: () => {
+    set((state) => {
+      state.saveStatus = 'unsaved';
+    });
+  },
+  
+  markSaved: () => {
+    set((state) => {
+      state.saveStatus = 'saved';
+      state.lastSaved = new Date();
+    });
+  },
+  
+  setSaveStatus: (status) => {
+    set((state) => {
+      state.saveStatus = status;
+    });
+  },
+  setEditorHeight: (height) => { 
+    set((state) => {
+      if (Math.abs(state.editorHeight - height) > 1) { 
+        state.editorHeight = height; 
+      } 
+    }); 
+  }, 
+
+  toSnapshot: (): ProjectSnapshot => { 
+    const state = get(); 
+    const settingsStore = useSettingsStore.getState(); 
+    const uiStore = useUIStore.getState(); 
+    const subtitleStore = useSubtitleStore.getState(); 
+    const textElementStore = useTextElementStore.getState(); 
+    const mediaStore = useMediaStore.getState(); 
+    const brollStore = useBrollStore.getState(); 
+    const audioStore = useAudioStore.getState(); 
+    const videoSequenceStore = useVideoSequenceStore.getState(); 
+    
+    return { 
+      projectState: { 
+        title: state.title, 
+        volume: state.volume, 
+        playbackRate: state.playbackRate, 
+        audioMix: state.audioMix,
+      }, 
+      settingsState: { 
+        watermark: settingsStore.watermark, 
+      }, 
+      uiState: { 
+        selectedSubtitleIds: uiStore.selectedSubtitleIds, 
+        selectedTextElementIds: uiStore.selectedTextElementIds, 
+        selectedAttachment: uiStore.selectedAttachment, 
+        timelineZoom: uiStore.timelineZoom, 
+        timelineScrollLeft: uiStore.timelineScrollLeft, 
+        activePanel: uiStore.activePanel, 
+        activeClipTask: uiStore.activeClipTask, 
+      }, 
+      
+      subtitles: subtitleStore.subtitles, 
+      textElements: textElementStore.textElements, 
+      placedMedia: mediaStore.placedMedia, 
+      placedBrolls: brollStore.placedBrolls, 
+      backgroundMusic: audioStore.backgroundMusic, 
+      videoSequenceSegments: videoSequenceStore.segments, 
+      timestamp: Date.now() 
+    }; 
+  }, 
+  
+  fromSnapshot: (snapshot: ProjectSnapshot) => { 
+    set(state => {
+      if (snapshot.projectState.audioMix) {
+        state.audioMix = snapshot.projectState.audioMix;
+      }
+    });
+    useSubtitleStore.getState().restoreSubtitles(snapshot.subtitles); 
+    useTextElementStore.getState().restoreTextElements(snapshot.textElements); 
+    useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia); 
+    useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls); 
+    useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic); 
+    if (snapshot.videoSequenceSegments) { 
+      useVideoSequenceStore.getState().restoreSegments(snapshot.videoSequenceSegments); 
+    } 
+  }, 
+  
+  exportProject: () => { 
+    const state = get(); 
+    const settingsStore = useSettingsStore.getState(); 
+    const subtitleStore = useSubtitleStore.getState(); 
+    const textElementStore = useTextElementStore.getState(); 
+    const mediaStore = useMediaStore.getState(); 
+    const brollStore = useBrollStore.getState(); 
+    const audioStore = useAudioStore.getState(); 
+    const videoSequenceStore = useVideoSequenceStore.getState(); 
+    
+    return { 
+      version: '1.0.0', 
+      metadata: { 
+        title: state.title, 
+        createdAt: new Date().toISOString(), 
+        modifiedAt: new Date().toISOString() 
+      }, 
+      video: { 
+        url: state.videoUrl, 
+        duration: state.duration
+      }, 
+      content: { 
+        subtitles: subtitleStore.subtitles, 
+        textElements: textElementStore.textElements, 
+        placedMedia: mediaStore.placedMedia, 
+        placedBrolls: brollStore.placedBrolls, 
+        backgroundMusic: audioStore.backgroundMusic, 
+        videoSequenceSegments: videoSequenceStore.segments,
+        audioMix: state.audioMix,
+      }, 
+      settings: { 
+        watermark: settingsStore.watermark, 
+        referenceHeight: state.editorHeight
+      } 
+    }; 
+  }, 
+  
+  loadProject: (project) => { 
+    set((state) => { 
+      state.title = project.metadata.title; 
+      state.videoUrl = project.video.url; 
+      state.duration = project.video.duration; 
+      state.globalDuration = project.video.duration; 
+      state.saveStatus = 'saved'; 
+      if (project.content.audioMix) {
+        state.audioMix = project.content.audioMix;
+      }
+    }); 
+    
+    useSubtitleStore.getState().restoreSubtitles(project.content.subtitles); 
+    useTextElementStore.getState().restoreTextElements(project.content.textElements); 
+    useMediaStore.getState().restorePlacedMedia(project.content.placedMedia); 
+    useBrollStore.getState().restorePlacedBrolls(project.content.placedBrolls); 
+    useAudioStore.getState().restoreBackgroundMusic(project.content.backgroundMusic); 
+    if (project.content.videoSequenceSegments) { 
+      useVideoSequenceStore.getState().restoreSegments(project.content.videoSequenceSegments); 
+    } 
+   
+    useSettingsStore.getState().updateWatermark(project.settings.watermark); 
+  }, 
+  
+  resetProject: () => { 
+    set(() => ({ 
+      id: generateId(),
+      ...initialState, 
+      appStage: 'upload' as AppStage, 
+      pendingUploadFile: null,
+      sourceResources: null 
+    })); 
+  }, 
+});
 
 export const useProjectStore = create<ProjectStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
-      ...initialState,
-      appStage: 'upload' as AppStage,
-      
-      setAppStage: (stage) => {
-        set((state) => {
-          state.appStage = stage;
-        });
-      },
-      
-      setVideoUrl: (url) => {
-        set((state) => {
-          state.videoUrl = url;
-          state.saveStatus = 'unsaved';
-          if (url) {
-            state.appStage = 'processing';
-          }
-        });
-      },
-      
-      setDuration: (duration) => {
-        set((state) => {
-          state.duration = duration;
-          state.globalDuration = duration;
-        });
-        const videoUrl = get().videoUrl;
-        if (videoUrl && duration > 0) {
-          const durationInMs = duration * 1000;
-          useVideoSequenceStore.getState().setMainVideo(videoUrl, durationInMs);
-        }
-      },
-      
-      updateProjectTitle: (title) => {
-        set((state) => {
-          state.title = title;
-          state.saveStatus = 'unsaved';
-        });
-        
-      },
-      
-      setCurrentTime: (time) => {
-        set((state) => {
-          state.currentTime = Math.max(0, Math.min(time, state.duration));
-        });
-      },
-
-      setGlobalTime: (time) => {
-        set((state) => {
-          state.globalTime = Math.max(0, Math.min(time, state.globalDuration));
-        });
-      },
-
-      setGlobalDuration: (duration) => {
-        set((state) => {
-          state.globalDuration = duration;
-        });
-      },
-      
-      setIsPlaying: (isPlaying) => {
-        set((state) => {
-          state.isPlaying = isPlaying;
-        });
-      },
-      
-      togglePlayback: () => {
-        set((state) => {
-          state.isPlaying = !state.isPlaying;
-        });
-      },
-      
-      setVolume: (volume) => {
-        set((state) => {
-          state.volume = Math.max(0, Math.min(100, volume));
-        });
-        
-      },
-      
-      setPlaybackRate: (rate) => {
-        set((state) => {
-          state.playbackRate = rate;
-        });
-      
-      },
-      
-      markUnsaved: () => {
-        set((state) => {
-          state.saveStatus = 'unsaved';
-        });
-      },
-      
-      markSaved: () => {
-        set((state) => {
-          state.saveStatus = 'saved';
-          state.lastSaved = new Date();
-        });
-      },
-      
-      setSaveStatus: (status) => {
-        set((state) => {
-          state.saveStatus = status;
-        });
-      },
-      setEditorHeight: (height) => { 
-        set((state) => {
-          if (Math.abs(state.editorHeight - height) > 1) {
-            state.editorHeight = height;
-          }
-        });
-      },
-
-      toSnapshot: () => {
-        const state = get();
-        const settingsStore = useSettingsStore.getState();
-        const uiStore = useUIStore.getState();
-        
-        const subtitleStore = useSubtitleStore.getState();
-        const textElementStore = useTextElementStore.getState();
-        const mediaStore = useMediaStore.getState();
-        const brollStore = useBrollStore.getState();
-        const audioStore = useAudioStore.getState();
-        const videoSequenceStore = useVideoSequenceStore.getState();
-        
-        return {
-          projectState: {
-            title: state.title,
-            volume: state.volume,
-            playbackRate: state.playbackRate,
-          },
-          settingsState: {
-            watermark: settingsStore.watermark,
-          },
-          uiState: {
-            selectedSubtitleIds: uiStore.selectedSubtitleIds,
-            selectedTextElementIds: uiStore.selectedTextElementIds,
-            selectedAttachment: uiStore.selectedAttachment,
-            timelineZoom: uiStore.timelineZoom,
-            timelineScrollLeft: uiStore.timelineScrollLeft,
-            activePanel: uiStore.activePanel,
-            activeClipTask: uiStore.activeClipTask,
-          },
-          
-          subtitles: subtitleStore.subtitles,
-          textElements: textElementStore.textElements,
-          placedMedia: mediaStore.placedMedia,
-          placedBrolls: brollStore.placedBrolls,
-          backgroundMusic: audioStore.backgroundMusic,
-          videoSequenceSegments: videoSequenceStore.segments,
-          timestamp: Date.now()
-        };
-      },
-      
-      fromSnapshot: (snapshot) => {
-        useSubtitleStore.getState().restoreSubtitles(snapshot.subtitles);
-        useTextElementStore.getState().restoreTextElements(snapshot.textElements);
-        useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia);
-        useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls);
-        useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
-        if (snapshot.videoSequenceSegments) {
-          useVideoSequenceStore.getState().restoreSegments(snapshot.videoSequenceSegments);
-        }
-      },
-      
-      exportProject: () => {
-        const state = get();
-        const settingsStore = useSettingsStore.getState();
-        const subtitleStore = useSubtitleStore.getState();
-        const textElementStore = useTextElementStore.getState();
-        const mediaStore = useMediaStore.getState();
-        const brollStore = useBrollStore.getState();
-        const audioStore = useAudioStore.getState();
-        const videoSequenceStore = useVideoSequenceStore.getState();
-        
-        return {
-          version: '1.0.0',
-          metadata: {
-            title: state.title,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString()
-          },
-          video: {
-            url: state.videoUrl,
-            duration: state.duration
-          },
-          content: {
-            subtitles: subtitleStore.subtitles,
-            textElements: textElementStore.textElements,
-            placedMedia: mediaStore.placedMedia,
-            placedBrolls: brollStore.placedBrolls,
-            backgroundMusic: audioStore.backgroundMusic,
-            videoSequenceSegments: videoSequenceStore.segments
-          },
-          settings: {
-            watermark: settingsStore.watermark,
-            referenceHeight: state.editorHeight
-          }
-        };
-      },
-      
-      loadProject: (project) => {
-        set((state) => {
-          state.title = project.metadata.title;
-          state.videoUrl = project.video.url;
-          state.duration = project.video.duration;
-          state.globalDuration = project.video.duration;
-          state.saveStatus = 'saved';
-        });
-        
-        useSubtitleStore.getState().restoreSubtitles(project.content.subtitles);
-        useTextElementStore.getState().restoreTextElements(project.content.textElements);
-        useMediaStore.getState().restorePlacedMedia(project.content.placedMedia);
-        useBrollStore.getState().restorePlacedBrolls(project.content.placedBrolls);
-        useAudioStore.getState().restoreBackgroundMusic(project.content.backgroundMusic);
-        if (project.content.videoSequenceSegments) {
-          useVideoSequenceStore.getState().restoreSegments(project.content.videoSequenceSegments);
-        }
-        
-        useSettingsStore.getState().updateWatermark(project.settings.watermark);
-        
-      },
-      
-      resetProject: () => {
-        set(() => ({
-          ...initialState,
-          id: generateId(),
-          appStage: 'upload' as AppStage,
-        }));
-      },
-    }))
+    immer(projectStoreCreator)
   )
 );
 

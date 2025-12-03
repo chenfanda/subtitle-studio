@@ -177,6 +177,7 @@ const handleCloudExportClick = async () => {
           
           const res = await runBackendExport(
             project,
+            exportSettings,
             (progress, msg) => {
               setExportProgress(progress);
               setStatusMessage(msg);

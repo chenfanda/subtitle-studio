@@ -62,6 +62,12 @@ export interface SubtitleSoundEffectData {
   volume: number;
 }
 
+export interface SourceMixConfig {
+  mainVideoVolume?: number;
+  originalVocalVolume?: number;
+  backingVolume?: number;
+}
+
 export interface SubtitleItem {
   id: string;
   text: string;
@@ -73,6 +79,7 @@ export interface SubtitleItem {
   audioTrack?: SubtitleAudioData;
   soundEffect?: SubtitleSoundEffectData;
   brollVideo?: BrollVideoData;
+  sourceMix?: SourceMixConfig;
 }
 
 export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {
@@ -101,7 +108,7 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   verticalAlignment: 'center',
   opacity: 1,
   shadow: {
-    enabled: true,
+    enabled: false,
     color: '#000000',
     offsetX: 2,
     offsetY: 2,

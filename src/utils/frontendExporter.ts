@@ -157,6 +157,18 @@ export const runFrontendExport = async (
   
   const project = projectOverride || useProjectStore.getState().exportProject();
 
+  const abortHandler = () => {
+    try {
+      console.log('检测到取消信号，正在终止 FFmpeg...');
+      ffmpeg.terminate(); 
+    } catch (e) {
+      console.warn('终止 FFmpeg 失败', e);
+    }
+  };
+  
+  if (signal) {
+    signal.addEventListener('abort', abortHandler);
+  }
   try {
     checkAbort(signal);
     
@@ -206,7 +218,15 @@ export const runFrontendExport = async (
     ffmpeg.on('progress', progressHandler);
 
     // 执行命令
-    await ffmpeg.exec(ffmpegArgs);
+    try {
+      await ffmpeg.exec(ffmpegArgs);
+    } catch (error: any) {
+      
+      if (signal?.aborted) {
+        throw new Error('Aborted');
+      }
+      throw error;
+    }
     
     // 移除监听，防止内存泄漏
     ffmpeg.off('progress', progressHandler);
@@ -216,7 +236,7 @@ export const runFrontendExport = async (
     // 读取文件
     const data: FileData = await ffmpeg.readFile(outputFilename); 
 
-    // 清理文件 (可选，为了节省内存)
+    
     try {
         ffmpeg.deleteFile(outputFilename); 
         mapper.remoteUrls.forEach((f) => {
@@ -230,5 +250,9 @@ export const runFrontendExport = async (
     // 确保移除监听
     ffmpeg.off('progress', undefined as any); 
     throw error;
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', abortHandler);
+    }
   }
 };

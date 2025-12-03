@@ -10,6 +10,7 @@ import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useUIStore } from '../../stores/useUIStore';
+import { useVideoSourceSwitcher } from '../../hooks/useVideoSourceSwitcher';
 
 export function VideoArea() {
   const { videoUrl, appStage, currentTime } = useProjectStore();
@@ -24,16 +25,19 @@ export function VideoArea() {
     setEditingTextElement
   } = useUIStore();
 
+  const { isInsertClip } = useVideoSourceSwitcher();
+
   const currentSubtitle = useMemo(() => {
+    if (isInsertClip) return undefined;
     const currentTimeMs = currentTime * 1000;
     return subtitles.find(s => 
       currentTimeMs >= s.startTime && currentTimeMs <= s.endTime
     );
-  }, [subtitles, currentTime]);
+  }, [subtitles, currentTime,isInsertClip]);
 
   const hasBroll = !!currentSubtitle?.brollVideo;
   const hasAudioTrack = !!currentSubtitle?.audioTrack;
-
+  const shouldMuteVideoPlayer = hasBroll || hasAudioTrack;
   const handleClickOutside = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       clearSelectedSubtitles();
@@ -90,7 +94,9 @@ export function VideoArea() {
             pointerEvents: hasBroll ? 'none' : 'auto'
           }}
         >
-          <VideoPlayer isMutedOverride={hasAudioTrack} />
+          <VideoPlayer 
+          isMutedOverride={shouldMuteVideoPlayer} 
+          />
         </div>
         
         {hasBroll && currentSubtitle?.brollVideo && (

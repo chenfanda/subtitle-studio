@@ -1,6 +1,7 @@
 import { api } from '@/utils/api';
 import { fileUploader } from '@/utils/cloudUploader';
 import type { ProjectExport } from '@/types/project';
+import type { ExportSettings } from '@/stores/useExportStore';
 
 const checkAbort = (signal?: AbortSignal) => {
   if (signal?.aborted) {
@@ -78,6 +79,7 @@ export const prepareProjectForExport = async (
 
 export const runBackendExport = async (
   project: ProjectExport,
+  settings: ExportSettings, 
   onProgress?: (percent: number, msg: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
@@ -88,8 +90,14 @@ export const runBackendExport = async (
   
   checkAbort(signal);
   onProgress?.(0.95, '正在提交渲染任务...');
+
+  const payload = {
+    project: serverReadyProject,
+    exportSettings: settings
+  };
   
-  const { jobId } = await api.startExportJob(serverReadyProject, signal);
+  const { jobId } = await api.startExportJob(payload as any, signal);
+
   
   return jobId;
 };

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-// 1. (修改) 导入新的 SubtitleSoundEffectData 类型
+import type { AnimationEffect } from '@/types/animation';
 import type { 
   SubtitleItem, 
   SubtitlePosition, 
@@ -62,14 +62,14 @@ interface SubtitleStore {
   removeSubtitleAudio: (id: string) => void;
   getSubtitlesWithAudio: () => SubtitleItem[];
 
-  // 2. (新增) 音效 (SFX) 的 Actions
+  
   setSubtitleSoundEffect: (id: string, sfxData: SubtitleSoundEffectData) => void;
   removeSubtitleSoundEffect: (id: string) => void;
 
   setSubtitleBroll: (id: string, brollData: BrollVideoData) => void;
   removeSubtitleBroll: (id: string) => void;
 
-  applyStyleToAllSubtitles: (style: SubtitleStyle) => void;
+  applyStyleToAllSubtitles: (style: SubtitleStyle,animation?: AnimationEffect) => void;
 
   findSubtitleAtTime: (time: number) => SubtitleItem | null;
   getNextSubtitle: (currentId: string) => SubtitleItem | null;
@@ -460,18 +460,22 @@ export const useSubtitleStore = create<SubtitleStore>()(
         useHistoryStore.getState().pushState();
       },
 
-      applyStyleToAllSubtitles: (style) => {
+      applyStyleToAllSubtitles: (style, animation) => {
         useHistoryStore.getState().startBatch();
 
         set((state) => {
           state.subtitles.forEach(subtitle => {
             subtitle.style = { ...subtitle.style, ...style };
 
-            if (subtitle.richText) {
-              subtitle.richText = subtitle.richText.map(segment => ({
-                ...segment,
-                style: { ...segment.style, ...style }
+            if (animation) {
+              const chars = Array.from(subtitle.text);
+              subtitle.richText = chars.map(char => ({
+                text: char,
+                style: { ...style },
+                animation: { ...animation }
               }));
+            } else {
+              subtitle.richText = createRichTextFromPlainText(subtitle.text, style);
             }
           });
         });

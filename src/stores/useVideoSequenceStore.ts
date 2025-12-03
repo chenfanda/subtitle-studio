@@ -12,7 +12,7 @@ interface VideoSequenceStore {
   
   setMainVideo: (sourceUrl: string, duration: number) => void;
   
-  addInsertSegment: (sourceUrl: string, videoDuration: number, insertAtTime: number) => string;
+  addInsertSegment: (sourceUrl: string, videoDuration: number, insertAtTime: number,sourceStartTime?: number) => string;
   
   addCutMarker: (startTime: number, endTime: number) => void;
 
@@ -59,67 +59,68 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
         useHistoryStore.getState().clearHistory();
       },
 
-      addInsertSegment: (sourceUrl, videoDuration, insertAtTime) => {
-        const newSegmentId = generateId();
-        
-        set((state) => {
-          const newSegments: TimelineSegment[] = [];
-          let insertTimeCursor = 0;
+      addInsertSegment: (sourceUrl, videoDuration, insertAtTime, sourceStartTime = 0) => {
+              
+              const newSegmentId = generateId();
+              
+              set((state) => {
+                const newSegments: TimelineSegment[] = [];
+                let insertTimeCursor = 0;
 
-          for (const segment of state.segments) {
-            const segmentStartTime = insertTimeCursor;
-            const segmentEndTime = segmentStartTime + segment.duration;
+                for (const segment of state.segments) {
+                  const segmentStartTime = insertTimeCursor;
+                  const segmentEndTime = segmentStartTime + segment.duration;
 
-            if (
-              insertAtTime > segmentStartTime &&
-              insertAtTime < segmentEndTime &&
-              segment.type === 'main'
-            ) {
-              const cutPoint = insertAtTime - segmentStartTime;
-              const firstPartDuration = cutPoint;
-              const secondPartDuration = segment.duration - cutPoint;
+                  if (
+                    insertAtTime > segmentStartTime &&
+                    insertAtTime < segmentEndTime &&
+                    segment.type === 'main'
+                  ) {
+                    const cutPoint = insertAtTime - segmentStartTime;
+                    const firstPartDuration = cutPoint;
+                    const secondPartDuration = segment.duration - cutPoint;
 
-              if (firstPartDuration > 0) {
-                newSegments.push({
-                  ...segment,
-                  id: generateId(),
-                  duration: firstPartDuration,
-                  globalStartTime: 0,
-                });
-              }
+                    if (firstPartDuration > 0) {
+                      newSegments.push({
+                        ...segment,
+                        id: generateId(),
+                        duration: firstPartDuration,
+                        globalStartTime: 0,
+                      });
+                    }
 
-              newSegments.push({
-                id: newSegmentId,
-                type: 'insert',
-                sourceUrl: sourceUrl,
-                sourceStartTime: 0,
-                duration: videoDuration,
-                globalStartTime: 0,
+                    newSegments.push({
+                      id: newSegmentId,
+                      type: 'insert',
+                      sourceUrl: sourceUrl,
+                      sourceStartTime: sourceStartTime,
+                      duration: videoDuration,
+                      globalStartTime: 0,
+                    });
+
+                    if (secondPartDuration > 0) {
+                      newSegments.push({
+                        ...segment,
+                        id: generateId(),
+                        sourceStartTime: segment.sourceStartTime + cutPoint,
+                        duration: secondPartDuration,
+                        globalStartTime: 0,
+                      });
+                    }
+                  } else {
+                    newSegments.push(segment);
+                  }
+                  insertTimeCursor += segment.duration;
+                }
+                const { segments, totalDuration } = recomputeGlobalStartTimes(newSegments);
+                state.segments = segments;
+                useProjectStore.getState().setGlobalDuration(totalDuration / 1000);
               });
 
-              if (secondPartDuration > 0) {
-                newSegments.push({
-                  ...segment,
-                  id: generateId(),
-                  sourceStartTime: segment.sourceStartTime + cutPoint,
-                  duration: secondPartDuration,
-                  globalStartTime: 0,
-                });
-              }
-            } else {
-              newSegments.push(segment);
-            }
-            insertTimeCursor += segment.duration;
-          }
-          const { segments, totalDuration } = recomputeGlobalStartTimes(newSegments);
-          state.segments = segments;
-          useProjectStore.getState().setGlobalDuration(totalDuration / 1000);
-        });
-
-        useProjectStore.getState().markUnsaved();
-        useHistoryStore.getState().pushState();
-        return newSegmentId;
-      },
+              useProjectStore.getState().markUnsaved();
+              useHistoryStore.getState().pushState();
+              return newSegmentId;
+            },
       
       addCutMarker: (startTime, endTime) => {
         set((state) => {
@@ -178,7 +179,7 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
             }
             timeCursor = segmentEndTime;
           }
-          // ... (后续代码 recomputeGlobalStartTimes, setGlobalDuration 等保持不变)
+          
           const { segments, totalDuration } = recomputeGlobalStartTimes(newSegments);
           state.segments = segments;
           useProjectStore.getState().setGlobalDuration(totalDuration / 1000);
@@ -198,7 +199,7 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
           
           const segmentToRemove = state.segments[segmentIndex];
           
-          // [核心修改] 添加 'cut' 类型的处理逻辑
+          
           if (
             (segmentToRemove.type === 'insert' || segmentToRemove.type === 'cut') &&
             segmentIndex > 0 &&
@@ -207,32 +208,31 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
             const prevSegment = state.segments[segmentIndex - 1];
             const nextSegment = state.segments[segmentIndex + 1];
 
-            // 检查前后是否为同源 'main' 片段
+            
             if (
               prevSegment.type === 'main' &&
               nextSegment.type === 'main' &&
               prevSegment.sourceUrl === nextSegment.sourceUrl
             ) {
-              // 合并逻辑 (与你现有的 insert 逻辑相同)
-              // 计算 prev 和 next 之间的源时间差
+           
               const gapDuration = nextSegment.sourceStartTime - (prevSegment.sourceStartTime + prevSegment.duration);
               
-              // 将 prev 的持续时间延长，跨过 gap 和 next
+              
               prevSegment.duration = prevSegment.duration + gapDuration + nextSegment.duration;
               
-              // 移除 'insert'/'cut' 片段 和 'nextSegment'
+              
               state.segments.splice(segmentIndex, 2);
               
             } else {
-              // 无法合并，只删除标记
+              
               state.segments.splice(segmentIndex, 1);
             }
           } else {
-            // 默认删除 (例如删除 'main' 片段或边缘片段)
+            
             state.segments.splice(segmentIndex, 1);
           }
 
-          // ... (后续代码 recomputeGlobalStartTimes, setGlobalDuration 等保持不变)
+          
           const { segments, totalDuration } = recomputeGlobalStartTimes(state.segments);
           state.segments = segments;
           useProjectStore.getState().setGlobalDuration(totalDuration / 1000);

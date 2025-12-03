@@ -100,7 +100,6 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
   );
 }
 
-
 export function VideoControls() {
   const { 
     isPlaying, 
@@ -117,8 +116,10 @@ export function VideoControls() {
   const { 
     removeSubtitleAudio, 
     removeSubtitleSoundEffect, 
-    removeSubtitleBroll 
+    removeSubtitleBroll,
+    updateSubtitle // [新增] 引入更新方法，用于重置混音参数
   } = useSubtitleStore();
+  
   const { deleteTextElement } = useTextElementStore();
   const { removeBackgroundMusic } = useAudioStore();
   const { removeSegment } = useVideoSequenceStore();
@@ -214,10 +215,14 @@ export function VideoControls() {
         case 'audio':
           // @ts-ignore
           removeSubtitleAudio(subtitleId);
+          // [关键修复] 删除配音时，必须重置混音参数，否则播放器仍会处于“编辑模式”导致静音
+          updateSubtitle(subtitleId, { sourceMix: undefined });
           break;
         case 'soundEffect':
           // @ts-ignore
           removeSubtitleSoundEffect(subtitleId);
+          // [关键修复] 删除音效时，也重置混音参数，恢复主视频原声
+          updateSubtitle(subtitleId, { sourceMix: undefined });
           break;
         case 'broll':
           // @ts-ignore
