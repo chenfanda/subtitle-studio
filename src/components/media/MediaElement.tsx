@@ -11,6 +11,10 @@ export function MediaElement({ item }: MediaElementProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
+  const latestItemRef = useRef(item);
+  useEffect(() => {
+    latestItemRef.current = item;
+  });
   
   const { updateMediaPosition, removeMedia } = useMediaStore();
 
@@ -21,18 +25,19 @@ export function MediaElement({ item }: MediaElementProps) {
       const parent = elementRef.current!.parentElement!;
       const parentWidth = parent.offsetWidth;
       const elementWidth = elementRef.current!.offsetWidth;
+      const currentItem = latestItemRef.current;
       
       if (parentWidth > 0) {
         const widthPercent = (elementWidth / parentWidth) * 100;
         
-        if (!item.position.width || Math.abs(item.position.width - widthPercent) > 0.01) {
+        if (!currentItem.position.width || Math.abs(currentItem.position.width - widthPercent) > 0.01) {
           updateMediaPosition(
-            item.media.id,
-            item.position.x,
-            item.position.y,
-            item.position.scaleX,
-            item.position.scaleY,
-            item.position.rotation,
+            currentItem.media.id,
+            currentItem.position.x,
+            currentItem.position.y,
+            currentItem.position.scaleX,
+            currentItem.position.scaleY,
+            currentItem.position.rotation,
             widthPercent
           );
         }
@@ -45,7 +50,7 @@ export function MediaElement({ item }: MediaElementProps) {
     observer.observe(elementRef.current.parentElement);
     
     return () => observer.disconnect();
-  }, [item.media.id]);
+  }, [item.media.id,updateMediaPosition]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

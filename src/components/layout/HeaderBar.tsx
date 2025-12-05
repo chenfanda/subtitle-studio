@@ -17,10 +17,12 @@ import { useExportStore } from '@/stores/useExportStore';
 
 
 export function HeaderBar() {
+  const { exportStatus } = useExportStore();
+  const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(exportStatus);
   const { title, saveStatus, updateProjectTitle } = useProjectStore();
   const { toggleLeftPanel } = useUIStore();
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
-  const { isSaving, saveProjectToFile } = useProjectSaver(); // 4. 获取保存状态和方法
+  const { isSaving, saveProjectToFile } = useProjectSaver(); 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ export function HeaderBar() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditingTitle) return;
       
-      // 添加保存快捷键 (Ctrl+S)
+      
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         if (saveStatus !== 'saved' && !isSaving) {
@@ -230,12 +232,15 @@ export function HeaderBar() {
           </button>
 
           <button 
-            className="px-3 py-1.5 bg-accent-purple hover:bg-purple-600 text-white text-sm font-medium rounded transition-colors"
-            title="导出项目"
-            // 6. (修改) 修正 onClick 事件
+            className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center justify-center min-w-[60px] ${
+              isExporting 
+                ? 'bg-accent-purple/80 text-white animate-pulse ring-1 ring-accent-purple/50' 
+                : 'bg-accent-purple hover:bg-purple-600 text-white'
+            }`}
+            title={isExporting ? "导出任务运行中 (点击查看详情)" : "导出项目"}
             onClick={() => useExportStore.getState().setShowExportModal(true)}
           >
-            导出
+            <span>{isExporting ? '导出中' : '导出'}</span>
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
-// src/components/common/Watermark.tsx
 import React, { useState, useRef } from 'react';
-import type { WatermarkConfig } from '../../stores/useSettingsStore';
+import type { WatermarkConfig } from '../../types/settings';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { WatermarkLogo } from './WatermarkLogo';
 
 interface WatermarkProps {
   config: WatermarkConfig;
@@ -109,18 +109,19 @@ export function Watermark({ config }: WatermarkProps) {
       onMouseDown={handleMouseDown}
       title={config.positionMode === 'preset' ? '点击拖拽切换到自定义位置' : '拖拽调整位置'}
     >
-      <div className="flex items-center space-x-2 backdrop-blur-sm rounded-lg px-3 py-2">
-        {/* 简单的Logo图标 */}
-        <div className="w-5 h-5 bg-current rounded flex items-center justify-center opacity-90">
-          <span 
-            className="text-xs font-bold"
-            style={{ 
-              color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000'
-            }}
-          >
-            S
-          </span>
+  <div className="flex items-center space-x-2 backdrop-blur-sm rounded-lg px-3 py-2">
+        
+        {/* 👇👇👇 这里开始替换 👇👇👇 */}
+        <div 
+          className="w-8 h-8 mr-1" 
+          style={{ 
+            // 保持原来的智能变色逻辑：背景黑则Logo白，背景白则Logo黑
+            color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000' 
+          }}
+        >
+          <WatermarkLogo />
         </div>
+        {/* 👆👆👆 替换结束 👆👆👆 */}
         
         {/* 水印文本 */}
         <span className="font-medium leading-none">

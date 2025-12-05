@@ -7,4 +7,5 @@ export interface TimelineSegment {
   sourceStartTime: number;
   duration: number;
   globalStartTime: number;
+   volume?: number; 
 }

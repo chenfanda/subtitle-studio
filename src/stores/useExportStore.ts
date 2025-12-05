@@ -29,6 +29,7 @@ interface ExportStore {
   statusMessage: string;
   abortController: AbortController | null;
   startTime: number | null;
+  resultBlob: Blob | null;
 
   setShowExportModal: (visible: boolean) => void;
   setExportStatus: (status: ExportStatus) => void;
@@ -38,10 +39,9 @@ interface ExportStore {
   updateExportSettings: (settings: Partial<ExportSettings>) => void;
   setJobId: (jobId: string) => void;
   setDownloadUrl: (url: string) => void;
+  setResultBlob: (blob: Blob | null) => void;
   
-  // 新增：初始化导出，返回控制器用于传递给异步任务
   initExport: () => AbortController;
-  // 新增：取消导出
   cancelExport: () => void;
   
   monitorJob: () => Promise<void>;
@@ -63,6 +63,7 @@ const initialState = {
   downloadUrl: null,
   abortController: null,
   startTime: null,
+  resultBlob: null,
 };
 
 export const useExportStore = create<ExportStore>()(
@@ -72,16 +73,7 @@ export const useExportStore = create<ExportStore>()(
     setShowExportModal: (visible) => {
       set((state) => {
         state.showExportModal = visible;
-        if (visible) {
-          state.exportStatus = 'idle';
-          state.exportProgress = 0;
-          state.exportError = null;
-          state.jobId = null;
-          state.downloadUrl = null;
-          state.statusMessage = '';
-          state.abortController = null;
-          state.startTime = null;
-        }
+
       });
     },
 
@@ -128,6 +120,11 @@ export const useExportStore = create<ExportStore>()(
         state.downloadUrl = url;
       });
     },
+    setResultBlob: (blob) => {
+      set((state) => {
+        state.resultBlob = blob;
+      });
+    },
 
     initExport: () => {
       const controller = new AbortController();
@@ -138,6 +135,8 @@ export const useExportStore = create<ExportStore>()(
         state.exportError = null;
         state.abortController = controller;
         state.startTime = Date.now();
+        state.resultBlob = null; 
+        state.downloadUrl = null;
       });
       return controller;
     },

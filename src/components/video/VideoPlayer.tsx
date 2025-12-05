@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
@@ -11,7 +11,7 @@ interface VideoPlayerProps {
 const safePlay = (video: HTMLVideoElement) => {
   const promise = video.play();
   if (promise !== undefined) {
-    promise.catch(() => {});
+    promise.catch(() => { });
   }
 };
 
@@ -54,53 +54,64 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
     if (!mainPlayer || !insertPlayer) return;
 
+    // --- 1. 处理 Cut 逻辑 (修复版) ---
     if (isCutSegment) {
       const storeTime = useProjectStore.getState().globalTime;
       const currentTimeMs = storeTime * 1000;
       
       const activeSegment = segments.find(segment => {
         const endTime = segment.globalStartTime + segment.duration;
+        // 使用一个微小的容差，防止浮点数计算导致的边界问题
         return segment.type === 'cut' && 
-               currentTimeMs >= segment.globalStartTime && 
-               currentTimeMs <= endTime;
+               currentTimeMs >= segment.globalStartTime - 1 && 
+               currentTimeMs < endTime; // 注意这里用 < 而不是 <=，防止卡在结束点
       });
 
       if (activeSegment) {
         const segmentEndTime = (activeSegment.globalStartTime + activeSegment.duration) / 1000;
-        if (Math.abs(storeTime - segmentEndTime) > 0.001) {
+        
+        // 只有当需要大幅度跳转时才更新，避免死循环
+        if (Math.abs(storeTime - segmentEndTime) > 0.01) {
           setGlobalTime(segmentEndTime);
         }
       }
+
+      // [关键修复]：立即暂停底层视频播放！
+      // 防止在 React 状态更新完成前，视频继续播放出"被剪切"的画面。
+      // 下一次渲染时，因为 isPlaying 仍为 true 且 isCutSegment 变为 false，视频会自动恢复播放。
+      safePause(mainPlayer);
+      safePause(insertPlayer);
+      
       return; 
     }
 
+    // --- 2. 确定当前活跃与非活跃播放器 ---
     const activePlayer = isInsertClip ? insertPlayer : mainPlayer;
     const inactivePlayer = isInsertClip ? mainPlayer : insertPlayer;
 
-    activePlayer.style.display = 'block';
-    
+    // --- 3. 设置基本属性 ---
     if (isInsertClip) {
       activePlayer.volume = isMutedOverride ? 0 : (volume / 100);
       activePlayer.muted = isMutedOverride || (volume === 0);
-  
     } else {
       activePlayer.muted = true; 
     }
-    
     activePlayer.playbackRate = playbackRate;
 
-    inactivePlayer.style.display = 'none';
-    safePause(inactivePlayer);
-
+    // --- 4. 智能源切换与过渡逻辑 ---
     let needsSeek = false;
-    if (activeSourceUrl && activePlayer.src !== activeSourceUrl) {
+    const isSourceChanged = activeSourceUrl && activePlayer.src !== activeSourceUrl;
+
+    if (isSourceChanged) {
+      activePlayer.style.opacity = '0'; 
       activePlayer.src = activeSourceUrl;
       needsSeek = true;
     }
 
     if (activeSourceUrl) {
       const timeDiff = Math.abs(activePlayer.currentTime - playbackOffset);
-      if (needsSeek || timeDiff > 0.2) {
+      
+      if (needsSeek || timeDiff > 0.25) { // 稍微放宽一点容差
         isSeekingRef.current = true;
         activePlayer.currentTime = playbackOffset;
 
@@ -111,15 +122,35 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
       }
 
       if (isPlaying) {
-        safePlay(activePlayer);
+        const playPromise = activePlayer.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            activePlayer.style.opacity = '1';
+            activePlayer.style.zIndex = '10';
+            setTimeout(() => {
+              inactivePlayer.style.opacity = '0';
+              inactivePlayer.style.zIndex = '0';
+              safePause(inactivePlayer);
+            }, 150); 
+          }).catch(e => console.error("Play error", e));
+        }
       } else {
         safePause(activePlayer);
+        if (activePlayer.readyState >= 2) {
+             activePlayer.style.opacity = '1';
+             activePlayer.style.zIndex = '10';
+             inactivePlayer.style.opacity = '0';
+             inactivePlayer.style.zIndex = '0';
+        }
       }
     }
+
   }, [
     activeSourceUrl, isInsertClip, playbackOffset, isPlaying, 
     volume, playbackRate, isCutSegment, segments, setGlobalTime, isMutedOverride
   ]);
+
+  // ... (handleInsertEnded, handleTimeUpdate, handleMetadataLoaded 等其余代码保持不变) ...
 
   const handleInsertEnded = () => {
     if (isInsertClip) {
@@ -146,6 +177,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     }
 
     const activePlayer = isInsertClip ? insertVideoRef.current : mainVideoRef.current;
+    
     if (event.currentTarget === activePlayer && activePlayer) {
       const playerTime = activePlayer.currentTime;
       const storeGlobalTime = useProjectStore.getState().globalTime;
@@ -164,17 +196,15 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
       if (newGlobalTime < 0) newGlobalTime = 0;
       if (newGlobalTime > globalDuration) newGlobalTime = globalDuration;
 
-      if (isInsertClip) {
-        if (newGlobalTime !== storeGlobalTime && !isNaN(newGlobalTime)) {
-          setGlobalTime(newGlobalTime);
-        }
-      } else {
-        const newMainVideoTime = playerTime;
-        if (newGlobalTime !== storeGlobalTime && !isNaN(newGlobalTime)) {
-          setGlobalTime(newGlobalTime);
-        }
-        if (newMainVideoTime !== storeMainVideoTime && !isNaN(newMainVideoTime)) {
-          setCurrentTime(newMainVideoTime);
+      // 只有时间真正变化才更新
+      if (Math.abs(newGlobalTime - storeGlobalTime) > 0.05) { 
+        if (isInsertClip) {
+            setGlobalTime(newGlobalTime);
+        } else {
+            setGlobalTime(newGlobalTime);
+            if (Math.abs(playerTime - storeMainVideoTime) > 0.05) {
+               setCurrentTime(playerTime);
+            }
         }
       }
     }
@@ -190,11 +220,23 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     }
   };
 
+  const commonVideoStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    transition: 'opacity 0.2s ease-out',
+    opacity: 0,
+    zIndex: 0
+  };
+
   return (
     <div className="w-full h-full bg-black relative rounded-xl overflow-hidden">
       <video
         ref={mainVideoRef}
-        className="w-full h-full object-contain"
+        style={commonVideoStyle}
         playsInline
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleMetadataLoaded}
@@ -202,13 +244,11 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
       />
       <video
         ref={insertVideoRef}
-        className="w-full h-full object-contain"
-        style={{ display: 'none' }}
+        style={commonVideoStyle}
         playsInline
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleInsertEnded}
       />
-
       <SourceAudioMixer />
     </div>
   );

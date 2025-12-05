@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AbsoluteFill, Sequence, Audio, Video, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Sequence, Audio, useVideoConfig, OffthreadVideo } from 'remotion';
 import type { ProjectExport } from '@/types/project';
 import type { TimelineSegment } from '@/types/videoSequence';
 import { TimeWarpMap } from './utils/timeWarp';
@@ -9,7 +9,6 @@ import { RenderTextElement } from './components/RenderTextElement';
 import { RenderBroll } from './components/RenderBroll';
 import { RenderMedia } from './components/RenderMedia';
 import { RenderWatermark } from './components/RenderWatermark';
-import { OffthreadVideo } from 'remotion';
 
 export interface VideoCompositionProps {
   project: ProjectExport;
@@ -91,11 +90,16 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
       {content.videoSequenceSegments && content.videoSequenceSegments.length > 0 ? (
         content.videoSequenceSegments.map((segment: TimelineSegment) => {
           if (segment.type === 'cut') return null;
+          
           const durationFrames = durationToFrames(segment.duration);
+          // [修复] 过滤掉时长不足 1 帧的微小片段，防止 Remotion 报错
+          if (durationFrames <= 0) return null;
+
           const startFromFrame = rawMsToFrames(segment.sourceStartTime);
           const sequenceStartFrame = rawMsToFrames(segment.globalStartTime);
 
           const shouldMuteVideo = segment.type === 'main' && hasSeparatedTracks;
+          const baseVolume = (segment.volume ?? 100) / 100;
 
           return (
             <Sequence
@@ -110,7 +114,8 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
                 // 使用预计算的数组，O(1) 读取
                 volume={shouldMuteVideo ? 0 : (f) => {
                    const globalFrame = sequenceStartFrame + f;
-                   return backingVolumeMap[globalFrame] ?? 1;
+                   const duckingVolume = backingVolumeMap[globalFrame] ?? 1;
+                   return baseVolume * duckingVolume; 
                 }}
               />
             </Sequence>
@@ -129,6 +134,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
         if (!sub.brollVideo) return null;
         const startFrame = getAdjustedFrame(sub.startTime);
         const durationFrames = durationToFrames(sub.endTime - sub.startTime);
+        
+        // [修复] 过滤无效时长
+        if (durationFrames <= 0) return null;
+
         return (
           <Sequence key={`broll-${sub.id}`} from={startFrame} durationInFrames={durationFrames}>
             <RenderBroll brollData={sub.brollVideo} subtitle={sub} />
@@ -140,6 +149,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
       {content.placedMedia?.map((item) => {
         const startFrame = getAdjustedFrame(item.position.startTime);
         const durationFrames = durationToFrames(item.position.endTime - item.position.startTime);
+        
+        // [修复] 过滤无效时长
+        if (durationFrames <= 0) return null;
+
         return (
           <Sequence key={item.id} from={startFrame} durationInFrames={durationFrames}>
             <RenderMedia item={item} scaleFactor={scaleFactor} />
@@ -151,6 +164,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
       {content.subtitles?.map((sub) => {
         const startFrame = getAdjustedFrame(sub.startTime);
         const durationFrames = durationToFrames(sub.endTime - sub.startTime);
+        
+        // [修复] 过滤无效时长
+        if (durationFrames <= 0) return null;
+
         return (
           <Sequence key={sub.id} from={startFrame} durationInFrames={durationFrames}>
             <RenderSubtitle subtitle={sub} scaleFactor={scaleFactor} />
@@ -162,6 +179,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
       {content.textElements?.map((el) => {
         const startFrame = getAdjustedFrame(el.startTime);
         const durationFrames = durationToFrames(el.endTime - el.startTime);
+        
+        // [修复] 过滤无效时长
+        if (durationFrames <= 0) return null;
+
         return (
           <Sequence key={el.id} from={startFrame} durationInFrames={durationFrames}>
             <RenderTextElement element={el} scaleFactor={scaleFactor} />
@@ -180,6 +201,9 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
              if (segment.type !== 'main') return null;
              
              const durationFrames = durationToFrames(segment.duration);
+             // [修复] 过滤无效时长 (音频轨道)
+             if (durationFrames <= 0) return null;
+
              const startFromFrame = rawMsToFrames(segment.sourceStartTime);
              const sequenceStartFrame = rawMsToFrames(segment.globalStartTime);
 

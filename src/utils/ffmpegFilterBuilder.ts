@@ -53,9 +53,17 @@ export const buildVideoTrack = (
 
     const vSeg = `[v_seg_${i}]`;
     const aSeg = `[a_seg_${i}]`;
+
+    const volumeVal = (segment.volume ?? 100) / 100;
+    let audioFilterChain = `atrim=start=${msToS(segment.sourceStartTime)}:duration=${msToS(segment.duration)},asetpts=PTS-STARTPTS`;
+    
+    if (volumeVal !== 1) {
+        audioFilterChain += `,volume=${volumeVal}`;
+    }
     
     filters.push(`${videoInput}${preConcatFilters.join(',')}${vSeg}`);
-    filters.push(`${audioInput}atrim=start=${msToS(segment.sourceStartTime)}:duration=${msToS(segment.duration)},asetpts=PTS-STARTPTS${aSeg}`);
+    filters.push(`${audioInput}${audioFilterChain}${aSeg}`);
+    
     
     videoSegmentStreams.push(vSeg);
     audioSegmentStreams.push(aSeg);
@@ -547,14 +555,15 @@ export const buildWatermarkTrack = (
   watermark: WatermarkConfig | undefined,
   isPremium: boolean,
   lastStream: string,
-  target: FFmpegTarget
+  target: FFmpegTarget,
+  scaleFactor: number = 1
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
   
   const isWatermarkEnabled = (watermark && watermark.enabled) || !isPremium;
   
   if (watermark && isWatermarkEnabled) {
-    const wmStyle = buildWatermarkStyle(watermark, target);
+    const wmStyle = buildWatermarkStyle(watermark, target, scaleFactor);
     const nextV = '[v_with_wm]';
     const escapedWatermarkText = escapeFfmpegText(watermark.text || '');
 

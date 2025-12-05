@@ -55,10 +55,10 @@ export default function InsertVideoDialog() {
     setActiveTab('local'); 
   }; 
 
-  const handleApply = (range: { startTime: number; endTime: number }) => { 
+  const handleApply = (range: { startTime: number; endTime: number }, volume: number) => { 
     if (!selectedVideo || !targetSubtitle) return; 
 
-    // 获取子组件传来的剪切时间，如果有传参就用传参，没有就用默认全长
+    
     const startSec = range?.startTime ?? 0;
     const endSec = range?.endTime ?? selectedVideo.duration;
 
@@ -69,12 +69,13 @@ export default function InsertVideoDialog() {
     const durationInMs = Math.floor((endSec - startSec) * 1000); 
     const sourceStartTimeMs = Math.floor(startSec * 1000); 
     
-    // 传递4个参数：URL, 时长, 插入点, 起始偏移量
+    
     addInsertSegment(
         selectedVideo.url, 
         durationInMs, 
         globalInsertTimeMs, 
-        sourceStartTimeMs
+        sourceStartTimeMs,
+        volume
     ); 
     
     handleClose(); 

@@ -17,16 +17,31 @@ interface ExportSettings {
   format: 'mp4' | 'gif';
 }
 
-const handleTermination = (signal: string) => {
-  try {
-    if (currentTempDir && fs.existsSync(currentTempDir)) {
-      fs.rmSync(currentTempDir, { recursive: true, force: true });
+// 辅助函数：等待
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 🔥 优化 1: 暴力清理函数 (解决文件锁导致的删除失败)
+const deleteWithRetry = async (dirPath: string, retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      }
+      return;
+    } catch (e: any) {
+      if (i === retries - 1) {
+        console.error(`❌ [Cleanup] 删除失败 ${dirPath}: ${e.message}`);
+      } else {
+        await sleep(500); // 等待文件锁释放
+      }
     }
-    if (currentBundlePath && fs.existsSync(currentBundlePath)) {
-      fs.rmSync(currentBundlePath, { recursive: true, force: true });
-    }
-  } catch (e) {
   }
+};
+
+const handleTermination = async (signal: string) => {
+  // 🔥 优化 2: 使用异步清理
+  if (currentTempDir) await deleteWithRetry(currentTempDir);
+  if (currentBundlePath) await deleteWithRetry(currentBundlePath);
   process.exit(0);
 };
 
@@ -48,7 +63,6 @@ const calculateDurationInFrames = (project: ProjectExport, fps: number): number 
 
 const normalizeProjectUrls = (rawProject: ProjectExport): ProjectExport => {
   const project = JSON.parse(JSON.stringify(rawProject));
-
   const fixUrl = (url: string | undefined) => {
     if (url && typeof url === 'string' && url.startsWith('/')) {
       return `${API_BASE_URL}${url}`;
@@ -144,10 +158,10 @@ export const renderVideo = async (
     if (durationInFrames > 0) {
       composition.durationInFrames = durationInFrames;
     }
-    
 
     const cpuCount = os.cpus().length;
-    const optimalConcurrency = Math.max(1, cpuCount - 4); 
+    const optimalConcurrency = Math.max(1, cpuCount - 1); 
+
     await renderMedia({
       composition,
       serveUrl: bundleLocation,
@@ -159,8 +173,15 @@ export const renderVideo = async (
       chromiumOptions: {
         headless: true, 
         ignoreCertificateErrors: true,
-        userDataDir: tempDir,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--enable-gpu-rasterization', '--enable-zero-copy']
+        // 🔥 优化 3: 删除了 userDataDir: tempDir
+        // 这避免了高并发下 Chrome 实例争抢同一个文件夹导致崩溃
+        args: [
+          '--no-sandbox', 
+          '--disable-setuid-sandbox', 
+          '--enable-gpu-rasterization', 
+          '--enable-zero-copy',
+          '--disable-dev-shm-usage' // 增加这个参数防止 Docker 内存不足
+        ]
       },
       ...(codecConfig.ffmpegOverride ? { ffmpegOverride: codecConfig.ffmpegOverride } : {}),
       concurrency: optimalConcurrency,
@@ -173,17 +194,9 @@ export const renderVideo = async (
     return `/downloads/${jobId}.mp4`;
 
   } finally {
-    try {
-      if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      }
-      
-      if (bundleLocation && fs.existsSync(bundleLocation)) {
-        fs.rmSync(bundleLocation, { recursive: true, force: true });
-      }
-    } catch (cleanupErr) {
-      console.error(`Cleanup failed for job ${jobId}:`, cleanupErr);
-    }
+    // 🔥 优化 4: 使用重试删除
+    if (currentTempDir) await deleteWithRetry(currentTempDir);
+    if (currentBundlePath) await deleteWithRetry(currentBundlePath);
   }
 };
 

@@ -91,12 +91,13 @@ export const buildTextStyle = (
 
 export const buildWatermarkStyle = (
   config: WatermarkConfig,
-  target: FFmpegTarget
+  target: FFmpegTarget,
+  scaleFactor: number = 1.0
 ): string => {
   const filters: string[] = [];
 
   filters.push(`fontfile='${getFontPath(config.fontFamily, target)}'`);
-  filters.push(`fontsize=${config.fontSize}`);
+  filters.push(`fontsize=${config.fontSize* scaleFactor}`);
   filters.push(`fontcolor=${convertHexToFfmpegHex(config.color)}`);
 
   const alpha = (config.opacity / 100).toFixed(2);
@@ -106,34 +107,35 @@ export const buildWatermarkStyle = (
     const { hex, alpha: boxAlpha } = parseCssColor(config.backgroundColor);
     filters.push(`box=1`);
     filters.push(`boxcolor=${hex}@${boxAlpha}`);
-    filters.push(`boxborderw=5`);
+    filters.push(`boxborderw=${5* scaleFactor}`);
   }
 
   let x, y;
+  const margin = 10 * scaleFactor; 
   if (config.positionMode === 'custom') {
     x = `(w-text_w)/2+(w*(${config.customPosition.x || 50}-50)/100)`;
     y = `(h-text_h)/2+(h*(${config.customPosition.y || 50}-50)/100)`;
   } else {
     switch (config.position) {
       case 'top-left':
-        x = '10';
-        y = '10';
+        x = `${margin}`;
+        y = `${margin}`;
         break;
       case 'top-right':
-        x = 'w-text_w-10';
-        y = '10';
+        x = `w-text_w-${margin}`;
+        y = `${margin}`;
         break;
       case 'bottom-left':
-        x = '10';
-        y = 'h-text_h-10';
+        x = `${margin}`;
+        y = `h-text_h-${margin}`;
         break;
       case 'bottom-right':
-        x = 'w-text_w-10';
-        y = 'h-text_h-10';
+        x = `w-text_w-${margin}`;
+        y = `h-text_h-${margin}`;
         break;
       default:
-        x = 'w-text_w-10';
-        y = '10';
+        x = `w-text_w-${margin}`;
+        y = `${margin}`;
     }
   }
 

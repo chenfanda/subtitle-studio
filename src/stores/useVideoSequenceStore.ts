@@ -12,7 +12,7 @@ interface VideoSequenceStore {
   
   setMainVideo: (sourceUrl: string, duration: number) => void;
   
-  addInsertSegment: (sourceUrl: string, videoDuration: number, insertAtTime: number,sourceStartTime?: number) => string;
+  addInsertSegment: (sourceUrl: string, videoDuration: number, insertAtTime: number,sourceStartTime?: number, volume?: number) => string;
   
   addCutMarker: (startTime: number, endTime: number) => void;
 
@@ -32,7 +32,9 @@ const recomputeGlobalStartTimes = (segments: TimelineSegment[]): {
   let timeCursor = 0;
   const updatedSegments = segments.map(segment => {
     const updatedSegment = { ...segment, globalStartTime: timeCursor };
-    timeCursor += segment.duration;
+    if (segment.type !== 'cut') {
+      timeCursor += segment.duration;
+    }
     return updatedSegment;
   });
   return { segments: updatedSegments, totalDuration: timeCursor };
@@ -40,7 +42,7 @@ const recomputeGlobalStartTimes = (segments: TimelineSegment[]): {
 
 export const useVideoSequenceStore = create<VideoSequenceStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
+    immer((set,_get) => ({
       segments: [],
 
       setMainVideo: (sourceUrl, duration) => {
@@ -59,68 +61,80 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
         useHistoryStore.getState().clearHistory();
       },
 
-      addInsertSegment: (sourceUrl, videoDuration, insertAtTime, sourceStartTime = 0) => {
-              
-              const newSegmentId = generateId();
-              
-              set((state) => {
-                const newSegments: TimelineSegment[] = [];
-                let insertTimeCursor = 0;
+   addInsertSegment: (sourceUrl, videoDuration, insertAtTime, sourceStartTime = 0, volume = 50) => {
+          const newSegmentId = generateId();
+          
+          set((state) => {
+            const newSegments: TimelineSegment[] = [];
+            let insertTimeCursor = 0;
+            let hasInserted = false; 
 
-                for (const segment of state.segments) {
-                  const segmentStartTime = insertTimeCursor;
-                  const segmentEndTime = segmentStartTime + segment.duration;
+            for (const segment of state.segments) {
+              const segmentStartTime = insertTimeCursor;
+              const segmentEndTime = segmentStartTime + segment.duration;
 
-                  if (
-                    insertAtTime > segmentStartTime &&
-                    insertAtTime < segmentEndTime &&
-                    segment.type === 'main'
-                  ) {
-                    const cutPoint = insertAtTime - segmentStartTime;
-                    const firstPartDuration = cutPoint;
-                    const secondPartDuration = segment.duration - cutPoint;
+              // 1. 加上 "=" 号，允许在片段的精确边缘插入
+              if (
+                !hasInserted &&
+                insertAtTime >= segmentStartTime &&
+                insertAtTime <= segmentEndTime &&
+                segment.type === 'main'
+              ) {
+                const cutPoint = insertAtTime - segmentStartTime;
+                const firstPartDuration = cutPoint;
+                const secondPartDuration = segment.duration - cutPoint;
 
-                    if (firstPartDuration > 0) {
-                      newSegments.push({
-                        ...segment,
-                        id: generateId(),
-                        duration: firstPartDuration,
-                        globalStartTime: 0,
-                      });
-                    }
+                const EPSILON = 0.00001; 
 
-                    newSegments.push({
-                      id: newSegmentId,
-                      type: 'insert',
-                      sourceUrl: sourceUrl,
-                      sourceStartTime: sourceStartTime,
-                      duration: videoDuration,
-                      globalStartTime: 0,
-                    });
-
-                    if (secondPartDuration > 0) {
-                      newSegments.push({
-                        ...segment,
-                        id: generateId(),
-                        sourceStartTime: segment.sourceStartTime + cutPoint,
-                        duration: secondPartDuration,
-                        globalStartTime: 0,
-                      });
-                    }
-                  } else {
-                    newSegments.push(segment);
-                  }
-                  insertTimeCursor += segment.duration;
+                // 添加前半部分
+                if (firstPartDuration > EPSILON) {
+                  newSegments.push({
+                    ...segment,
+                    id: generateId(),
+                    duration: firstPartDuration,
+                    globalStartTime: 0,
+                  });
                 }
-                const { segments, totalDuration } = recomputeGlobalStartTimes(newSegments);
-                state.segments = segments;
-                useProjectStore.getState().setGlobalDuration(totalDuration / 1000);
-              });
 
-              useProjectStore.getState().markUnsaved();
-              useHistoryStore.getState().pushState();
-              return newSegmentId;
-            },
+                // 添加插入片段
+                newSegments.push({
+                  id: newSegmentId,
+                  type: 'insert',
+                  sourceUrl: sourceUrl,
+                  sourceStartTime: sourceStartTime,
+                  duration: videoDuration,
+                  globalStartTime: 0,
+                  volume: volume, 
+                });
+
+                if (secondPartDuration > EPSILON) {
+                  newSegments.push({
+                    ...segment,
+                    id: generateId(),
+                    sourceStartTime: segment.sourceStartTime + cutPoint,
+                    duration: secondPartDuration,
+                    globalStartTime: 0,
+                  });
+                }
+
+                hasInserted = true;
+              } else {
+                newSegments.push(segment);
+              }
+              
+              insertTimeCursor += segment.duration;
+            }
+
+            const { segments, totalDuration } = recomputeGlobalStartTimes(newSegments);
+            state.segments = segments;
+            useProjectStore.getState().setGlobalDuration(totalDuration / 1000);
+          });
+
+          useProjectStore.getState().markUnsaved();
+          useHistoryStore.getState().pushState();
+          return newSegmentId;
+        },
+
       
       addCutMarker: (startTime, endTime) => {
         set((state) => {
@@ -134,15 +148,18 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
             const effectiveStartTime = Math.max(segmentStartTime, startTime);
             const effectiveEndTime = Math.min(segmentEndTime, endTime);
 
+            // Case 1: 没有重叠 (Cut 区间完全在当前片段之外)
             if (effectiveEndTime <= effectiveStartTime) {
-              // 没有重叠
               newSegments.push(segment);
               timeCursor += segment.duration;
               continue;
             }
 
-            // 1. 添加 "跳播" 前的部分
-            if (effectiveStartTime > segmentStartTime) {
+            // Case 2: 有重叠，需要切分
+            
+            // 2.1 添加 "跳播" 前的部分 (保留头部)
+            // 只有当时长 > 0 (比如 > 1ms) 时才添加，避免浮点数误差生成极短片段
+            if (effectiveStartTime > segmentStartTime + 0.001) {
               const firstPartDuration = effectiveStartTime - segmentStartTime;
               newSegments.push({
                 ...segment,
@@ -152,21 +169,22 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
               });
             }
             
-            // 2. [核心修改] 添加 "cut" 标记片段
+            // 2.2 添加 "cut" 标记片段
             const cutDuration = effectiveEndTime - effectiveStartTime;
             if (cutDuration > 0) {
               newSegments.push({
-                id: generateId(), // 这个 ID 是可逆转的关键
+                id: generateId(),
                 type: 'cut',
-                sourceUrl: segment.sourceUrl, // 保存源信息以便恢复
+                sourceUrl: segment.sourceUrl,
                 sourceStartTime: segment.sourceStartTime + (effectiveStartTime - segmentStartTime),
                 duration: cutDuration,
-                globalStartTime: 0, // recompute 会处理
+                globalStartTime: 0,
               });
             }
 
-            // 3. 添加 "跳播" 后的部分
-            if (effectiveEndTime < segmentEndTime) {
+            // 2.3 添加 "跳播" 后的部分 (保留尾部)
+            // [关键修复] 严格检查剩余时长是否显著大于 0
+            if (effectiveEndTime < segmentEndTime - 0.001) {
               const secondPartDuration = segmentEndTime - effectiveEndTime;
               const secondPartSourceStartTime = segment.sourceStartTime + (effectiveEndTime - segmentStartTime);
               newSegments.push({
@@ -177,6 +195,8 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
                 globalStartTime: 0,
               });
             }
+            // 如果 effectiveEndTime >= segmentEndTime，说明切到了末尾，直接丢弃尾部，不生成新片段。
+
             timeCursor = segmentEndTime;
           }
           
@@ -191,48 +211,55 @@ export const useVideoSequenceStore = create<VideoSequenceStore>()(
 
      removeSegment: (id) => {
         set((state) => {
-          const segmentIndex = state.segments.findIndex(s => s.id === id);
-          if (segmentIndex === -1) {
-            console.warn("Segment to remove not found:", id);
-            return;
-          }
+          const index = state.segments.findIndex(s => s.id === id);
+          if (index === -1) return;
           
-          const segmentToRemove = state.segments[segmentIndex];
+          const segmentToRemove = state.segments[index];
           
-          
-          if (
-            (segmentToRemove.type === 'insert' || segmentToRemove.type === 'cut') &&
-            segmentIndex > 0 &&
-            segmentIndex < state.segments.length - 1
-          ) {
-            const prevSegment = state.segments[segmentIndex - 1];
-            const nextSegment = state.segments[segmentIndex + 1];
+          if (segmentToRemove.type === 'cut') {
+            const prev = state.segments[index - 1];
+            const next = state.segments[index + 1];
+            let mergedToPrev = false;
 
-            
-            if (
-              prevSegment.type === 'main' &&
-              nextSegment.type === 'main' &&
-              prevSegment.sourceUrl === nextSegment.sourceUrl
-            ) {
-           
-              const gapDuration = nextSegment.sourceStartTime - (prevSegment.sourceStartTime + prevSegment.duration);
-              
-              
-              prevSegment.duration = prevSegment.duration + gapDuration + nextSegment.duration;
-              
-              
-              state.segments.splice(segmentIndex, 2);
-              
-            } else {
-              
-              state.segments.splice(segmentIndex, 1);
+            if (prev && prev.sourceUrl === segmentToRemove.sourceUrl) {
+              prev.duration += segmentToRemove.duration;
+              mergedToPrev = true;
             }
-          } else {
-            
-            state.segments.splice(segmentIndex, 1);
+
+            if (next && next.sourceUrl === segmentToRemove.sourceUrl) {
+              if (mergedToPrev) {
+                prev.duration += next.duration;
+                state.segments.splice(index + 1, 1);
+              } else {
+                next.sourceStartTime -= segmentToRemove.duration;
+                next.duration += segmentToRemove.duration;
+              }
+            }
+
+            state.segments.splice(index, 1);
+          } 
+          else if (segmentToRemove.type === 'insert') {
+            state.segments.splice(index, 1);
+
+            const newPrev = state.segments[index - 1];
+            const newNext = state.segments[index];
+
+            if (
+              newPrev && newNext &&
+              newPrev.type === 'main' && newNext.type === 'main' &&
+              newPrev.sourceUrl === newNext.sourceUrl
+            ) {
+              const expectedNextStartTime = newPrev.sourceStartTime + newPrev.duration;
+              if (Math.abs(newNext.sourceStartTime - expectedNextStartTime) < 10) {
+                 newPrev.duration += newNext.duration;
+                 state.segments.splice(index, 1);
+              }
+            }
+          }
+          else {
+            state.segments.splice(index, 1);
           }
 
-          
           const { segments, totalDuration } = recomputeGlobalStartTimes(state.segments);
           state.segments = segments;
           useProjectStore.getState().setGlobalDuration(totalDuration / 1000);

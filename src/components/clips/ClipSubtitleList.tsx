@@ -236,10 +236,9 @@ export function ClipSubtitleList() {
 
   return (
     <div className="h-full flex flex-col bg-bg-primary">
+       {isLayerMode && (
       <div className="p-3 border-b border-border-secondary flex-shrink-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          
-          {isLayerMode && (
             <>
               <button
                 onClick={handleDuplicate}
@@ -287,11 +286,10 @@ export function ClipSubtitleList() {
               
               <div className="w-px h-4 bg-border-secondary mx-1" />
             </>
-          )}
-          
         </div>
       </div>
-
+      )}
+      
       <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
         <div className="space-y-px">
           {subtitles.map((subtitle) => {
