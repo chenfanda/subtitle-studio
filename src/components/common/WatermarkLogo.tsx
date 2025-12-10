@@ -6,7 +6,6 @@ export const WatermarkLogo = () => (
     fill="none" 
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* ...这里是你保存的 SVG 代码... */}
     <rect width="48" height="48" rx="12" fill="currentColor" fillOpacity="0.2" />
     <rect x="1" y="1" width="46" height="46" rx="11" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
     <path 

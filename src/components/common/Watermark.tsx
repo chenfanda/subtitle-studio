@@ -95,8 +95,8 @@ export function Watermark({ config }: WatermarkProps) {
     backgroundColor: config.backgroundColor,
     opacity: config.opacity / 100,
     userSelect: 'none',
-    transform: 'translate(-50%, -50%)', // 居中对齐
-    ...getPosition(), // 应用计算后的位置
+    transform: 'translate(-50%, -50%)', 
+    ...getPosition(), 
   };
 
   return (
@@ -110,25 +110,17 @@ export function Watermark({ config }: WatermarkProps) {
       title={config.positionMode === 'preset' ? '点击拖拽切换到自定义位置' : '拖拽调整位置'}
     >
   <div className="flex items-center space-x-2 backdrop-blur-sm rounded-lg px-3 py-2">
-        
-        {/* 👇👇👇 这里开始替换 👇👇👇 */}
         <div 
           className="w-8 h-8 mr-1" 
           style={{ 
-            // 保持原来的智能变色逻辑：背景黑则Logo白，背景白则Logo黑
             color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000' 
           }}
         >
           <WatermarkLogo />
         </div>
-        {/* 👆👆👆 替换结束 👆👆👆 */}
-        
-        {/* 水印文本 */}
         <span className="font-medium leading-none">
           {config.text}
         </span>
-        
-        {/* 模式指示器（调试用，可选） */}
         {config.positionMode === 'custom' && (
           <div className="w-2 h-2 bg-green-400 rounded-full opacity-60" 
                title="自定义位置模式" />

@@ -4,18 +4,20 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useExportStore } from '@/stores/useExportStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useIsPremium } from '@/stores/useUserStore';
+import { UserProfileModal } from '../auth/UserProfileModal';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { runFrontendExport } from '@/utils/frontendExporter';
 import { runBackendExport } from '@/utils/backendExporter';
 import { downloadBlob } from '@/utils/fileUtils';
 import { checkFrontendCompatibility, sanitizeProjectForFrontend } from '@/utils/exportCapabilityUtils';
+import { AuthModal } from '../auth/AuthModal';
 import { api } from '@/utils/api';
+import { API_CLIENT } from '@/config/api-client'
 import { 
   Zap, Cloud, Crown, AlertTriangle, CheckCircle2, ArrowRight,
   Loader2, Lock, Square, Maximize2, X
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
 
 // ==========================================
 // 主入口组件
@@ -26,6 +28,8 @@ export default function GlobalModals() {
       <ExportModal />
       <SettingsModal />
       <ExportToast />
+      <AuthModal />
+      <UserProfileModal />
     </>
   );
 }
@@ -46,14 +50,16 @@ function ExportModal() {
 
   // --- 核心逻辑：关闭处理 ---
   const handleClose = () => {
-    // 仅隐藏弹窗，不重置 Store 状态，从而实现后台运行
+    if (store.exportStatus === 'success') {
+      store.resetExport();
+    }
     store.setShowExportModal(false);
   };
 
   // --- 核心逻辑：取消/重置 ---
   const handleResetAndClose = () => {
     store.setShowExportModal(false);
-    store.resetExport(); // 只有显式取消或下载完成后才重置
+    store.resetExport(); 
   };
 
   const handleCancelTask = () => {
@@ -159,7 +165,7 @@ function ExportModal() {
       downloadBlob(store.resultBlob, `export.${ext}`);
       handleResetAndClose();
     } else if (store.jobId) {
-      const finalUrl = store.downloadUrl || `${API_BASE_URL}/downloads/${store.jobId}.mp4`;
+      const finalUrl = store.downloadUrl || `${API_CLIENT.BASE_URL}/downloads/${store.jobId}.mp4`;
       const a = document.createElement('a');
       a.href = finalUrl;
       a.download = `video-${store.jobId.slice(0, 8)}.mp4`;
@@ -186,7 +192,9 @@ function ExportModal() {
     }
     
     if (isSuccess) {
-      return <ResultView onDownload={handleDownload} />;
+      return <ResultView 
+      onDownload={handleDownload}
+      onClose={handleResetAndClose}  />;
     }
 
     if (localWarning.show) {
@@ -413,20 +421,31 @@ const ProgressView = ({ status, progress, message, startTime, onCancel, onBackgr
   );
 };
 
-// 2.4 结果视图 (成功)
-const ResultView = ({ onDownload }: any) => (
+const ResultView = ({ onDownload, onClose }: any) => (
   <div className="py-6 text-center">
-    <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in duration-300">
       <CheckCircle2 className="w-6 h-6 text-green-500" />
     </div>
     <h3 className="text-lg font-medium text-text-primary mb-2">导出完成！</h3>
     <p className="text-text-secondary text-sm mb-6">您的视频已准备就绪。</p>
-    <button
-      className="w-full max-w-xs mx-auto px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors flex items-center justify-center"
-      onClick={onDownload}
-    >
-      下载文件
-    </button>
+    
+    <div className="flex items-center justify-center gap-4 w-full max-w-xs mx-auto">
+      {/* 新增：关闭/重置按钮 */}
+      <button
+        className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-border-primary text-text-primary font-medium rounded transition-colors border border-transparent"
+        onClick={onClose}
+      >
+        关闭
+      </button>
+
+      {/* 原有：下载按钮 */}
+      <button
+        className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors shadow-lg shadow-green-900/20"
+        onClick={onDownload}
+      >
+        下载文件
+      </button>
+    </div>
   </div>
 );
 

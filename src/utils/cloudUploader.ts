@@ -1,4 +1,5 @@
-const API_UPLOAD_URL = 'http://localhost:8000/api/upload';
+import { API_CLIENT } from '@/config/api-client'; 
+const API_UPLOAD_URL = API_CLIENT.ENDPOINTS.UPLOAD_FILE;
 
 const uploadBlob = async (
   blobUrl: string,

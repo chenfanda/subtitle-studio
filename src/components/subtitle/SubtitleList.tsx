@@ -16,6 +16,10 @@ import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { createRichTextFromPlainText } from '@/utils/textStyleUtils';
+import { MediaPopover } from './MediaPopover';
+import { createPortal } from 'react-dom';
+import { useMediaStore } from '@/stores/useMediaStore';
+import { MediaItem } from '@/types/media';
 
 
 
@@ -62,6 +66,22 @@ export function SubtitleList() {
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+
+  const { placeOnTimeline } = useMediaStore();
+  const [popoverState, setPopoverState] = useState<{
+    isOpen: boolean;
+    subtitleId: string | null;
+    position: { x: number; y: number };
+    startTime: number;
+    endTime: number;
+  }>({
+    isOpen: false,
+    subtitleId: null,
+    position: { x: 0, y: 0 },
+    startTime: 0,
+    endTime: 0
+  });
 
   const currentSubtitle = useMemo(() => {
     if (isInsertClip) return null;
@@ -204,11 +224,40 @@ export function SubtitleList() {
     },0);
   };
 
-  const handleMedia = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    clearPlaybackTimer();
-    setActivePanel('media');
+
+   const handleMedia = (e: React.MouseEvent, sub: typeof subtitles[0]) => {
+    e.stopPropagation(); 
+    e.preventDefault();  
+    
+  
+    console.log('点击了媒体按钮', sub.id); 
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    
+    
+    const x = rect.left - 350;
+    const y = rect.top;
+
+    setPopoverState({
+      isOpen: true,
+      subtitleId: sub.id,
+      position: { x, y },
+      startTime: sub.startTime,
+      endTime: sub.endTime
+    });
   };
+
+
+  const handleSelectMedia = (media: MediaItem) => {
+    
+    placeOnTimeline(
+      media, 
+      popoverState.startTime, 
+      popoverState.endTime    
+    );
+    
+  };
+
 
   const handleCancelEffect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -463,7 +512,9 @@ export function SubtitleList() {
                   <button title="删除" onClick={(e) => handleDelete(e, subtitle.id)} className="hover:text-accent-red">
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  <button title="媒体" onClick={handleMedia} className="hover:text-text-primary">
+                  <button title="添加贴纸/表情" 
+                  onClick={(e) => handleMedia(e, subtitle)} 
+                  className={`hover:text-text-primary ${popoverState.isOpen && popoverState.subtitleId === subtitle.id ? 'text-accent-purple' : ''}`}>
                     <ImagePlus className="w-4 h-4" />
                   </button>
                   <button title="取消效果" onClick={(e) => handleCancelEffect(e, subtitle.id)} className="hover:text-text-primary">
@@ -477,6 +528,28 @@ export function SubtitleList() {
           })}
         </div>
       </div>
+          {popoverState.isOpen && createPortal(
+        <>
+          {/* 全屏透明遮罩，点击关闭 */}
+          <div 
+            className="fixed inset-0 z-[9998] bg-transparent" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setPopoverState(prev => ({ ...prev, isOpen: false }));
+            }} 
+          />
+          {/* 弹窗本体，使用 fixed 定位 */}
+          <div className="fixed z-[9999]" style={{ top: 0, left: 0 }}>
+             <MediaPopover 
+               isOpen={popoverState.isOpen}
+               position={popoverState.position}
+               onClose={() => setPopoverState(prev => ({ ...prev, isOpen: false }))}
+               onSelectMedia={handleSelectMedia}
+             />
+          </div>
+        </>,
+        document.body // 将弹窗挂载到 body 上，防止被遮挡
+      )}
     </div>
   );
 }

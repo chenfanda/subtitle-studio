@@ -1,30 +1,129 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+// 定义用户信息结构
+interface UserInfo {
+  id: string;
+  nickname: string;
+  avatar: string;
+  vipLevel: 'free' | 'pro'; // 会员等级
+}
 
 interface UserState {
-  isPremium: boolean;
-  // userProfile: any | null; // (未来) 可以在此扩展
+  isLoggedIn: boolean;
+  userInfo: UserInfo | null;
+  
+  // 认证弹窗状态
+  authModalOpen: boolean;
+  authMode: 'login' | 'register';
+  
+  // 个人资料弹窗状态
+  profileModalOpen: boolean;
 }
 
 interface UserActions {
-  // (未来) 您可以在此处添加 login/logout/checkAuth
+  // 动作
+  login: (method: string, data: any) => Promise<void>;
+  logout: () => void;
   
-  // 这是一个临时方法，用于在开发中测试权限切换
+  // 弹窗控制
+  openAuthModal: (mode?: 'login' | 'register') => void;
+  closeAuthModal: () => void;
+  
+  openProfileModal: () => void;
+  closeProfileModal: () => void;
+  
+  // 更新资料
+  updateProfile: (name: string, avatarFile: File | null) => Promise<void>;
+
+  // 临时调试用
   _temp_togglePremium: () => void;
 }
 
-export const useUserStore = create<UserState & UserActions>()((set) => ({
-  isPremium: true, // 默认所有用户都是免费版
-  // userProfile: null,
-  
-  _temp_togglePremium: () => {
-    set((state) => {
-      console.log('DEV: 切换会员状态为', !state.isPremium);
-      return { isPremium: !state.isPremium };
-    });
-  },
-}));
+export const useUserStore = create<UserState & UserActions>()(
+  persist(
+    (set, get) => ({
+      isLoggedIn: false,
+      userInfo: null,
+      authModalOpen: false,
+      authMode: 'login',
+      profileModalOpen: false,
 
-/**
- * 导出一个高性能的 hook，用于在组件中订阅会员状态。
- */
-export const useIsPremium = () => useUserStore((state) => state.isPremium);
+      // 模拟登录
+      login: async (method, data) => {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const mockUser: UserInfo = {
+          id: 'u_123456',
+          nickname: '未命名用户',
+          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+          vipLevel: 'free',
+        };
+        set({ isLoggedIn: true, userInfo: mockUser, authModalOpen: false });
+      },
+
+      logout: () => {
+        set({ isLoggedIn: false, userInfo: null });
+      },
+
+      openAuthModal: (mode = 'login') => set({ authModalOpen: true, authMode: mode }),
+      closeAuthModal: () => set({ authModalOpen: false }),
+
+      openProfileModal: () => set({ profileModalOpen: true }),
+      closeProfileModal: () => set({ profileModalOpen: false }),
+
+      // 更新个人资料
+      updateProfile: async (name, avatarFile) => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        
+        const currentUser = get().userInfo;
+        if (!currentUser) return;
+
+        let newAvatarUrl = currentUser.avatar;
+        if (avatarFile) {
+          newAvatarUrl = URL.createObjectURL(avatarFile);
+        }
+
+        set({
+          userInfo: {
+            ...currentUser,
+            nickname: name,
+            avatar: newAvatarUrl
+          },
+          profileModalOpen: false
+        });
+      },
+
+      // 切换会员状态 (调试用)
+      _temp_togglePremium: () => {
+        const { userInfo } = get();
+        if (!userInfo) return;
+        set({
+          userInfo: {
+            ...userInfo,
+            vipLevel: userInfo.vipLevel === 'free' ? 'pro' : 'free'
+          }
+        });
+      },
+    }),
+    {
+      name: 'user-storage',
+      partialize: (state) => ({ isLoggedIn: state.isLoggedIn, userInfo: state.userInfo }),
+    }
+  )
+);
+
+// ==========================================================
+// 核心修复：重新导出 Helper Hooks
+// ==========================================================
+
+// 1. 获取登录状态
+export const useIsLoggedIn = () => useUserStore((state) => state.isLoggedIn);
+
+// 2. 获取用户信息
+export const useUserInfo = () => useUserStore((state) => state.userInfo);
+
+// 3. 【修复报错】获取会员状态
+// 逻辑：如果用户信息存在且 vipLevel 为 'pro'，则返回 true
+export const useIsPremium = () => useUserStore((state) => {
+  return state.userInfo?.vipLevel === 'pro';
+});

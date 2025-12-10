@@ -42,7 +42,9 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
 
   return (
     <div 
-      className="absolute bottom-12 right-0 w-48 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 overflow-hidden"
+      // 【关键修复 1】添加 z-[100]：这是之前代码缺少的，确保它一定在视频图层上面
+      // 【关键修复 2】移除 overflow-hidden：确保内部弹窗不被切断
+      className="absolute bottom-12 right-0 w-48 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 z-[100] mb-2"
       onClick={(e) => e.stopPropagation()} 
     >
       <div className="flex items-center justify-between p-2 border-b border-white/10">
@@ -66,7 +68,7 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
       <div className="relative">
         <button 
           onClick={() => setIsPlaybackRateOpen(prev => !prev)}
-          className="flex items-center justify-between w-full p-2 text-left text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          className="flex items-center justify-between w-full p-2 text-left text-white/80 hover:text-white hover:bg-white/10 transition-colors rounded-b-lg"
         >
           <div className="flex items-center space-x-2">
             <ClockIcon className="w-5 h-5" />
@@ -79,7 +81,10 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
         </button>
 
         {isPlaybackRateOpen && (
-          <div className="absolute bottom-full left-0 right-0 bg-gray-900 border border-white/10 rounded-lg p-1 mb-1 max-h-40 overflow-y-auto">
+          <div 
+            // 【关键修复 3】添加 z-[100]：确保子菜单也在最上层
+            className="absolute bottom-full left-0 right-0 bg-gray-900 border border-white/10 rounded-lg p-1 mb-1 max-h-40 overflow-y-auto z-[100]"
+          >
             {rates.map(rate => (
               <button
                 key={rate}

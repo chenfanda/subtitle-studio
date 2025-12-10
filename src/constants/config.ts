@@ -28,20 +28,4 @@ export const APP_CONFIG = {
 } as const;
 
 
-export const API_CONFIG = {
-  BASE_URL: 'http://localhost:8008', 
-  
-  ENDPOINTS: {
 
-    UPLOAD_AND_PROCESS: '/transcribe', 
-    
-    // 其他预留接口
-    EXPORT: '/api/export',
-    UPLOAD: '/api/upload',
-  },
-  
-  UPLOAD: {
-    MAX_SIZE: 500 * 1024 * 1024, 
-    ACCEPTED_TYPES: ['video/mp4', 'video/quicktime', 'video/x-matroska']
-  }
-} as const;

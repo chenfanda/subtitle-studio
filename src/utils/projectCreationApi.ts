@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { API_CONFIG } from '@/constants/config';
-import { parseSRT } from '@/utils/subtitleParser'; // 确保引用了你之前上传的 Parser
+import { parseSRT } from '@/utils/subtitleParser'; 
 import type { SubtitleItem } from '@/types/subtitle';
+import { API_CLIENT } from '@/config/api-client'; 
 
 interface SourceResources {
   video: string;
@@ -53,21 +53,15 @@ export const uploadAndInitializeProject = async ({
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
 
-    // 1. 字段名必须是 'file'，对应 FastAPI 的 file: UploadFile
+   
     formData.append('file', file);
-    
-    // 2. 补充后端必须的字段
-    const userId = 'user_default'; 
-    const projectId = `proj_${Date.now()}`;
-    formData.append('user_id', userId);
-    formData.append('project_id', projectId);
-    
-    // 注意：FastAPI Form 接收布尔值通常需要字符串转换
+    formData.append('user_id', 'user_default'); 
+    formData.append('project_id', `proj_${Date.now()}`);
     formData.append('enable_diarization', 'false'); 
     formData.append('enable_vocal_separation', enableVocalSeparation ? 'true' : 'false');
 
-    // 3. 拼接 URL: http://localhost:8008/transcribe
-    const endpoint = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_AND_PROCESS}`;
+    const endpoint = API_CLIENT.ENDPOINTS.PROCESS_MEDIA;
+  
   
 
     xhr.open('POST', endpoint, true);
@@ -95,9 +89,9 @@ export const uploadAndInitializeProject = async ({
 
           // 4. 解析 SRT 内容
           const srtContent = response.data.subtitles.content;
-          const msSubtitles = parseSRT(srtContent); // parseSRT 返回的是毫秒
+          const msSubtitles = parseSRT(srtContent); 
           
-          // 5. 将毫秒转换为秒 (前端 Video 播放器使用秒)
+          
           const formattedSubtitles: SubtitleItem[] = msSubtitles.map(item => ({
             ...item,
             id: item.id || uuidv4(),
@@ -105,8 +99,8 @@ export const uploadAndInitializeProject = async ({
             endTime: item.endTime / 1000,
           }));
 
-          // 6. 处理资源 URL (补全 http://localhost:8008...)
-          const baseUrl = API_CONFIG.BASE_URL.replace(/\/$/, '');
+          
+          const baseUrl = API_CLIENT.BASE_URL.replace(/\/$/, '');
           const resolveUrl = (path: string | undefined) => {
              if (!path) return '';
              if (path.startsWith('http')) return path;
