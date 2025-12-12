@@ -1,39 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
-import { FileText, Mic, Volume2 } from 'lucide-react';
+import { FileText, Mic, Volume2, Users, List, ArrowRight } from 'lucide-react';
+import { BatchVoiceoverPanel } from './voiceover/BatchVoiceoverPanel'; // 引入批量面板
 
 export function VoiceoverTaskPanel() {
   const { setCurrentTime } = useProjectStore();
   const { subtitles, removeSubtitleAudio } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
   const { setSelectedSubtitles, openDialog } = useUIStore();
-  const resetVoiceoverDialog = useVoiceoverStore(state => state.resetDialog);
+  
+  // 本地状态：是否显示批量面板
+  const [showBatchPanel, setShowBatchPanel] = useState(false);
+
+  // 监听选中数量，如果选中超过1个，且当前不在批量模式，提示用户(这里做个简单的自动切换逻辑也可以，或者只显示按钮)
+  useEffect(() => {
+    if (selectedSubtitleIds.length > 1 && !showBatchPanel) {
+      // 可选：自动切换，或者让用户手动点。这里我们让用户手动点，避免干扰
+    }
+    // 如果没有选中任何字幕，自动切回列表模式
+    if (selectedSubtitleIds.length === 0 && showBatchPanel) {
+      setShowBatchPanel(false);
+    }
+  }, [selectedSubtitleIds.length]);
 
   const handleAudioClick = (subtitleId: string) => {
     const subtitle = subtitles.find(s => s.id === subtitleId);
     if (!subtitle) return;
 
+    // 单选逻辑
     setSelectedSubtitles([subtitleId]);
     setCurrentTime(subtitle.startTime / 1000);
 
     if (subtitle.audioTrack) {
       removeSubtitleAudio(subtitleId);
     } else {
+      // 打开单条配音弹窗 (这里会加载 VoiceoverSourceView)
       openDialog('voiceover', subtitleId);
     }
   };
 
+  const toggleBatchMode = () => {
+    if (showBatchPanel) {
+      setShowBatchPanel(false);
+    } else {
+      setShowBatchPanel(true);
+    }
+  };
+
+  // 如果处于批量模式，直接渲染批量面板
+  if (showBatchPanel) {
+    return (
+      <div className="h-full flex flex-col bg-bg-primary">
+        <div className="p-4 border-b border-border-secondary flex items-center justify-between">
+          <button 
+            onClick={() => setShowBatchPanel(false)}
+            className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <List size={16} />
+            返回列表
+          </button>
+          <span className="text-sm font-semibold text-accent-purple">批量配音模式</span>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <BatchVoiceoverPanel />
+        </div>
+      </div>
+    );
+  }
+
+  // 默认列表模式
   return (
     <div className="h-full flex flex-col bg-bg-primary">
-      <div className="p-4 border-b border-border-secondary">
-        <h3 className="text-lg font-semibold text-text-primary mb-1">字幕配音</h3>
-        <p className="text-xs text-text-secondary">
-          为字幕列表生成或添加配音
-        </p>
+      <div className="p-4 border-b border-border-secondary flex justify-between items-start">
+        <div>
+          <h3 className="text-lg font-semibold text-text-primary mb-1">字幕配音</h3>
+          <p className="text-xs text-text-secondary">
+            管理字幕与 AI 配音
+          </p>
+        </div>
+        
+        {/* 批量模式入口按钮 */}
+        <button
+          onClick={toggleBatchMode}
+          disabled={selectedSubtitleIds.length === 0}
+          className={`
+            p-2 rounded-lg transition-all flex flex-col items-center gap-1
+            ${selectedSubtitleIds.length > 0 
+              ? 'bg-accent-purple/10 text-accent-purple hover:bg-accent-purple/20' 
+              : 'bg-bg-tertiary text-text-tertiary cursor-not-allowed opacity-50'
+            }
+          `}
+          title={selectedSubtitleIds.length === 0 ? "请先选择字幕" : "进入批量配音模式"}
+        >
+          <Users size={20} />
+          <span className="text-[10px]">批量</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -46,6 +111,19 @@ export function VoiceoverTaskPanel() {
           </div>
         ) : (
           <div className="p-4 space-y-3">
+            {/* 提示条：如果选中了多条但没进批量模式 */}
+            {selectedSubtitleIds.length > 1 && (
+              <div 
+                onClick={() => setShowBatchPanel(true)}
+                className="bg-accent-purple/10 border border-accent-purple/20 p-2 rounded text-xs text-accent-purple flex items-center justify-between cursor-pointer hover:bg-accent-purple/20 transition-colors"
+              >
+                <span>已选中 {selectedSubtitleIds.length} 条字幕</span>
+                <div className="flex items-center gap-1 font-medium">
+                  去批量配音 <ArrowRight size={12} />
+                </div>
+              </div>
+            )}
+
             {subtitles.map((subtitle) => {
               const hasAudio = !!subtitle.audioTrack;
               const isSelected = selectedSubtitleIds.includes(subtitle.id);
@@ -53,14 +131,27 @@ export function VoiceoverTaskPanel() {
               return (
                 <div
                   key={subtitle.id}
-                  className={`flex gap-3 p-2 rounded-lg border-2 transition-all ${
+                  onClick={() => {
+                    // 支持按住 Ctrl/Cmd 多选 (这里依赖 UIStore 的实现，假设 setSelectedSubtitles 替换了选中)
+                    // 简单的点击切换选中逻辑
+                    if (isSelected && selectedSubtitleIds.length === 1) {
+                        // 如果只选中了自己，不做操作或者取消选中
+                    } else {
+                        setSelectedSubtitles([subtitle.id]); 
+                    }
+                    setCurrentTime(subtitle.startTime / 1000);
+                  }}
+                  className={`flex gap-3 p-2 rounded-lg border-2 transition-all cursor-pointer ${
                     isSelected
                       ? 'border-accent-purple bg-accent-purple/5'
                       : 'border-transparent hover:border-border-primary'
                   }`}
                 >
                   <button
-                    onClick={() => handleAudioClick(subtitle.id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 阻止触发选中
+                      handleAudioClick(subtitle.id);
+                    }}
                     className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
                       hasAudio
                         ? 'border-orange-500 shadow-lg shadow-orange-500/20 hover:border-red-500'
@@ -91,12 +182,18 @@ export function VoiceoverTaskPanel() {
                     <div className="text-sm text-text-primary truncate mb-1">
                       {subtitle.text}
                     </div>
-                    <div className="text-xs text-text-secondary">
-                      {formatMillisecondsToTime(subtitle.startTime)} - {formatMillisecondsToTime(subtitle.endTime)}
+                    <div className="flex items-center justify-between text-xs text-text-secondary">
+                      <span>{formatMillisecondsToTime(subtitle.startTime)} - {formatMillisecondsToTime(subtitle.endTime)}</span>
+                      {subtitle.speaker && (
+                        <span className="bg-bg-tertiary px-1.5 rounded text-[10px] border border-border-secondary">
+                          {subtitle.speaker}
+                        </span>
+                      )}
                     </div>
                     {hasAudio && (
-                      <div className="text-xs text-orange-500 mt-1">
-                        ✓ 已添加配音
+                      <div className="text-xs text-orange-500 mt-1 flex items-center gap-1">
+                         <Volume2 size={10} />
+                         <span>已配音</span>
                       </div>
                     )}
                   </div>

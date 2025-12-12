@@ -15,6 +15,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline'; 
 
+import { throttle } from 'lodash'; 
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTextElementStore } from '../../stores/useTextElementStore';
@@ -157,27 +158,46 @@ export function VideoControls() {
     const newTime = percentage * globalDuration;
     setGlobalTime(Math.max(0, Math.min(globalDuration, newTime)));
   };
-
+  
+  const wasPlayingRef = useRef(false);
   const handleProgressMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    handleProgressClick(e);
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!progressRef.current || !globalDuration) return;
-      const rect = progressRef.current.getBoundingClientRect();
-      const moveX = moveEvent.clientX - rect.left;
-      const percentage = Math.max(0, Math.min(1, moveX / rect.width));
-      const newTime = percentage * globalDuration;
-      setGlobalTime(newTime);
-    };
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+  e.preventDefault();
+  setIsDragging(true);
+  
+  // 缓存 rect，避免在 move 中重复计算
+  const rect = progressRef.current?.getBoundingClientRect();
+  if (!rect || !globalDuration) return;
+
+  wasPlayingRef.current = useProjectStore.getState().isPlaying;
+  if (wasPlayingRef.current) {
+    useProjectStore.getState().setIsPlaying(false);
+  }
+  
+  // 立即处理点击的那一下
+  handleProgressClick(e);
+
+  // 定义节流后的处理函数 (例如每 50ms 更新一次，即 20fps，足够流畅且对音频友好)
+  const handleMouseMove = throttle((moveEvent: MouseEvent) => {
+    const moveX = moveEvent.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, moveX / rect.width));
+    const newTime = percentage * globalDuration;
+    setGlobalTime(newTime);
+  }, 50); // 50ms 间隔
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    // 取消节流函数的挂起调用
+    handleMouseMove.cancel(); 
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    if (wasPlayingRef.current) {
+      useProjectStore.getState().setIsPlaying(true);
+    }
   };
+  
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
 
   const handleProgressClickWhenNotDragging = (e: React.MouseEvent) => {
     if (!isDragging) handleProgressClick(e);

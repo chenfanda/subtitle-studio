@@ -5,7 +5,7 @@ import { TextElementOverlay } from '../video/TextElementOverlay';
 import { MediaOverlay } from '../video/MediaOverlay';
 import { Watermark } from '../common/Watermark';
 import { BrollVideoPlayer } from '../broll/BrollVideoPlayer';
-import { VoiceoverAudioPlayer } from '../audio/VoiceoverAudioPlayer';
+import { VoiceoverAudioPlayer } from '../audio/voiceover/VoiceoverAudioPlayer';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';

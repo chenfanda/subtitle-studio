@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -41,6 +42,13 @@ export default defineConfig({
         path.resolve(__dirname, 'node_modules/@ffmpeg/ffmpeg/dist'),
         path.resolve(__dirname, 'node_modules/@ffmpeg/util/dist'),
       ],
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000', 
+        changeOrigin: true,
+        secure: false,
+      },
     },
     
   },

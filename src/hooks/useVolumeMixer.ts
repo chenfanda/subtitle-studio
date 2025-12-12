@@ -23,7 +23,7 @@ export function calculateVolumeAtTime(
     (sub) => currentTimeMs >= sub.startTime && currentTimeMs < sub.endTime
   );
 
-  if (activeSubtitle && activeSubtitle.sourceMix) {
+  if (activeSubtitle && activeSubtitle.sourceMix && !!activeSubtitle.audioTrack ) {
  
     const { originalVocalVolume = 1, backingVolume = 1 } = activeSubtitle.sourceMix;
     return {

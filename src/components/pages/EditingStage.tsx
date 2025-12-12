@@ -17,7 +17,7 @@ import {
 } from '@/stores/useUIStore';
 
 const BrollDialog = lazy(() => import('../broll/BrollDialog'));
-const VoiceoverDialog = lazy(() => import('../audio/VoiceoverDialog'));
+const VoiceoverDialog = lazy(() => import('../audio/voiceover/VoiceoverDialog'));
 const InsertVideoDialog = lazy(() => import('../clips/InsertVideoDialog'));
 const VoiceoverSettingsPanel = lazy(() => import('../audio/VoiceoverSettingsPanel'));
 const SoundEffectSettingsPanel = lazy(() => import('../audio/SoundEffectSettingsPanel'));

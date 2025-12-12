@@ -34,6 +34,7 @@ export interface TranscribeOptions {
   language?: string;
   onProgress?: (progress: number) => void;
   enableVocalSeparation?: boolean;
+  enableDiarization?: boolean; 
 }
 
 /**
@@ -43,7 +44,8 @@ export const uploadAndInitializeProject = async ({
   file,
   language = 'zh',
   onProgress,
-  enableVocalSeparation = true 
+  enableVocalSeparation = true,
+  enableDiarization = true
 }: TranscribeOptions): Promise<{ 
   subtitles: SubtitleItem[], 
   sourceResources: SourceResources 
@@ -57,7 +59,7 @@ export const uploadAndInitializeProject = async ({
     formData.append('file', file);
     formData.append('user_id', 'user_default'); 
     formData.append('project_id', `proj_${Date.now()}`);
-    formData.append('enable_diarization', 'false'); 
+    formData.append('enable_diarization', enableDiarization ? 'true' : 'false'); 
     formData.append('enable_vocal_separation', enableVocalSeparation ? 'true' : 'false');
 
     const endpoint = API_CLIENT.ENDPOINTS.PROCESS_MEDIA;

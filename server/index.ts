@@ -8,16 +8,17 @@ import multer from 'multer';
 import axios from 'axios';         
 import FormData from 'form-data';  
 
-// 【修改】引入统一配置
+
 import { SERVER_CONFIG } from './config/server-config';
 import { renderQueue, connection } from './queue'; 
 import './worker'; 
 import { optimizationQueue } from './queue-optimization';
 
 const app = express();
-// 【修改】使用配置中的端口
+
 const PORT = SERVER_CONFIG.PORT;
 const CANCEL_CHANNEL = 'RENDER_CANCEL_CHANNEL';
+const TTS_SERVICE_URL = SERVER_CONFIG.INTERNAL_SERVICES.TTS_URL;
 
 app.use(cors({
   origin: true, 
@@ -55,12 +56,18 @@ const upload = multer({
 const downloadsDir = SERVER_CONFIG.PATHS.DOWNLOAD_DIR;
 if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
 
-app.use('/uploads', express.static(uploadDir, {
-  acceptRanges: true, 
-  lastModified: true, 
-  etag: true 
-}));
-app.use('/downloads', express.static(downloadsDir));
+const staticOptions = {
+  acceptRanges: true,
+  lastModified: true,
+  etag: true,
+  setHeaders: (res: express.Response) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*'); 
+  }
+};
+
+app.use('/uploads', express.static(uploadDir, staticOptions));
+app.use('/downloads', express.static(downloadsDir, staticOptions));
 
 
 app.post('/api/upload', (req, res) => {
@@ -104,7 +111,8 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
     // 处理布尔值参数
     const vocalSep = req.body.enable_vocal_separation === 'true' || req.body.enable_vocal_separation === true;
     internalFormData.append('enable_vocal_separation', vocalSep ? 'true' : 'false');
-    internalFormData.append('enable_diarization', 'false');
+    const enableDiarization = req.body.enable_diarization === 'true' || req.body.enable_diarization === true;
+    internalFormData.append('enable_diarization', enableDiarization ? 'true' : 'false');
 
     // 2. 获取内网 ASR 地址并转发
     const asrUrl = SERVER_CONFIG.INTERNAL_SERVICES.ASR_URL;
@@ -140,38 +148,125 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
   
 });
 
+
 app.get(/^\/api\/static\/(.*)/, async (req, res) => {
   try {
-    // 在正则路由中，req.params[0] 对应第一个捕获组 (.*) 的内容
     const resourcePath = req.params[0];
-
     const asrServiceUrl = new URL(SERVER_CONFIG.INTERNAL_SERVICES.ASR_URL);
     const asrBaseOrigin = asrServiceUrl.origin;
     const targetUrl = `${asrBaseOrigin}/static/${resourcePath}`;
 
-    // console.log(`[Proxy] Forwarding to: ${targetUrl}`);
+    
+    const headers: Record<string, string> = {};
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range as string;
+    }
 
     const response = await axios({
       method: 'get',
       url: targetUrl,
-      responseType: 'stream'
+      responseType: 'stream',
+      headers: headers, 
+      validateStatus: (status) => status < 500 
     });
 
-    res.set('Content-Type', response.headers['content-type']);
-    res.set('Content-Length', response.headers['content-length']);
+
+    res.status(response.status);
+    
+ 
+    Object.keys(response.headers).forEach(key => {
+      res.set(key, response.headers[key]);
+    });
+
+    
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+
     response.data.pipe(res);
 
   } catch (error: any) {
     if (error.response) {
-      res.status(error.response.status).send('Resource Not Found');
+      
+      res.status(error.response.status).send(error.message);
     } else {
-      // 避免打印太多无用日志，只在非 404 错误时打印
       console.error(`[Proxy Error] ${error.message}`);
       res.status(500).send('Proxy Error');
     }
   }
 });
 
+
+
+app.get(/^\/api\/tts\/(.*)/, async (req, res) => {
+  const path = req.path.replace('/api/tts', '');
+  const targetUrl = `${TTS_SERVICE_URL}${path}`;
+  try {
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      responseType: 'stream'
+    });
+    res.set(response.headers);
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+    response.data.pipe(res);
+  } catch (e: any) {
+    res.status(e.response?.status || 500).send(e.message);
+  }
+});
+
+
+app.post(['/api/tts/tts_with_character', '/api/tts/tts_timeline_dialogue'], async (req, res) => {
+  const path = req.path.replace('/api/tts', '');
+  try {
+    const response = await axios.post(`${TTS_SERVICE_URL}${path}`, req.body);
+    res.json(response.data);
+  } catch (e: any) {
+    res.status(e.response?.status || 500).json(e.response?.data || { error: 'TTS Error' });
+  }
+});
+
+
+app.post('/api/tts/save_custom_voice', upload.single('audio_file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const formData = new FormData();
+    formData.append('audio_file', fs.createReadStream(req.file.path));
+    Object.keys(req.body).forEach(k => formData.append(k, req.body[k]));
+    
+    const response = await axios.post(`${TTS_SERVICE_URL}/save_custom_voice`, formData, {
+      headers: formData.getHeaders()
+    });
+    fs.unlinkSync(req.file.path); // 清理
+    res.json(response.data);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Upload Failed' });
+  }
+});
+
+app.post('/api/tts/tts_with_custom_voice', upload.none(), async (req, res) => {
+  try {
+    const formData = new FormData();
+    Object.keys(req.body).forEach(k => formData.append(k, req.body[k]));
+    const response = await axios.post(`${TTS_SERVICE_URL}/tts_with_custom_voice`, formData, {
+      headers: formData.getHeaders()
+    });
+    res.json(response.data);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Generation Failed' });
+  }
+});
+
+
+app.delete(/^\/api\/tts\/(.*)/, async (req, res) => {
+  const path = req.path.replace('/api/tts', '');
+  try {
+    const response = await axios.delete(`${TTS_SERVICE_URL}${path}`);
+    res.json(response.data);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Delete Failed' });
+  }
+});
 
 app.post('/api/export', async (req, res) => {
   try {
@@ -252,6 +347,30 @@ app.get('/api/status/:id', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ error: '查询失败' });
+  }
+});
+
+
+app.get('/api/avatar', async (req, res) => {
+  try {
+    const { seed } = req.query;
+    // 转发请求到 DiceBear
+    const targetUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+    
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      responseType: 'stream'
+    });
+
+    res.set('Content-Type', 'image/svg+xml');
+    
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+
+    response.data.pipe(res);
+  } catch (error) {
+    res.status(500).send('Avatar Error');
   }
 });
 

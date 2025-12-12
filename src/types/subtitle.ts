@@ -80,6 +80,7 @@ export interface SubtitleItem {
   soundEffect?: SubtitleSoundEffectData;
   brollVideo?: BrollVideoData;
   sourceMix?: SourceMixConfig;
+  speaker?: string;
 }
 
 export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {

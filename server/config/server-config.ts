@@ -14,6 +14,9 @@ export const SERVER_CONFIG = {
     
     ASR_URL: process.env.INTERNAL_ASR_URL || 'http://localhost:8008/transcribe',
     
+    
+    TTS_URL: process.env.INTERNAL_TTS_URL || 'http://localhost:8010',
+    
     REDIS: {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -22,7 +25,6 @@ export const SERVER_CONFIG = {
   },
 
   PATHS: {
-   
     UPLOAD_DIR: path.join(process.cwd(), 'public', 'uploads'),
     DOWNLOAD_DIR: path.join(process.cwd(), 'public', 'downloads'),
   }

@@ -1,6 +1,5 @@
-// 1. 确定网关地址
-// 开发环境(npm run dev): 使用相对路径 '/api'，通过 Vite 代理转发
-// 生产环境(npm run build): 读取环境变量，连接云端 HTTPS 网关
+// 开发环境(npm run dev): 使用相对路径 '/api'
+// 生产环境: 使用环境变量
 const GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || '/api';
 
 export const API_CLIENT = {
@@ -9,10 +8,21 @@ export const API_CLIENT = {
 
   // 所有功能端点 (全部发给 Node.js 主后端)
   ENDPOINTS: {
-    UPLOAD_FILE: `${GATEWAY_URL}/upload`,            // 纯文件上传
-    PROCESS_MEDIA: `${GATEWAY_URL}/process-media`,   // 上传 + ASR处理 (网关转发)
-    EXPORT_PROJECT: `${GATEWAY_URL}/export`,         // 导出任务
-    CHECK_STATUS: `${GATEWAY_URL}/status`,           // 任务状态
-    CANCEL_JOB: `${GATEWAY_URL}/cancel`,             // 取消任务
+    UPLOAD_FILE: `${GATEWAY_URL}/upload`,            
+    PROCESS_MEDIA: `${GATEWAY_URL}/process-media`,   
+    EXPORT_PROJECT: `${GATEWAY_URL}/export`,         
+    CHECK_STATUS: `${GATEWAY_URL}/status`,           
+    CANCEL_JOB: `${GATEWAY_URL}/cancel`,             
+    
+  
+    TTS: {
+      CHARACTERS: `${GATEWAY_URL}/tts/characters`,
+      USER_VOICES: `${GATEWAY_URL}/tts/user_custom_voices`,
+      SAVE_VOICE: `${GATEWAY_URL}/tts/save_custom_voice`,
+      GENERATE_CHAR: `${GATEWAY_URL}/tts/tts_with_character`,
+      GENERATE_CUSTOM: `${GATEWAY_URL}/tts/tts_with_custom_voice`,
+      GENERATE_TIMELINE: `${GATEWAY_URL}/tts/tts_timeline_dialogue`,
+      DOWNLOAD: `${GATEWAY_URL}/tts/download`,
+    }
   }
 };

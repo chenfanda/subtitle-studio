@@ -106,7 +106,8 @@ export const ProcessingStage: React.FC = () => {
         uploadAndInitializeProject({
           file,
           onProgress: () => {}, 
-          enableVocalSeparation: true 
+          enableVocalSeparation: true,
+          enableDiarization: true
         })
       ]);
       
