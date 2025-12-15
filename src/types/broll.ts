@@ -46,10 +46,9 @@ export interface BrollPlacement {
   volume: number;
 }
 
-// B-roll应用数据（新增，替代 BrollPlacement 用于字幕级别）
 export interface BrollVideoData {
   video: BrollVideo;
-  volume: number;              // 音量 0-100
-  startOffset?: number;         // 从视频哪个位置开始播放（秒）
-  transition: BrollTransition;  // 过渡动画类型
+  volume: number;              
+  startOffset?: number;         
+  transition: BrollTransition; 
 }

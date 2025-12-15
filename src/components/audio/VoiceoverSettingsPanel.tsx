@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback , useEffect} from 'react';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { Volume2, Mic, Music, Info } from 'lucide-react';
@@ -16,9 +16,21 @@ const VoiceoverSettingsPanel: React.FC<VoiceoverSettingsPanelProps> = ({ subtitl
   const hasSeparatedTracks = !!(sourceResources?.audioVocals && sourceResources?.audioBacking);
 
   const sourceMix: SourceMixConfig = subtitle?.sourceMix || {
-    originalVocalVolume: 1,
+    originalVocalVolume: 0,
     backingVolume: 1,
   };
+
+
+  useEffect(() => {
+    if (subtitle?.audioTrack && !subtitle?.sourceMix) {
+      updateSubtitle(subtitleId, {
+        sourceMix: {
+          originalVocalVolume: 0, 
+          backingVolume: 1,      
+        },
+      });
+    }
+  }, [subtitle?.audioTrack, subtitle?.sourceMix, subtitleId, updateSubtitle]);
 
   const handleVolumeChange = useCallback((value: number[]) => {
     if (!subtitle?.audioTrack) return;

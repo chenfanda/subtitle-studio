@@ -474,14 +474,17 @@ export function SubtitleList() {
 
                   <div className="min-w-0 mt-1.5">
                     {isEditing ? (
-                      <textarea
+                      <input
+                        type="text"
+                        inputMode="text"
+                        lang="zh-CN"
                         value={localEditText}
-                        onChange={handleTextChange}
+                        onChange={(e) => setLocalEditText(e.target.value)} 
                         onBlur={() => handleTextBlur(subtitle)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full px-2 py-1.5 text-sm bg-bg-tertiary border border-border-secondary rounded text-text-primary focus:outline-none whitespace-nowrap overflow-x-auto"
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="w-full px-2 py-1.5 text-sm bg-bg-tertiary border border-border-secondary rounded text-text-primary focus:outline-none"
                         autoFocus
-                        rows={1}
                       />
                     ) : (
                       <div 

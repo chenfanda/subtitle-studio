@@ -55,7 +55,7 @@ export const useUserStore = create<UserState & UserActions>()(
         const mockUser: UserInfo = {
           id: 'u_123456',
           nickname: '未命名用户',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+          avatar: 'http://localhost:3000/api/avatar?seed=Felix',
           vipLevel: 'free',
         };
         set({ isLoggedIn: true, userInfo: mockUser, authModalOpen: false });
@@ -78,7 +78,8 @@ export const useUserStore = create<UserState & UserActions>()(
         const currentUser = get().userInfo;
         if (!currentUser) return;
 
-        let newAvatarUrl = currentUser.avatar;
+      
+        let newAvatarUrl = currentUser.avatar || 'http://localhost:3000/api/avatar?seed=Default'; 
         if (avatarFile) {
           newAvatarUrl = URL.createObjectURL(avatarFile);
         }
@@ -112,9 +113,7 @@ export const useUserStore = create<UserState & UserActions>()(
   )
 );
 
-// ==========================================================
-// 核心修复：重新导出 Helper Hooks
-// ==========================================================
+
 
 // 1. 获取登录状态
 export const useIsLoggedIn = () => useUserStore((state) => state.isLoggedIn);

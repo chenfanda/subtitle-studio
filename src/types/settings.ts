@@ -1,4 +1,3 @@
-// 这些定义是直接从 useSettingsStore.ts 中复制的
 
 /**
  * 水印配置接口

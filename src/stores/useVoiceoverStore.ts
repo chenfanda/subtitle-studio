@@ -325,9 +325,7 @@ export const useVoiceoverStore = create<VoiceoverStore>()(
                if (!userInfo?.id) {
                  throw new Error(`角色 ${mapping.name} 是自定义音色，请先登录`);
                }
-               // [TS修复] 强制转换为 any 以访问可能的 username 字段
-               // 如果 userInfo 里真的没有 username，这里可能会是 undefined，后端会报错
-               // 假设 id 就是用来鉴权的标识
+   
                const username = (userInfo as any).username || (userInfo as any).name || 'default_user';
                
                if (!characterId.includes(':')) {
@@ -354,16 +352,16 @@ export const useVoiceoverStore = create<VoiceoverStore>()(
           };
         });
 
-        // [TS修复] 强制转换为 any，绕过前端错误的类型定义
+        
         const request = {
           dialogue_lines: dialogueLines,
           output_format: 'wav'
         } as any;
         
-        // [TS修复] 强制把 response 当作 any 处理，因为 tts.ts 定义是错的
+        
         const response = await ttsService.generateTimelineDialogue(request) as any;
 
-        // 兼容处理：后端可能返回 audio_files (新版) 或 results (旧版)
+    
         const resultList = response.audio_files || response.results;
 
         if (resultList) {
