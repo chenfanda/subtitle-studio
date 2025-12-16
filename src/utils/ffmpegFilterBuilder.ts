@@ -264,6 +264,10 @@ export const buildAudioTrack = (
       filters.push(`${audioInputs.baseAudio}volume='${insertVolumeExpr}':eval=frame,${UNIFIED_AUDIO_FORMAT}[processed_inserts]`);
       streamsToMix.push('[processed_inserts]');
     }
+     else {
+      const streamName = audioInputs.baseAudio.replace(/[\[\]]/g, '');
+      filters.push(`[${streamName}]anullsink`);
+    }
 
   } else {
     let mainVolumeExpr = '1';

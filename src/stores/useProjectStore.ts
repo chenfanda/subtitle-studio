@@ -291,6 +291,7 @@ const projectStoreCreator: StateCreator<
         backgroundMusic: audioStore.backgroundMusic, 
         videoSequenceSegments: videoSequenceStore.segments,
         audioMix: state.audioMix,
+        sourceResources: state.sourceResources ?? undefined,
       }, 
       settings: { 
         watermark: settingsStore.watermark, 

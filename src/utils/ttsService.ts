@@ -126,23 +126,14 @@ export const ttsService = {
   generateTimelineDialogue: async (
     request: TimelineDialogueRequest
   ): Promise<TimelineDialogueResponse> => {
-    // 批量生成可能也需要转换，但这里暂时保留原样，假设后端批量接口处理逻辑一致
-    // 如果批量接口也报错 422，需要在调用处进行转换
-    const payload = {
-      ...request,
-      dialogue_lines: request.dialogue_lines.map(line => ({
-        ...line,
-        start_time: line.start_time / 1000,
-        end_time: line.end_time / 1000,
-        // 如果后端 timeline 接口也强校验 speed 类型，这里也需要 mapParamToBackendString
-      }))
-    };
+  
 
-    const response = await fetch(ENDPOINTS.GENERATE_TIMELINE, {
+  const response = await fetch(ENDPOINTS.GENERATE_TIMELINE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(request),
     });
+
 
     if (!response.ok) throw new Error('Timeline generation failed');
     return response.json();

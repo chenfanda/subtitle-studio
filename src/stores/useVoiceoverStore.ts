@@ -325,8 +325,8 @@ export const useVoiceoverStore = create<VoiceoverStore>()(
                if (!userInfo?.id) {
                  throw new Error(`角色 ${mapping.name} 是自定义音色，请先登录`);
                }
-   
-               const username = (userInfo as any).username || (userInfo as any).name || 'default_user';
+
+               const username = userInfo.id; 
                
                if (!characterId.includes(':')) {
                    characterId = `${username}:${characterId}`;
@@ -336,7 +336,7 @@ export const useVoiceoverStore = create<VoiceoverStore>()(
              if (!userInfo?.id) {
                  throw new Error('当前选择的是自定义音色，请先登录');
              }
-             const username = (userInfo as any).username || (userInfo as any).name || 'default_user';
+             const username = userInfo.id;
              if (!characterId.includes(':')) {
                  characterId = `${username}:${characterId}`;
              }

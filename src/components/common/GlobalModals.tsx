@@ -158,21 +158,38 @@ function ExportModal() {
     });
   };
 
-  // --- 业务逻辑：下载 ---
-  const handleDownload = () => {
+  
+  const handleDownload = async () => {
     if (store.resultBlob) {
       const ext = store.exportSettings.format === 'gif' ? 'gif' : 'mp4';
       downloadBlob(store.resultBlob, `export.${ext}`);
       handleResetAndClose();
     } else if (store.jobId) {
-      const finalUrl = store.downloadUrl || `${API_CLIENT.BASE_URL}/downloads/${store.jobId}.mp4`;
-      const a = document.createElement('a');
-      a.href = finalUrl;
-      a.download = `video-${store.jobId.slice(0, 8)}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      try {
+      let finalUrl = store.downloadUrl;
+         if (!finalUrl) {
+        const apiBase = API_CLIENT.BASE_URL; 
+        const serverRoot = apiBase.replace(/\/api\/?$/, ''); // 去掉末尾的 /api
+        finalUrl = `${serverRoot}/downloads/${store.jobId}.mp4`;
+      }
+
+      store.setStatusMessage('正在下载文件...');
+      
+      const response = await fetch(finalUrl);
+      if (!response.ok) throw new Error(`下载失败: ${response.statusText}`);
+      
+      const blob = await response.blob();
+      
+      downloadBlob(blob, `video-${store.jobId.slice(0, 8)}.mp4`);
+      
       handleResetAndClose();
+      
+    } catch (error) {
+      console.error("Download failed:", error);
+      store.setExportError("下载文件失败，请检查网络或服务器状态");
+      
+    }
+
     }
   };
 

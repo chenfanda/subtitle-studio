@@ -102,11 +102,15 @@ export const uploadAndInitializeProject = async ({
           }));
 
           
-          const baseUrl = API_CLIENT.BASE_URL.replace(/\/$/, '');
+        
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : API_CLIENT.BASE_URL.replace(/\/$/, '');
           const resolveUrl = (path: string | undefined) => {
              if (!path) return '';
              if (path.startsWith('http')) return path;
-             const cleanPath = path.startsWith('/') ? path : `/${path}`;
+             let cleanPath = path.startsWith('/') ? path : `/${path}`;
+               if (cleanPath.startsWith('/static') && !cleanPath.startsWith('/api')) {
+                    cleanPath = `/api${cleanPath}`;
+                }
              return `${baseUrl}${cleanPath}`;
           };
 

@@ -3,7 +3,7 @@ import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useTemplateStore } from '@/stores/useTemplateStore';
-import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
+import { DEFAULT_SUBTITLE_STYLE , type SubtitlePosition } from '@/types/subtitle';
 import { TemplateQuickAccess } from './TemplateQuickAccess';
 import { BasicEffectsSection } from './BasicEffectsSection';
 import { AlignmentSection } from './AlignmentSection';
@@ -148,7 +148,9 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     setApplyState('loading');
 
     if (targetType === 'subtitle') {
-      applyStyleToAllSubtitles(currentStyle, currentAnimation);
+      
+      const currentPosition = currentObject?.position as SubtitlePosition | undefined;
+      applyStyleToAllSubtitles(currentStyle, currentAnimation,currentPosition);
     } else {
       const elementType = getTextElementType(targetId);
       applyStyleToAllTextElementsOfType(elementType, currentStyle);

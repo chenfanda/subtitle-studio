@@ -12,9 +12,16 @@ const checkAbort = (signal?: AbortSignal) => {
 function collectUploadTasks(content: ProjectExport['content']) {
   const tasks: { obj: any; key: string; url: string }[] = [];
 
-  const checkAndAdd = (obj: any, key: string) => {
-    if (obj && obj[key] && typeof obj[key] === 'string' && obj[key].startsWith('blob:')) {
-      tasks.push({ obj, key, url: obj[key] });
+  const checkAndAdd = (obj: any, key: string, force: boolean = false) => {
+    const url = obj?.[key];
+    if (typeof url === 'string') {
+    
+      const isBlob = url.startsWith('blob:');
+      const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1');
+      
+      if (isBlob || (force && isLocalhost)) {
+        tasks.push({ obj, key, url });
+      }
     }
   };
 
@@ -29,6 +36,11 @@ function collectUploadTasks(content: ProjectExport['content']) {
 
   if (content.backgroundMusic) {
     checkAndAdd(content.backgroundMusic, 'url');
+  }
+
+  if (content.sourceResources) {
+    checkAndAdd(content.sourceResources, 'audioVocals');
+    checkAndAdd(content.sourceResources, 'audioBacking');
   }
 
   return tasks;

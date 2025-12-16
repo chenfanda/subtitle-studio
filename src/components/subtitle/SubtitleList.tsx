@@ -5,7 +5,8 @@ import {
   Trash2,
   ImagePlus,
   Ban,
-  List
+  List,
+  Upload // [新增] 导入上传图标
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -14,14 +15,16 @@ import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
-import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
-import { createRichTextFromPlainText } from '@/utils/textStyleUtils';
+import { DEFAULT_SUBTITLE_STYLE, DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
+import { createRichTextFromPlainText } from '@/utils/textStyleUtils'; // [确认] 用于生成富文本
 import { MediaPopover } from './MediaPopover';
 import { createPortal } from 'react-dom';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { MediaItem } from '@/types/media';
 
-
+// [新增] 引入工具函数
+import { parseSRT } from '@/utils/subtitleParser';
+import { generateId } from '@/utils/storeUtils';
 
 export function SubtitleList() {
   const { 
@@ -37,6 +40,7 @@ export function SubtitleList() {
     updateSubtitle,
     updateSubtitleRichText,
     deleteSubtitles,
+    restoreSubtitles // [新增] 用于批量替换字幕
   } = useSubtitleStore();
 
   const segments = useVideoSequenceStore((state) => state.segments);
@@ -67,6 +71,8 @@ export function SubtitleList() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  // [新增] 文件上传 Input 的引用
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { placeOnTimeline } = useMediaStore();
   const [popoverState, setPopoverState] = useState<{
@@ -118,6 +124,52 @@ export function SubtitleList() {
     };
   }, []);
 
+  // [新增] 点击导入按钮
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // [新增] 核心逻辑：处理 SRT 文件上传、解析、格式化
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const textContent = await file.text();
+      // 1. 解析原始 SRT
+      const rawSubtitles = parseSRT(textContent);
+
+      if (rawSubtitles.length === 0) {
+        alert("未能识别字幕内容，请检查文件格式");
+        return;
+      }
+
+      // 2. 转换为系统可用的完整数据结构
+      const formattedSubtitles = rawSubtitles.map(sub => ({
+        ...sub,
+        id: generateId(), // 使用 storeUtils 中的 generateId 生成唯一 ID
+        // 关键：生成 richText，否则配音和编辑功能会出错
+        richText: createRichTextFromPlainText(sub.text, DEFAULT_SUBTITLE_STYLE),
+        position: { ...DEFAULT_SUBTITLE_POSITION },
+        style: { ...DEFAULT_SUBTITLE_STYLE },
+        // 关键：重置音轨，确保配音弹窗将其视为"待配音"的新任务
+        audioTrack: undefined, 
+        soundEffect: undefined,
+        brollVideo: undefined
+      }));
+
+      // 3. 确认并替换
+      if (confirm(`即将导入 ${formattedSubtitles.length} 条字幕，这将覆盖现有字幕。是否继续？`)) {
+        restoreSubtitles(formattedSubtitles);
+        // 清空 input，允许重复上传同一文件
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error("字幕解析失败:", error);
+      alert("字幕解析失败，请确保文件是标准的 SRT 格式");
+    }
+  };
+
   const clearPlaybackTimer = () => {
     if (stopPlaybackTimer.current) {
       clearTimeout(stopPlaybackTimer.current);
@@ -125,7 +177,6 @@ export function SubtitleList() {
     }
   };
 
- 
   const parseTimeToMilliseconds = (timeStr: string): number | null => {
     try {
       const parts = timeStr.split(':');
@@ -176,7 +227,6 @@ export function SubtitleList() {
         setGlobalTime(globalTimeSec);
         setCurrentTime(mainTimeSec);
         
-        
         const subtitle = subtitles.find(s => s.id === subtitleId);
         if (subtitle) {
           setRichTextSelection({
@@ -224,16 +274,13 @@ export function SubtitleList() {
     },0);
   };
 
-
    const handleMedia = (e: React.MouseEvent, sub: typeof subtitles[0]) => {
     e.stopPropagation(); 
     e.preventDefault();  
     
-  
     console.log('点击了媒体按钮', sub.id); 
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    
     
     const x = rect.left - 350;
     const y = rect.top;
@@ -247,17 +294,13 @@ export function SubtitleList() {
     });
   };
 
-
   const handleSelectMedia = (media: MediaItem) => {
-    
     placeOnTimeline(
       media, 
       popoverState.startTime, 
       popoverState.endTime    
     );
-    
   };
-
 
   const handleCancelEffect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -314,7 +357,6 @@ export function SubtitleList() {
       if (newStartTime !== null && newStartTime !== sub.startTime) {
         updates.startTime = newStartTime;
       }
-
   
       if (newEndTime !== null && newEndTime !== sub.endTime) {
         updates.endTime = newEndTime;
@@ -343,8 +385,6 @@ export function SubtitleList() {
       setEditingTimeId(null);
     }
   };
-
-
 
   const handleTextMouseUp = (e: React.MouseEvent, subId: string) => {
     if (editingSubtitleId === subId) return;
@@ -380,12 +420,37 @@ export function SubtitleList() {
 
   if (!subtitles.length) {
     return (
-      <div className="h-full flex items-center justify-center text-text-tertiary">
-        <div className="text-center">
-          <div className="text-4xl mb-2 opacity-50">
-            <List />
+      <div className="h-full flex flex-col bg-bg-primary">
+        <div className="p-4 border-b border-border-secondary flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <h3 className="text-text-primary font-medium text-sm">字幕列表</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-tertiary">0 条</span>
+              {/* [新增] 空状态下的导入按钮 */}
+              <button 
+                onClick={handleImportClick}
+                className="p-1.5 hover:bg-bg-tertiary rounded text-text-secondary hover:text-accent-purple transition-colors"
+                title="导入 SRT 字幕"
+              >
+                <Upload size={16} />
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept=".srt" 
+                className="hidden" 
+              />
+            </div>
           </div>
-          <div className="text-sm">暂无字幕</div>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-text-tertiary">
+          <div className="text-center">
+            <div className="text-4xl mb-2 opacity-50">
+              <List />
+            </div>
+            <div className="text-sm">暂无字幕</div>
+          </div>
         </div>
       </div>
     );
@@ -398,6 +463,22 @@ export function SubtitleList() {
           <h3 className="text-text-primary font-medium text-sm">字幕列表</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-tertiary">{subtitles.length} 条</span>
+            
+            {/* [新增] 顶部导入按钮 */}
+            <button 
+              onClick={handleImportClick}
+              className="p-1.5 hover:bg-bg-tertiary rounded text-text-secondary hover:text-accent-purple transition-colors"
+              title="导入 SRT 字幕"
+            >
+              <Upload size={16} />
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept=".srt" 
+              className="hidden" 
+            />
           </div>
         </div>
       </div>
@@ -533,7 +614,6 @@ export function SubtitleList() {
       </div>
           {popoverState.isOpen && createPortal(
         <>
-          {/* 全屏透明遮罩，点击关闭 */}
           <div 
             className="fixed inset-0 z-[9998] bg-transparent" 
             onClick={(e) => {
@@ -541,7 +621,6 @@ export function SubtitleList() {
               setPopoverState(prev => ({ ...prev, isOpen: false }));
             }} 
           />
-          {/* 弹窗本体，使用 fixed 定位 */}
           <div className="fixed z-[9999]" style={{ top: 0, left: 0 }}>
              <MediaPopover 
                isOpen={popoverState.isOpen}
@@ -551,7 +630,7 @@ export function SubtitleList() {
              />
           </div>
         </>,
-        document.body // 将弹窗挂载到 body 上，防止被遮挡
+        document.body
       )}
     </div>
   );

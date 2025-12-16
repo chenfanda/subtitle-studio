@@ -1,10 +1,10 @@
 import type { ProjectExport } from '@/types/project';
+import { API_CLIENT } from '@/config/api-client';
 
-const API_BASE_URL = 'http://localhost:8000/api';
 
 export const api = {
   startExportJob: async (projectData: ProjectExport, signal?: AbortSignal): Promise<{ jobId: string }> => {
-    const response = await fetch(`${API_BASE_URL}/export`, {
+    const response = await fetch(`${API_CLIENT.BASE_URL}/export`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -32,8 +32,8 @@ export const api = {
     return await response.json();
   },
 
-  getJobStatus: async (jobId: string, signal?: AbortSignal): Promise<{ status: string, url?: string, progress?: number, error?: string }> => {
-    const response = await fetch(`${API_BASE_URL}/status/${jobId}`, {
+  getJobStatus: async (jobId: string, signal?: AbortSignal): Promise<{ status: string, url?: string, progress?: number, error?: string,result?: any  }> => {
+    const response = await fetch(`${API_CLIENT.BASE_URL}/status/${jobId}`, {
       signal
     });
     
@@ -45,7 +45,7 @@ export const api = {
   },
 
   cancelExportJob: async (jobId: string): Promise<void> => {
-    await fetch(`${API_BASE_URL}/cancel`, {
+    await fetch(`${API_CLIENT.BASE_URL}/cancel`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -133,7 +133,7 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
         
         result.data.source_resources.video = `/uploads/${req.file.filename}`;
     }
-
+    console.log('DEBUG_NODE_RESPONSE:', JSON.stringify(result.data.source_resources, null, 2));
     res.json(result);
 
   } catch (error: any) {
@@ -149,7 +149,7 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
 });
 
 
-app.get(/^\/api\/static\/(.*)/, async (req, res) => {
+app.get(/^\/(?:api\/)?static\/(.*)/, async (req, res) => {
   try {
     const resourcePath = req.params[0];
     const asrServiceUrl = new URL(SERVER_CONFIG.INTERNAL_SERVICES.ASR_URL);

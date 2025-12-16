@@ -192,7 +192,8 @@ export const useExportStore = create<ExportStore>()(
                 state.exportStatus = 'success';
                 state.exportProgress = 1;
                 state.statusMessage = '渲染完成';
-                state.downloadUrl = response.url || null;
+                const resultUrl = response.result?.url || response.result || response.url;
+                state.downloadUrl = resultUrl || null;
                 state.abortController = null;
               });
             } else if (response.status === 'failed') {

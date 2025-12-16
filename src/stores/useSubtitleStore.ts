@@ -69,7 +69,7 @@ interface SubtitleStore {
   setSubtitleBroll: (id: string, brollData: BrollVideoData) => void;
   removeSubtitleBroll: (id: string) => void;
 
-  applyStyleToAllSubtitles: (style: SubtitleStyle,animation?: AnimationEffect) => void;
+  applyStyleToAllSubtitles: (style: SubtitleStyle,animation?: AnimationEffect,position?: SubtitlePosition) => void;
 
   findSubtitleAtTime: (time: number) => SubtitleItem | null;
   getNextSubtitle: (currentId: string) => SubtitleItem | null;
@@ -460,12 +460,16 @@ export const useSubtitleStore = create<SubtitleStore>()(
         useHistoryStore.getState().pushState();
       },
 
-      applyStyleToAllSubtitles: (style, animation) => {
+      applyStyleToAllSubtitles: (style, animation, position) => {
         useHistoryStore.getState().startBatch();
 
         set((state) => {
           state.subtitles.forEach(subtitle => {
             subtitle.style = { ...subtitle.style, ...style };
+
+            if (position) {
+              subtitle.position = { ...subtitle.position, ...position };
+            }
 
             if (animation) {
               const chars = Array.from(subtitle.text);
