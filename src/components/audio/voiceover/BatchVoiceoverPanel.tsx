@@ -5,14 +5,15 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { 
   Loader2, Users, Wand2, ChevronDown, ChevronRight, CheckSquare, Square, 
   AlertCircle, Mic, Trash2, Sparkles, Activity, FileAudio, 
-  Edit3, Save, X, FileText, Play 
+  Edit3, Save, X, FileText, FileType, AlignLeft
 } from 'lucide-react';
 import { SubtitleItem } from '@/types/subtitle';
 import { sliceAudioFromUrl } from '@/utils/audioSlicer';
 import { ttsService } from '@/utils/ttsService'; 
-import { parseSRT } from '@/utils/subtitleParser'; 
+import { parseSRT, msToSRTTime } from '@/utils/subtitleParser'; 
 
 type BatchMode = 'standard' | 'dynamic' | 'smart_dub';
+type EditorMode = 'original' | 'script' | null;
 
 export function BatchVoiceoverPanel() {
   const { 
@@ -20,7 +21,7 @@ export function BatchVoiceoverPanel() {
     setSpeakerMapping, generateBatchTTS, isGenerating: isStoreGenerating 
   } = useVoiceoverStore();
   
-  const { subtitles, updateSubtitle } = useSubtitleStore();
+  const { subtitles, updateSubtitle, restoreSubtitles } = useSubtitleStore();
   
   const { 
     sourceResources, applySmartDubTrack, restoreOriginalVocals, originalVocalsUrl 
@@ -31,41 +32,40 @@ export function BatchVoiceoverPanel() {
   const [expandedSpeakers, setExpandedSpeakers] = useState<Set<string>>(new Set());
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState(''); 
-  const [showScriptEditor, setShowScriptEditor] = useState(false);
   
-  // 编辑器状态
-  const [editingScript, setEditingScript] = useState<{id: string, text: string}[]>([]);
-  const [originalMapLoaded, setOriginalMapLoaded] = useState(false);
-
+  const [editorMode, setEditorMode] = useState<EditorMode>(null);
+  const [editorContent, setEditorContent] = useState('');
+  
   const srtCacheRef = useRef<Map<string, string> | null>(null);
+  // 缓存完整的原声字幕对象，而不仅仅是文本 Map
+  const originalSubtitlesRef = useRef<SubtitleItem[]>([]);
+
   const isBusy = isStoreGenerating || isLocalGenerating;
 
   useEffect(() => { loadVoices(); }, []);
 
-  // 自动加载原声字幕缓存
+  // 加载原声字幕
   useEffect(() => {
-    if (sourceResources?.originalSubtitleUrl && !srtCacheRef.current) {
+    if (sourceResources?.originalSubtitleUrl && originalSubtitlesRef.current.length === 0) {
       fetch(sourceResources.originalSubtitleUrl)
         .then(r => r.text())
         .then(text => {
+             // 解析并保存完整的原声字幕结构
+             const parsed = parseSRT(text);
+             originalSubtitlesRef.current = parsed;
+             
+             // 同时更新 Map 缓存 (为了兼容旧的 TTS 查找逻辑)
              const map = new Map<string, string>();
-             parseSRT(text).forEach(ps => {
+             parsed.forEach(ps => {
                  const key = `${(ps.startTime/1000).toFixed(1)}-${(ps.endTime/1000).toFixed(1)}`;
+                 // 注意：这里 Map 的 value 最好是纯文本，不带 Speaker 标签，方便 TTS 使用
                  map.set(key, ps.text);
              });
              srtCacheRef.current = map;
-             setOriginalMapLoaded(true);
         })
-        .catch(() => {});
+        .catch(e => console.warn("[Batch] 原声加载失败", e));
     }
   }, [sourceResources?.originalSubtitleUrl]);
-
-  // 监听编辑器打开，初始化编辑数据 (修复无法输入的问题)
-  useEffect(() => {
-    if (showScriptEditor) {
-      setEditingScript(subtitles.map(s => ({ id: s.id, text: s.text })));
-    }
-  }, [showScriptEditor, subtitles]);
 
   const groupedSubtitles = useMemo(() => {
     const groups: Record<string, SubtitleItem[]> = {};
@@ -79,24 +79,7 @@ export function BatchVoiceoverPanel() {
 
   const speakers = Object.keys(groupedSubtitles);
 
-  const smartDubLines = useMemo(() => {
-    const originalMap = srtCacheRef.current;
-    return subtitles.map(sub => {
-      const keyStart = (sub.startTime / 1000).toFixed(1);
-      const keyEnd = (sub.endTime / 1000).toFixed(1);
-      const timeKey = `${keyStart}-${keyEnd}`;
-      const originalText = originalMap?.get(timeKey) || "(无原声参考)";
-      
-      return {
-        id: sub.id,
-        startTime: sub.startTime,
-        endTime: sub.endTime,
-        original: originalText,
-        current: sub.text
-      };
-    });
-  }, [subtitles, originalMapLoaded]);
-
+  // --- 通用交互 ---
   const toggleExpand = (speaker: string) => {
     const newExpanded = new Set(expandedSpeakers);
     if (newExpanded.has(speaker)) newExpanded.delete(speaker);
@@ -129,6 +112,75 @@ export function BatchVoiceoverPanel() {
     setCheckedIds(newChecked);
     setExpandedSpeakers(prev => new Set(prev).add(speaker));
   };
+
+  // --- 编辑器逻辑 (核心修改) ---
+
+  // [修改] 将 SubtitleItem 转回带 Speaker 标签的 SRT 格式文本
+  const subtitlesToSRT = (subs: SubtitleItem[]) => {
+    return subs.map((s, index) => {
+      const start = msToSRTTime(s.startTime);
+      const end = msToSRTTime(s.endTime);
+      // 如果有 speaker，加上 [Speaker X] 前缀
+      const content = s.speaker ? `[${s.speaker}] ${s.text}` : s.text;
+      return `${index + 1}\n${start} --> ${end}\n${content}\n`;
+    }).join('\n');
+  };
+
+  const openEditor = (mode: 'original' | 'script') => {
+    setEditorMode(mode);
+    if (mode === 'original') {
+      // 优先使用已加载的原声字幕，如果没有则用当前字幕填充
+      const source = originalSubtitlesRef.current.length > 0 ? originalSubtitlesRef.current : subtitles;
+      setEditorContent(subtitlesToSRT(source));
+    } else {
+      setEditorContent(subtitlesToSRT(subtitles));
+    }
+  };
+
+  const saveEditorContent = () => {
+    try {
+      // parseSRT 内部已经支持解析 [Speaker X] 格式
+      const parsed = parseSRT(editorContent);
+      
+      if (parsed.length === 0) {
+        alert("内容为空或格式错误，无法保存");
+        return;
+      }
+
+      if (editorMode === 'original') {
+        // 保存原声：更新 Ref 和 Map
+        originalSubtitlesRef.current = parsed;
+        const map = new Map<string, string>();
+        parsed.forEach(ps => {
+            const key = `${(ps.startTime/1000).toFixed(1)}-${(ps.endTime/1000).toFixed(1)}`;
+            map.set(key, ps.text); // Map 里存纯文本
+        });
+        srtCacheRef.current = map;
+        alert(`原声字幕已更新，共 ${parsed.length} 条`);
+      } else {
+        // 保存新剧本：更新 Store
+        // 尝试保留原有 ID 以维持状态
+        const merged = parsed.map((p, i) => {
+            const old = subtitles[i];
+            return {
+                ...p,
+                id: old ? old.id : p.id,
+                style: old ? old.style : p.style,
+                position: old ? old.position : p.position,
+                // audioTrack: undefined // 如果需要重置配音状态可以解开这行
+            };
+        });
+        restoreSubtitles(merged);
+        alert(`新剧本已更新，共 ${merged.length} 条`);
+      }
+      setEditorMode(null);
+    } catch (e) {
+      console.error(e);
+      alert("解析失败，请检查 SRT 格式是否正确 (序号、时间轴、[Speaker]标签)");
+    }
+  };
+
+  // --- 生成逻辑 ---
 
   const handleGenerate = async () => {
     const idsToProcess = Array.from(checkedIds);
@@ -191,6 +243,10 @@ export function BatchVoiceoverPanel() {
     setProgressMsg('正在生成全剧本配音...');
 
     try {
+      // 这里的 originalMap 只是用于 fallback 查找，实际上 ttsService.generateSmartDubbing
+      // 应该直接使用我们刚刚编辑好的 originalSubtitlesRef.current (如果它存在)
+      // 但为了保持接口一致性，我们还是传 Map，但在 generateSmartDubbing 内部可以优化
+      
       const originalMap = srtCacheRef.current || new Map();
       const result = await ttsService.generateSmartDubbing(subtitles, originalMap, audioUrl);
 
@@ -207,63 +263,50 @@ export function BatchVoiceoverPanel() {
     }
   };
 
-  const saveScript = () => {
-    editingScript.forEach(item => {
-      const original = subtitles.find(s => s.id === item.id);
-      if (original && original.text !== item.text) {
-        updateSubtitle(item.id, { text: item.text });
-      }
-    });
-    setShowScriptEditor(false);
-  };
+  // --- 渲染 ---
 
-  // 新增：保存并立即开始生成
-  const handleSaveAndGenerate = () => {
-    saveScript();
-    // 使用 setTimeout 确保 store 更新后再执行生成
-    setTimeout(() => {
-        handleSmartDubbing();
-    }, 100);
-  };
-
-  const renderSmartDubList = () => {
-    if (subtitles.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center h-40 text-text-tertiary gap-3">
-           <AlertCircle size={24} />
-           <p className="text-sm">暂无字幕数据</p>
-        </div>
-      );
-    }
+  const renderSmartDubView = () => {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-between items-center bg-bg-tertiary p-3 rounded-lg border border-border-secondary">
-          <div className="text-xs text-text-secondary">
-            <span className="font-bold text-text-primary">{subtitles.length}</span> 行剧本待处理
-          </div>
-          <button onClick={() => setShowScriptEditor(true)} className="flex items-center gap-1.5 text-xs bg-accent-purple/10 text-accent-purple px-3 py-1.5 rounded-md hover:bg-accent-purple/20 transition-colors border border-accent-purple/20 font-medium">
-            <Edit3 size={12} /> 打开剧本编辑器
-          </button>
+      <div className="space-y-4">
+        <div className="bg-bg-tertiary/30 p-4 rounded-xl border border-border-secondary text-center space-y-3">
+           <div className="text-sm text-text-secondary leading-relaxed">
+             请分别编辑 <span className="text-accent-purple font-bold">原声字幕</span> 和 <span className="text-emerald-500 font-bold">新剧本</span>。<br/>
+             请保留 <code className="bg-black/20 px-1 rounded text-xs">[Speaker X]</code> 标签以确保角色对齐。
+           </div>
         </div>
-        <div className="space-y-2">
-          {smartDubLines.map((line, index) => (
-            <div key={line.id} className="bg-bg-primary border border-border-secondary rounded-lg p-3 text-xs flex gap-3 group hover:border-accent-purple/30 transition-colors">
-              <div className="flex flex-col gap-1 min-w-[60px] text-text-tertiary font-mono border-r border-border-secondary pr-2">
-                <span className="font-bold text-text-secondary">#{index + 1}</span>
-                <span className="scale-90 origin-top-left">{(line.startTime / 1000).toFixed(1)}s</span>
+
+        <div className="grid grid-cols-1 gap-3">
+          <button 
+            onClick={() => openEditor('original')}
+            className="flex items-center justify-between p-4 bg-bg-primary border border-border-secondary hover:border-accent-purple/50 rounded-xl group transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-text-tertiary/10 rounded-lg text-text-tertiary group-hover:text-accent-purple transition-colors">
+                <FileType size={20} />
               </div>
-              <div className="flex-1 grid grid-cols-1 gap-2">
-                <div className="text-text-tertiary flex gap-2 items-start bg-bg-tertiary/30 p-1.5 rounded">
-                  <span className="bg-text-tertiary/10 text-[10px] px-1 rounded text-text-tertiary whitespace-nowrap">原声</span>
-                  <span className="leading-relaxed italic opacity-80">{line.original}</span>
-                </div>
-                <div className="text-text-primary flex gap-2 items-start bg-accent-purple/5 p-1.5 rounded border border-accent-purple/10">
-                  <span className="bg-accent-purple/10 text-[10px] px-1 rounded text-accent-purple whitespace-nowrap">配音</span>
-                  <span className="leading-relaxed font-medium">{line.current}</span>
-                </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-text-primary">编辑原声字幕文件 (SRT)</div>
+                <div className="text-xs text-text-tertiary">修正 ASR 识别错误，作为 Prompt 参考</div>
               </div>
             </div>
-          ))}
+            <ChevronRight size={16} className="text-text-tertiary" />
+          </button>
+
+          <button 
+            onClick={() => openEditor('script')}
+            className="flex items-center justify-between p-4 bg-bg-primary border border-border-secondary hover:border-emerald-500/50 rounded-xl group transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+                <AlignLeft size={20} />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-text-primary">编辑新剧本文件 (SRT)</div>
+                <div className="text-xs text-text-tertiary">修改台词或粘贴新剧本，作为配音内容</div>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-text-tertiary" />
+          </button>
         </div>
       </div>
     );
@@ -381,7 +424,7 @@ export function BatchVoiceoverPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {activeMode === 'smart_dub' ? renderSmartDubList() : renderSubtitleList()}
+        {activeMode === 'smart_dub' ? renderSmartDubView() : renderSubtitleList()}
       </div>
 
       <div className="p-4 border-t border-border-secondary bg-bg-primary z-10">
@@ -407,47 +450,25 @@ export function BatchVoiceoverPanel() {
         </button>
       </div>
 
-      {showScriptEditor && (
+      {editorMode && (
         <div className="absolute inset-0 z-50 bg-bg-secondary flex flex-col animate-in slide-in-from-bottom-5">
           <div className="p-4 border-b border-border-secondary bg-bg-primary flex justify-between items-center shadow-sm">
-            <h3 className="font-bold text-text-primary flex items-center gap-2"><FileText size={18} className="text-accent-purple"/> 剧本快速精修</h3>
+            <h3 className="font-bold text-text-primary flex items-center gap-2">
+              {editorMode === 'original' ? <FileType size={18} className="text-text-tertiary"/> : <AlignLeft size={18} className="text-emerald-500"/>}
+              {editorMode === 'original' ? '编辑原声参考字幕' : '编辑新剧本台词'}
+            </h3>
             <div className="flex gap-2">
-              <button onClick={() => setShowScriptEditor(false)} className="p-2 hover:bg-bg-tertiary rounded text-text-secondary"><X size={18} /></button>
-              <button 
-                onClick={handleSaveAndGenerate} 
-                className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-emerald-500/20 text-white rounded-lg text-sm font-medium shadow-lg transition-all"
-              >
-                <Play size={16} fill="currentColor" /> 保存并开始配音
-              </button>
+              <button onClick={() => setEditorMode(null)} className="p-2 hover:bg-bg-tertiary rounded text-text-secondary"><X size={18} /></button>
+              <button onClick={saveEditorContent} className="flex items-center gap-2 px-4 py-1.5 bg-accent-purple hover:bg-accent-purple/90 text-white rounded-lg text-sm font-medium shadow-lg shadow-accent-purple/20"><Save size={16} /> 保存修改</button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-bg-tertiary/50">
-             {smartDubLines.map((line) => {
-               const editVal = editingScript.find(e => e.id === line.id)?.text || "";
-               return (
-                 <div key={line.id} className="flex gap-4 p-4 bg-bg-primary rounded-xl border border-border-secondary shadow-sm">
-                   <div className="flex-1 border-r border-border-secondary pr-4">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-xs text-text-tertiary font-mono bg-bg-tertiary px-1.5 rounded">{(line.startTime/1000).toFixed(1)}s - {(line.endTime/1000).toFixed(1)}s</span>
-                        <span className="text-[10px] text-text-tertiary uppercase tracking-wider">Original</span>
-                      </div>
-                      <p className="text-sm text-text-secondary leading-relaxed select-text">{line.original}</p>
-                   </div>
-                   <div className="flex-1 pl-2">
-                      <div className="flex justify-between mb-2"><span className="text-[10px] text-accent-purple font-bold uppercase tracking-wider">Script</span></div>
-                      <textarea
-                        className="w-full bg-bg-tertiary/50 border border-border-secondary rounded-lg p-3 text-sm text-text-primary focus:outline-none focus:border-accent-purple focus:ring-1 focus:ring-accent-purple/50 transition-all resize-none leading-relaxed"
-                        rows={3}
-                        value={editVal}
-                        onChange={(e) => {
-                            const newVal = e.target.value;
-                            setEditingScript(prev => prev.map(item => item.id === line.id ? { ...item, text: newVal } : item));
-                        }}
-                      />
-                   </div>
-                 </div>
-               );
-             })}
+          <div className="flex-1 p-4 bg-bg-tertiary/50">
+             <textarea 
+               className="w-full h-full bg-bg-primary border border-border-secondary rounded-xl p-4 text-sm font-mono leading-relaxed text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+               value={editorContent}
+               onChange={(e) => setEditorContent(e.target.value)}
+               placeholder="1&#10;00:00:01,000 --> 00:00:05,000&#10;[Speaker 0] 请输入字幕内容..."
+             />
           </div>
         </div>
       )}
