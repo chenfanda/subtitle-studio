@@ -9,15 +9,29 @@ import { API_CLIENT } from '@/config/api-client';
 
 const ENDPOINTS = API_CLIENT.ENDPOINTS.TTS;
 
-// --- 新增：数值转后端字符串参数的辅助函数 ---
+
 function mapParamToBackendString(value: number): string {
   if (value <= 0.6) return 'very_low';
   if (value <= 0.8) return 'low';
-  if (value <= 1.2) return 'moderate'; // 0.9 - 1.2 视为正常
+  if (value <= 1.2) return 'moderate'; 
   if (value <= 1.6) return 'high';
   return 'very_high';
 }
 
+export interface SmartSubItem {
+  id: string;
+  start_time: number; 
+  end_time: number;   
+  text: string;       
+  new_text: string;   
+  speaker: string;
+}
+
+export interface SmartDubbingResponse {
+  success: boolean;
+  audioUrl: string;
+  audioId: string;
+}
 export const ttsService = {
   fetchSystemCharacters: async (): Promise<VoiceCharacter[]> => {
     const response = await fetch(ENDPOINTS.CHARACTERS);
@@ -71,7 +85,6 @@ export const ttsService = {
     speed: number = 1.0,
     pitch: number = 1.0
   ): Promise<TTSResponse> => {
-    // [修复] 将数字转换为后端要求的字符串
     const speedStr = mapParamToBackendString(speed);
     const pitchStr = mapParamToBackendString(pitch);
 
@@ -81,8 +94,8 @@ export const ttsService = {
       body: JSON.stringify({
         text,
         character_id: characterId,
-        speed: speedStr, // 发送字符串
-        pitch: pitchStr  // 发送字符串
+        speed: speedStr, 
+        pitch: pitchStr 
       }),
     });
 
@@ -100,7 +113,7 @@ export const ttsService = {
     speed: number = 1.0,
     pitch: number = 1.0
   ): Promise<TTSResponse> => {
-    // [修复] 同样应用于自定义音色
+    
     const speedStr = mapParamToBackendString(speed);
     const pitchStr = mapParamToBackendString(pitch);
 
@@ -120,6 +133,87 @@ export const ttsService = {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.detail || 'Custom TTS generation failed');
     }
+    return response.json();
+  },
+
+  generateWithAudioPrompt: async (
+      text: string,
+      audioBlob: Blob,
+      promptText: string = '',
+      speed: number = 1.0,
+      pitch: number = 1.0,
+      targetDuration?: number 
+    ): Promise<TTSResponse> => {
+      const formData = new FormData();
+      formData.append('text', text);
+      if (promptText) formData.append('prompt_text', promptText);
+      
+
+      const mapVal = (v: number) => {
+          if (v <= 0.6) return 'very_low';
+          if (v <= 0.8) return 'low';
+          if (v <= 1.2) return 'moderate';
+          if (v <= 1.6) return 'high';
+          return 'very_high';
+      };
+
+      formData.append('speed', mapVal(speed));
+      formData.append('pitch', mapVal(pitch));
+      
+      if (targetDuration) {
+        formData.append('target_duration', targetDuration.toString());
+      }
+      formData.append('prompt_audio', audioBlob, 'slice.wav');
+
+      
+      const response = await fetch(`/api/tts/tts_with_prompt`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Generation failed');
+      return response.json();
+    },
+
+  generateSmartDubbing: async (
+    subtitles: any[], 
+    originalSubtitlesMap: Map<string, string> | null,
+    audioUrl: string
+  ): Promise<SmartDubbingResponse> => {
+    
+    
+    const smartSubtitles: SmartSubItem[] = subtitles.map(sub => {
+
+      const startTimeSec = (sub.startTime / 1000).toFixed(1);
+      const endTimeSec = (sub.endTime / 1000).toFixed(1);
+      const timeKey = `${startTimeSec}-${endTimeSec}`;
+
+      const originalText = originalSubtitlesMap?.get(timeKey) || sub.text;
+
+      return {
+        id: sub.id,
+        start_time: sub.startTime, 
+        end_time: sub.endTime,     
+        text: originalText,        
+        new_text: sub.text,        
+        speaker: sub.speaker || 'speaker_0'
+      };
+    });
+
+    const response = await fetch('/api/smart_dubbing/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subtitles: smartSubtitles,
+        audioUrl: audioUrl,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `智能配音请求失败: ${response.status}`);
+    }
+
     return response.json();
   },
 
@@ -153,3 +247,5 @@ export const ttsService = {
     if (!response.ok) throw new Error('Delete failed');
   }
 };
+
+

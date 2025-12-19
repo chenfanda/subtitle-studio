@@ -13,6 +13,7 @@ import { SERVER_CONFIG } from './config/server-config';
 import { renderQueue, connection } from './queue'; 
 import './worker'; 
 import { optimizationQueue } from './queue-optimization';
+import { pipeline } from 'stream/promises';
 
 const app = express();
 
@@ -30,7 +31,7 @@ app.use(express.json({ limit: '500mb' }));
 
 const optimizationQueueEvents = new QueueEvents('video-optimization-queue', { connection });
 
-// 【修改】使用配置中的上传路径
+
 const uploadDir = SERVER_CONFIG.PATHS.UPLOAD_DIR;
 try {
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -94,7 +95,7 @@ app.post('/api/upload', (req, res) => {
 app.post('/api/process-media', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  // 文件已由 multer 保存到本地 uploadDir
+  
   const filePath = req.file.path; 
 
   try {
@@ -108,13 +109,13 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
     if(req.body.user_id) internalFormData.append('user_id', req.body.user_id);
     if(req.body.project_id) internalFormData.append('project_id', req.body.project_id);
     
-    // 处理布尔值参数
+    
     const vocalSep = req.body.enable_vocal_separation === 'true' || req.body.enable_vocal_separation === true;
     internalFormData.append('enable_vocal_separation', vocalSep ? 'true' : 'false');
     const enableDiarization = req.body.enable_diarization === 'true' || req.body.enable_diarization === true;
     internalFormData.append('enable_diarization', enableDiarization ? 'true' : 'false');
 
-    // 2. 获取内网 ASR 地址并转发
+    
     const asrUrl = SERVER_CONFIG.INTERNAL_SERVICES.ASR_URL;
     
     const response = await axios.post(asrUrl, internalFormData, {
@@ -215,6 +216,93 @@ app.get(/^\/api\/tts\/(.*)/, async (req, res) => {
   }
 });
 
+app.post('/api/smart_dubbing/run', async (req, res) => {
+  let tempFilePath = ''; 
+
+  try {
+    const { subtitles, audioUrl, outputFilename } = req.body;
+
+    if (!audioUrl) return res.status(400).json({ error: '缺少 audioUrl' });
+
+    console.log(`[SmartDubbing] 接收到的源音频: ${audioUrl}`);
+
+    
+    
+    const tempFileName = `temp_source_${Date.now()}_${path.basename(audioUrl).split('?')[0]}`;
+    
+    tempFilePath = path.join(SERVER_CONFIG.PATHS.UPLOAD_DIR, tempFileName);
+
+    
+    if (audioUrl.startsWith('http')) {
+  
+      console.log(`[SmartDubbing] 正在从 URL 下载资源...`);
+      const downloadStream = await axios({
+        url: audioUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
+      
+      await pipeline(downloadStream.data, fs.createWriteStream(tempFilePath));
+    
+    } else if (audioUrl.startsWith('/uploads/')) {
+   
+      const filename = path.basename(audioUrl);
+      const existingPath = path.join(SERVER_CONFIG.PATHS.UPLOAD_DIR, filename);
+      
+      if (fs.existsSync(existingPath)) {
+        tempFilePath = existingPath; 
+      } else {
+        throw new Error(`本地文件不存在: ${existingPath}`);
+      }
+    } else {
+     
+       throw new Error(`不支持的音频路径格式: ${audioUrl}`);
+    }
+
+    console.log(`[SmartDubbing] 本地就绪，路径: ${tempFilePath}`);
+
+
+    const ttsServiceUrl = `${SERVER_CONFIG.INTERNAL_SERVICES.TTS_URL.replace(/\/$/, '')}/smart_dubbing/run`;
+    
+    const pythonPayload = {
+      subtitles: subtitles,
+      original_audio_path: tempFilePath, 
+      output_filename: outputFilename,
+      merge_threshold_ms: 500
+    };
+
+    const response = await axios.post(ttsServiceUrl, pythonPayload);
+    
+    
+    const { audio_path, audio_id } = response.data;
+    
+    
+    const resultFilename = path.basename(audio_path);
+    const publicUrl = `/api/tts/download/${audio_id}`;
+
+    res.json({
+      success: true,
+      audioUrl: publicUrl,
+      audioId: audio_id
+    });
+
+  } catch (error: any) {
+    console.error('[Gateway Smart Dubbing Error]', error.message);
+    const status = error.response?.status || 500;
+    const data = error.response?.data || { error: error.message };
+    res.status(status).json(data);
+  } finally {
+
+    if (tempFilePath && tempFilePath.includes('temp_source_') && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+        console.log(`[SmartDubbing] 临时文件已清理: ${tempFilePath}`);
+      } catch (e) {
+        console.warn('清理临时文件失败', e);
+      }
+    }
+  }
+});
 
 app.post(['/api/tts/tts_with_character', '/api/tts/tts_timeline_dialogue'], async (req, res) => {
   const path = req.path.replace('/api/tts', '');
@@ -244,6 +332,41 @@ app.post('/api/tts/save_custom_voice', upload.single('audio_file'), async (req, 
   }
 });
 
+
+app.post('/api/tts/tts_with_prompt', upload.single('prompt_audio'), async (req, res) => {
+  
+  try {
+    const formData = new FormData();
+    
+    
+    if (req.file) {
+      formData.append('prompt_audio', fs.createReadStream(req.file.path));
+    }
+
+    
+    Object.keys(req.body).forEach(k => formData.append(k, req.body[k]));
+    
+    
+    const response = await axios.post(`${TTS_SERVICE_URL}/tts_with_prompt`, formData, {
+      headers: formData.getHeaders() 
+    });
+
+    
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.json(response.data);
+  } catch (e: any) {
+    
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('[Gateway TTS Prompt Error]', e.message);
+    res.status(e.response?.status || 500).json({ error: 'Generation Failed' });
+  }
+});
+
 app.post('/api/tts/tts_with_custom_voice', upload.none(), async (req, res) => {
   try {
     const formData = new FormData();
@@ -267,6 +390,7 @@ app.delete(/^\/api\/tts\/(.*)/, async (req, res) => {
     res.status(500).json({ error: 'Delete Failed' });
   }
 });
+
 
 app.post('/api/export', async (req, res) => {
   try {
@@ -300,6 +424,7 @@ app.post('/api/export', async (req, res) => {
     res.status(500).json({ error: '服务器内部错误或队列失败', details: error.message });
   }
 });
+
 
 // ----------------------------------------------------------------
 // 接口 4: 取消任务

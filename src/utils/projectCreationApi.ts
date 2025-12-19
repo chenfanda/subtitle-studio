@@ -7,6 +7,7 @@ interface SourceResources {
   video: string;
   audioVocals: string;
   audioBacking: string;
+  originalSubtitleUrl?: string;
 }
 
 // 后端返回的 JSON 结构 (ASR_Diarization 脚本返回的格式)
@@ -119,6 +120,7 @@ export const uploadAndInitializeProject = async ({
             video: resolveUrl(rawResources.video),
             audioVocals: resolveUrl(rawResources.audioVocals),
             audioBacking: resolveUrl(rawResources.audioBacking),
+            originalSubtitleUrl: resolveUrl(response.data.subtitles.url) 
           };
 
           resolve({

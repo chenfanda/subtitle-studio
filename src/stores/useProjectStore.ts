@@ -55,6 +55,9 @@ interface ProjectStore extends ProjectState {
   
   resetProject: () => void;
   setEditorHeight: (height: number) => void;
+  applySmartDubTrack: (newUrl: string) => void;
+  restoreOriginalVocals: () => void;
+  
 }
 
 const initialState: Omit<ProjectState, 'id'> = {
@@ -72,6 +75,7 @@ const initialState: Omit<ProjectState, 'id'> = {
   editorHeight: 540,
   sourceResources: null,
   audioMix: DEFAULT_AUDIO_MIX,
+  originalVocalsUrl: null,
 };
 
 const projectStoreCreator: StateCreator<
@@ -204,6 +208,27 @@ const projectStoreCreator: StateCreator<
       } 
     }); 
   }, 
+  applySmartDubTrack: (newUrl) => {
+    set((state) => {
+      if (!state.originalVocalsUrl && state.sourceResources?.audioVocals) {
+        state.originalVocalsUrl = state.sourceResources.audioVocals;
+      }
+      if (state.sourceResources) {
+        state.sourceResources.audioVocals = newUrl;
+      }
+      state.saveStatus = 'unsaved';
+    });
+  },
+
+  restoreOriginalVocals: () => {
+    set((state) => {
+      if (state.originalVocalsUrl && state.sourceResources) {
+        state.sourceResources.audioVocals = state.originalVocalsUrl;
+        state.originalVocalsUrl = null;
+        state.saveStatus = 'unsaved';
+      }
+    });
+  },
 
   toSnapshot: (): ProjectSnapshot => { 
     const state = get(); 

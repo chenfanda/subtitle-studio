@@ -4,6 +4,7 @@ export interface SourceResources {
   video: string;        
   audioVocals: string;
   audioBacking: string;
+  originalSubtitleUrl?: string;
 }
 
 export interface AudioMix {

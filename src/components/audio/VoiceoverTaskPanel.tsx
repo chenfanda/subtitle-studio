@@ -5,23 +5,25 @@ import { useUIStore, useSelectedSubtitles } from '@/stores/useUIStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 import { FileText, Mic, Volume2, Users, List, ArrowRight } from 'lucide-react';
-import { BatchVoiceoverPanel } from './voiceover/BatchVoiceoverPanel'; // 引入批量面板
+import { BatchVoiceoverPanel } from './voiceover/BatchVoiceoverPanel'; 
+import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils'; 
+import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 
 export function VoiceoverTaskPanel() {
-  const { setCurrentTime } = useProjectStore();
+  const { setCurrentTime ,setGlobalTime} = useProjectStore();
   const { subtitles, removeSubtitleAudio } = useSubtitleStore();
   const selectedSubtitleIds = useSelectedSubtitles();
   const { setSelectedSubtitles, openDialog } = useUIStore();
+  const segments = useVideoSequenceStore((state) => state.segments);
   
   // 本地状态：是否显示批量面板
   const [showBatchPanel, setShowBatchPanel] = useState(false);
 
-  // 监听选中数量，如果选中超过1个，且当前不在批量模式，提示用户(这里做个简单的自动切换逻辑也可以，或者只显示按钮)
   useEffect(() => {
     if (selectedSubtitleIds.length > 1 && !showBatchPanel) {
-      // 可选：自动切换，或者让用户手动点。这里我们让用户手动点，避免干扰
+     
     }
-    // 如果没有选中任何字幕，自动切回列表模式
+
     if (selectedSubtitleIds.length === 0 && showBatchPanel) {
       setShowBatchPanel(false);
     }
@@ -132,14 +134,17 @@ export function VoiceoverTaskPanel() {
                 <div
                   key={subtitle.id}
                   onClick={() => {
-                    // 支持按住 Ctrl/Cmd 多选 (这里依赖 UIStore 的实现，假设 setSelectedSubtitles 替换了选中)
-                    // 简单的点击切换选中逻辑
+            
                     if (isSelected && selectedSubtitleIds.length === 1) {
-                        // 如果只选中了自己，不做操作或者取消选中
+                      
                     } else {
                         setSelectedSubtitles([subtitle.id]); 
                     }
-                    setCurrentTime(subtitle.startTime / 1000);
+                    const startTimeSec = subtitle.startTime / 1000;
+                    const mainTimeSec = startTimeSec + 0.001;
+                    const globalTimeSec = findGlobalTimeFromMainTime(mainTimeSec, segments);
+                    setGlobalTime(globalTimeSec);
+                    setCurrentTime(mainTimeSec);
                   }}
                   className={`flex gap-3 p-2 rounded-lg border-2 transition-all cursor-pointer ${
                     isSelected

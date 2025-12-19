@@ -74,7 +74,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     onClose();
   };
 
-  if (!currentObject) return null;
+  
 
   const currentStyle = useMemo(() => {
     if (!currentObject) return DEFAULT_SUBTITLE_STYLE;
@@ -106,6 +106,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
   }, [currentObject, targetType, selection]);
 
   const handleStyleChange = (updates: Partial<typeof currentStyle>) => {
+    if (!currentObject) return;
     setApplyState('idle');
     const currentSelection = useUIStore.getState().richTextSelection;
 
@@ -139,12 +140,14 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
   };
 
   const handleTextBlur = () => {
+    if (!currentObject) return;
     if (targetType === 'textElement' && localText !== currentObject.text) {
       updateTextElementText(targetId, localText);
     }
   };
 
    const handleApplyToAll = () => {
+    if (!currentObject) return;
     setApplyState('loading');
 
     if (targetType === 'subtitle') {
@@ -173,6 +176,8 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     }
     setIsSaveModalOpen(false);
   };
+
+  if (!currentObject) return null;
 
   return (
     <div className="w-75 h-full bg-bg-primary border-l border-border-primary overflow-y-auto flex flex-col">

@@ -29,16 +29,18 @@ export function TextElementOverlay() {
   const [isDragging, setIsDragging] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+
+
+
   
   const visibleElements = useMemo(() => {
-    // ✅ 4. 添加哨兵检查
-    if (isInsertClip) return [];
 
+    if (isInsertClip) return [];
     const currentTimeMs = currentTime * 1000;
     return textElements.filter(el => {
       return currentTimeMs >= el.startTime && currentTimeMs <= el.endTime;
     });
-  // ✅ 5. 添加到依赖项
+  
   }, [textElements, currentTime, isInsertClip]);
   
   const handleElementClick = (element: TextElement, e: React.MouseEvent) => {
@@ -127,7 +129,7 @@ export function TextElementOverlay() {
   );
   
   return (
-    <div className="absolute inset-0 pointer-events-none z-25">
+    <div className="absolute inset-0 pointer-events-none z-30">
       {visibleElements.map(element => {
         const isSelected = videoToolbar.targetType === 'textElement' && 
                           videoToolbar.targetId === element.id;
