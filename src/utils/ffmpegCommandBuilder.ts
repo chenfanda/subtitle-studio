@@ -98,7 +98,6 @@ class TimeWarpMap {
   }
 }
 
-
 const scanProjectInputs = (project: ProjectExport, mapper: InputMapper, context?: BackendContext) => {
   (project.content.videoSequenceSegments || []).forEach(seg => {
     mapper.addInput(seg.sourceUrl, context);
@@ -130,11 +129,14 @@ const scanProjectInputs = (project: ProjectExport, mapper: InputMapper, context?
   if (project.content.backgroundMusic) {
     mapper.addInput(project.content.backgroundMusic.url, context);
   }
+
+  if (project.settings?.watermark?.enabled && project.settings.watermark.snapshotUrl) {
+    mapper.addInput(project.settings.watermark.snapshotUrl, context);
+  }
 };
 
 const PREVIEW_REFERENCE_HEIGHT = 540;
 
-// --- MODIFIED: buildFfmpegCommand ---
 export const buildFfmpegCommand = (
   project: ProjectExport,
   settings: ExportSettings,
@@ -189,11 +191,10 @@ export const buildFfmpegCommand = (
   
   let currentStream = baseVideoStream;
 
-
   const {
     videoStream: maskStream,
     filters: maskFilters
-  } = buildMaskTrack(project.settings.mask, currentStream, targetW, targetH);
+  } = buildMaskTrack(project.settings.mask, currentStream, targetW, targetH,project.content.videoSequenceSegments);
   
   allVideoFilters.push(...maskFilters);
   currentStream = maskStream; 
@@ -236,10 +237,22 @@ export const buildFfmpegCommand = (
   allVideoFilters.push(...textFilters);
   currentStream = textStream;
 
+  let snapshotIndex: number | undefined;
+  if (project.settings?.watermark?.enabled && project.settings.watermark.snapshotUrl) {
+    snapshotIndex = mapper.getIndex(project.settings.watermark.snapshotUrl);
+  }
+
   const {
     videoStream: finalVideoStream,
     filters: watermarkFilters
-  } = buildWatermarkTrack(project.settings.watermark, isPremium, currentStream, target);
+  } = buildWatermarkTrack(
+    project.settings.watermark, 
+    isPremium, 
+    currentStream, 
+    target, 
+    scaleFactor,
+    snapshotIndex
+  );
   allVideoFilters.push(...watermarkFilters);
 
   

@@ -16,7 +16,9 @@ const resolveUrl = (url: string) => {
   return url;
 };
 
-function normalizeProjectUrls(content: ProjectExport['content']) {
+function normalizeProjectUrls(project: ProjectExport) {
+  const content = project.content;
+  
   if (content.videoSequenceSegments) {
     content.videoSequenceSegments.forEach(seg => {
       if (seg.sourceUrl) seg.sourceUrl = resolveUrl(seg.sourceUrl);
@@ -46,10 +48,16 @@ function normalizeProjectUrls(content: ProjectExport['content']) {
     if (content.sourceResources.audioBacking) content.sourceResources.audioBacking = resolveUrl(content.sourceResources.audioBacking);
     if (content.sourceResources.video) content.sourceResources.video = resolveUrl(content.sourceResources.video);
   }
+
+  // 处理水印快照 URL
+  if (project.settings?.watermark?.snapshotUrl) {
+    project.settings.watermark.snapshotUrl = resolveUrl(project.settings.watermark.snapshotUrl);
+  }
 }
 
-function collectUploadTasks(content: ProjectExport['content']) {
+function collectUploadTasks(project: ProjectExport) {
   const tasks: { obj: any; key: string; url: string }[] = [];
+  const content = project.content;
 
   const checkAndAdd = (obj: any, key: string, force: boolean = false) => {
     const url = obj?.[key];
@@ -81,6 +89,12 @@ function collectUploadTasks(content: ProjectExport['content']) {
     checkAndAdd(content.sourceResources, 'audioBacking');
   }
 
+  // --- 新增：检查水印快照 ---
+  // 如果 GlobalModals 里的上传逻辑失败或未执行完全，这里作为兜底，确保所有 blob 资源都被上传
+  if (project.settings?.watermark?.snapshotUrl) {
+    checkAndAdd(project.settings.watermark, 'snapshotUrl');
+  }
+
   return tasks;
 }
 
@@ -91,9 +105,10 @@ export const prepareProjectForExport = async (
 ): Promise<ProjectExport> => {
   const serverReadyProject = JSON.parse(JSON.stringify(project));
   
-  normalizeProjectUrls(serverReadyProject.content);
+  // 传入整个 project 对象，而不仅仅是 content
+  normalizeProjectUrls(serverReadyProject);
 
-  const tasks = collectUploadTasks(serverReadyProject.content);
+  const tasks = collectUploadTasks(serverReadyProject);
   const total = tasks.length;
   
   if (total === 0) {

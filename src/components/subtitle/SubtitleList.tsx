@@ -6,7 +6,7 @@ import {
   ImagePlus,
   Ban,
   List,
-  Upload // [新增] 导入上传图标
+  Upload 
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -22,7 +22,7 @@ import { createPortal } from 'react-dom';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { MediaItem } from '@/types/media';
 
-// [新增] 引入工具函数
+
 import { parseSRT } from '@/utils/subtitleParser';
 import { generateId } from '@/utils/storeUtils';
 
@@ -40,7 +40,7 @@ export function SubtitleList() {
     updateSubtitle,
     updateSubtitleRichText,
     deleteSubtitles,
-    restoreSubtitles // [新增] 用于批量替换字幕
+    restoreSubtitles 
   } = useSubtitleStore();
 
   const segments = useVideoSequenceStore((state) => state.segments);
@@ -158,12 +158,11 @@ export function SubtitleList() {
         brollVideo: undefined
       }));
 
-      // 3. 确认并替换
-      if (confirm(`即将导入 ${formattedSubtitles.length} 条字幕，这将覆盖现有字幕。是否继续？`)) {
-        restoreSubtitles(formattedSubtitles);
-        // 清空 input，允许重复上传同一文件
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
+
+      restoreSubtitles(formattedSubtitles);
+        
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      
     } catch (error) {
       console.error("字幕解析失败:", error);
       alert("字幕解析失败，请确保文件是标准的 SRT 格式");

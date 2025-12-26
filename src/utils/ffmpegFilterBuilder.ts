@@ -14,7 +14,6 @@ import {
 } from './ffmpegUtils';
 import {
   buildTextStyle,
-  buildWatermarkStyle,
 } from './ffmpegStyleBuilder';
 
 type GetNewTimeFn = (globalTime: number) => number;
@@ -560,19 +559,38 @@ export const buildWatermarkTrack = (
   isPremium: boolean,
   lastStream: string,
   target: FFmpegTarget,
-  scaleFactor: number = 1
+  scaleFactor: number = 1,
+  snapshotInputIndex?: number
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
   
   const isWatermarkEnabled = (watermark && watermark.enabled) || !isPremium;
   
-  if (watermark && isWatermarkEnabled) {
-    const wmStyle = buildWatermarkStyle(watermark, target, scaleFactor);
+  if (watermark && isWatermarkEnabled && snapshotInputIndex !== undefined) {
+    const wmStream = '[wm_scaled]';
     const nextV = '[v_with_wm]';
-    const escapedWatermarkText = escapeFfmpegText(watermark.text || '');
+    
+    const scaleExpr = `iw*${scaleFactor}/2`;
+    filters.push(`[${snapshotInputIndex}:v]scale=trunc(${scaleExpr})*2:-1[wm_scaled]`);
+
+    let xStr = '0', yStr = '0';
+    
+    if (watermark.positionMode === 'custom') {
+      xStr = `(W*${watermark.customPosition.x}/100)-(w/2)`;
+      yStr = `(H*${watermark.customPosition.y}/100)-(h/2)`;
+    } else {
+      const margin = 20 * scaleFactor;
+      switch (watermark.position) {
+        case 'top-left': xStr = `${margin}`; yStr = `${margin}`; break;
+        case 'top-right': xStr = `W-w-${margin}`; yStr = `${margin}`; break;
+        case 'bottom-left': xStr = `${margin}`; yStr = `H-h-${margin}`; break;
+        case 'bottom-right': xStr = `W-w-${margin}`; yStr = `H-h-${margin}`; break;
+        default: xStr = `W-w-${margin}`; yStr = `${margin}`; 
+      }
+    }
 
     filters.push(
-      `${lastStream}drawtext=text='${escapedWatermarkText}':${wmStyle}${nextV}`
+      `${lastStream}${wmStream}overlay=x='${xStr}':y='${yStr}'${nextV}`
     );
     return { videoStream: nextV, filters };
   }
@@ -584,7 +602,8 @@ export const buildMaskTrack = (
   mask: MaskConfig,
   lastStream: string,
   targetW: number,
-  targetH: number
+  targetH: number,
+  segments: TimelineSegment[] = []
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
 
@@ -618,20 +637,32 @@ export const buildMaskTrack = (
 
   if (mask.mode === 'mosaic') {
     const pixelSize = Math.max(8, mask.intensity * 3);
-    
-
     effectFilter = `gblur=sigma=2,scale=trunc(iw/${pixelSize}):trunc(ih/${pixelSize}):flags=area,scale=${w}:${h}:flags=neighbor`;
-    
     tintFilter = `,drawbox=t=fill:c=black@0.1`;
   } else {
-    
     const radius = Math.max(2, mask.intensity * 4);
-    effectFilter = `avgblur=sizeX=${radius}:sizeY=${radius}`; 
+    effectFilter = `avgblur=sizeX=${radius}:sizeY=${radius}`;
     tintFilter = `,drawbox=t=fill:c=white@0.1`;
   }
 
   filters.push(`${maskStream}${effectFilter}${tintFilter}${processedStream}`);
-  filters.push(`[base_for_mask]${processedStream}overlay=${x}:${y}${nextV}`);
+
+  const insertRanges: string[] = [];
+  segments.forEach(seg => {
+    if (seg.type === 'insert') {
+      const startS = msToS(seg.globalStartTime);
+      const endS = msToS(seg.globalStartTime + seg.duration);
+      if (endS > startS) {
+        insertRanges.push(`between(t,${startS},${endS})`);
+      }
+    }
+  });
+
+  const enableExpr = insertRanges.length > 0
+    ? `:enable='not(${insertRanges.join('+')})'`
+    : '';
+
+  filters.push(`[base_for_mask]${processedStream}overlay=${x}:${y}${enableExpr}${nextV}`);
 
   return { videoStream: nextV, filters };
 };

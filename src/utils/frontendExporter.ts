@@ -47,9 +47,13 @@ const getRequiredFontFiles = (project: ProjectExport): Set<string> => {
         if (fileName) fontFiles.add(fileName);
     };
     
+    // --- 修改点：移除水印字体加载 ---
+    // 因为水印现在使用截图 (image overlay) 方式，不再需要加载字体文件
+    /*
     if (project.settings?.watermark?.enabled && project.settings.watermark.fontFamily) {
         addFontByFamily(project.settings.watermark.fontFamily);
     }
+    */
     
     project.content.subtitles?.forEach((sub) => {
         if (sub.style?.fontFamily) addFontByFamily(sub.style.fontFamily);
@@ -205,6 +209,7 @@ export const runFrontendExport = async (
     );
 
     // 3. 媒体加载
+    // 此时 mapper.remoteUrls 里应该已经包含了 watermark.snapshotUrl (由 buildFfmpegCommand 处理)
     await loadMediaToMEMFS(mapper.remoteUrls, onProgress, signal);
 
     // 4. 编码

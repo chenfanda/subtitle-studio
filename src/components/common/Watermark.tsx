@@ -12,118 +12,162 @@ export function Watermark({ config }: WatermarkProps) {
   
   const [isDragging, setIsDragging] = useState(false);
   const watermarkRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ startX: 0, startY: 0, initialLeftPct: 0, initialTopPct: 0, parentWidth: 0, parentHeight: 0 });
 
-  if (!config.enabled) {
-    return null;
-  }
+  if (!config.enabled) return null;
 
-  // 根据位置模式计算实际位置
-  const getPosition = () => {
+  const getLayoutClasses = () => {
+    const layout = config.layout || 'row';
+    switch (layout) {
+      case 'row': return 'flex flex-row space-x-2 items-center';
+      case 'row-reverse': return 'flex flex-row-reverse space-x-reverse space-x-2 items-center';
+      case 'col': return 'flex flex-col space-y-1 items-center';
+      case 'col-reverse': return 'flex flex-col-reverse space-y-reverse space-y-1 items-center';
+      case 'overlay': return 'grid place-items-center'; 
+      default: return 'flex flex-row space-x-2 items-center';
+    }
+  };
+
+  const getPositionStyle = (): React.CSSProperties => {
+    if (isDragging && watermarkRef.current) {
+      return { left: watermarkRef.current.style.left, top: watermarkRef.current.style.top };
+    }
     if (config.positionMode === 'custom') {
-      return {
-        left: `${config.customPosition.x}%`,
-        top: `${config.customPosition.y}%`,
-      };
+      return { left: `${config.customPosition.x}%`, top: `${config.customPosition.y}%` };
     } else {
-      // 预设位置
-      const presetPositions = {
+      const presetPositions: Record<string, { left: string, top: string }> = {
         'top-left': { left: '5%', top: '5%' },
         'top-right': { left: '85%', top: '5%' },
         'bottom-left': { left: '5%', top: '85%' },
         'bottom-right': { left: '85%', top: '85%' },
       };
-      return presetPositions[config.position];
+      return presetPositions[config.position] || presetPositions['top-right'];
     }
   };
-
-  // 处理拖拽开始
+  
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!watermarkRef.current) return;
+    const parent = watermarkRef.current.parentElement;
+    if (!parent) return;
 
-    // 如果是预设模式，自动切换到自定义模式
     if (config.positionMode === 'preset') {
       switchToCustomPosition();
     }
 
     setIsDragging(true);
-    
-    // 计算鼠标相对于水印元素的偏移
+    const parentRect = parent.getBoundingClientRect();
     const rect = watermarkRef.current.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-
-    // 添加全局事件监听
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!watermarkRef.current) return;
-      
-      const parent = watermarkRef.current.parentElement;
-      if (!parent) return;
-      
-      const parentRect = parent.getBoundingClientRect();
-      
-      // 计算新位置（百分比）
-      const newX = ((moveEvent.clientX - offsetX - parentRect.left) / parentRect.width) * 100;
-      const newY = ((moveEvent.clientY - offsetY - parentRect.top) / parentRect.height) * 100;
-      
-      // 限制在视频区域内
-      const clampedX = Math.max(0, Math.min(100, newX));
-      const clampedY = Math.max(0, Math.min(100, newY));
-      
-      // 更新水印位置
-      updateWatermark({
-        positionMode: 'custom',
-        customPosition: { x: clampedX, y: clampedY }
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+    
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialLeftPct: ((rect.left - parentRect.left + rect.width / 2) / parentRect.width) * 100,
+      initialTopPct: ((rect.top - parentRect.top + rect.height / 2) / parentRect.height) * 100,
+      parentWidth: parentRect.width,
+      parentHeight: parentRect.height
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  // 生成内联样式
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!watermarkRef.current) return;
+    const deltaX = e.clientX - dragRef.current.startX;
+    const deltaY = e.clientY - dragRef.current.startY;
+    const deltaXPct = (deltaX / dragRef.current.parentWidth) * 100;
+    const deltaYPct = (deltaY / dragRef.current.parentHeight) * 100;
+    let newX = dragRef.current.initialLeftPct + deltaXPct;
+    let newY = dragRef.current.initialTopPct + deltaYPct;
+    newX = Math.max(0, Math.min(100, newX));
+    newY = Math.max(0, Math.min(100, newY));
+    watermarkRef.current.style.left = `${newX}%`;
+    watermarkRef.current.style.top = `${newY}%`;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    if (!watermarkRef.current) return;
+    const finalLeft = parseFloat(watermarkRef.current.style.left || '0');
+    const finalTop = parseFloat(watermarkRef.current.style.top || '0');
+    const x = isNaN(finalLeft) ? dragRef.current.initialLeftPct : finalLeft;
+    const y = isNaN(finalTop) ? dragRef.current.initialTopPct : finalTop;
+    updateWatermark({ positionMode: 'custom', customPosition: { x, y } });
+  };
+
   const watermarkStyle: React.CSSProperties = {
+    position: 'absolute',
     fontFamily: config.fontFamily,
     fontSize: `${config.fontSize}px`,
+    fontWeight: config.fontWeight || 400,
+    fontStyle: config.fontStyle || 'normal',
+    textDecoration: config.textDecoration || 'none',
     color: config.color,
     backgroundColor: config.backgroundColor,
     opacity: config.opacity / 100,
     userSelect: 'none',
-    transform: 'translate(-50%, -50%)', 
-    ...getPosition(), 
+    transform: 'translate(-50%, -50%)',
+    cursor: isDragging ? 'grabbing' : 'grab',
+    zIndex: 30, 
+    whiteSpace: 'nowrap',
+    ...getPositionStyle(),
   };
+
+  const layout = config.layout || 'row';
+  const isOverlay = layout === 'overlay';
 
   return (
     <div 
+      
       ref={watermarkRef}
-      className={`absolute z-10 ${
-        isDragging ? 'cursor-grabbing' : 'cursor-grab'
-      } pointer-events-auto`}
       style={watermarkStyle}
       onMouseDown={handleMouseDown}
-      title={config.positionMode === 'preset' ? '点击拖拽切换到自定义位置' : '拖拽调整位置'}
+      className="group pointer-events-auto touch-none"
+      title="拖拽调整位置"
     >
-  <div className="flex items-center space-x-2 backdrop-blur-sm rounded-lg px-3 py-2">
-        <div 
-          className="w-8 h-8 mr-1" 
-          style={{ 
-            color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000' 
-          }}
-        >
-          <WatermarkLogo />
+      <div 
+        id="watermark-preview-node" 
+        className={`backdrop-blur-sm rounded-lg px-3 py-2 border border-transparent hover:border-white/20 transition-colors ${getLayoutClasses()}`}
+        style={{ transform: 'none' }} 
+      >
+        <div className={`relative flex-shrink-0 ${isOverlay ? 'col-start-1 row-start-1' : ''}`}>
+          {config.imageUrl ? (
+            <img 
+              src={config.imageUrl} 
+              alt="watermark" 
+              className="object-contain select-none pointer-events-none"
+              style={{ 
+                height: `${config.fontSize * 1.5}px`,
+                width: 'auto',
+                maxWidth: '120px',
+                display: 'block'
+              }}
+            />
+          ) : (
+            <div 
+              style={{ 
+                width: `${config.fontSize * 1.5}px`, 
+                height: `${config.fontSize * 1.5}px`,
+                color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000' 
+              }}
+            >
+              <WatermarkLogo />
+            </div>
+          )}
         </div>
-        <span className="font-medium leading-none">
-          {config.text}
-        </span>
-        {config.positionMode === 'custom' && (
-          <div className="w-2 h-2 bg-green-400 rounded-full opacity-60" 
-               title="自定义位置模式" />
+
+        {config.text && (
+          <span 
+            className={`font-medium leading-none select-none ${isOverlay ? 'col-start-1 row-start-1 z-10 drop-shadow-md' : ''}`}
+            style={isOverlay ? { 
+              textShadow: '0 1px 2px rgba(0,0,0,0.8)' 
+            } : {}}
+          >
+            {config.text}
+          </span>
         )}
       </div>
     </div>

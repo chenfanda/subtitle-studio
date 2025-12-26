@@ -113,7 +113,7 @@ export function VideoArea() {
             subtitle={currentSubtitle}
           />
         )}
-        <MaskOverlay />
+        {!isInsertClip && <MaskOverlay />}
         <SubtitleOverlay />
         
         <TextElementOverlay />

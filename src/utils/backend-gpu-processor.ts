@@ -9,7 +9,7 @@ import type { ProjectExport } from '../types/project';
 import type { ExportSettings } from '../stores/useExportStore';
 import { canUsePureFFmpeg } from './exportCapabilityUtils';
 
-const SYSTEM_FFMPEG_PATH = '/usr/local/bin/ffmpeg';
+const DOCKER_IMAGE = 'ffmpeg-cuda:6.1';
 
 const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boolean): ProjectExport => {
   const cleanProject = JSON.parse(JSON.stringify(originalProject));
@@ -19,7 +19,6 @@ const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boole
     cleanProject.content.textElements = [];
     cleanProject.content.placedMedia = []; 
   }
-
 
   if (cleanProject.settings?.watermark && !keepOverlays) {
     cleanProject.settings.watermark.enabled = false;
@@ -66,27 +65,28 @@ export const processWithGpu = async (
   settings: ExportSettings
 ): Promise<{ outputPath: string; isFinished: boolean }> => {
   return new Promise(async (resolve, reject) => { 
-    const tempDir = path.join(process.cwd(), 'temp', jobId);
+    const tempDir = path.resolve(path.join(process.cwd(), 'temp', jobId));
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
     const outputFilename = 'base_video.mp4';
     const outputPath = path.join(tempDir, outputFilename);
 
+    const hostUploadDir = path.resolve(SERVER_CONFIG.PATHS.UPLOAD_DIR);
+    const hostFontDir = path.resolve(path.join(process.cwd(), 'public', 'fonts'));
+
     const backendContext = {
-      uploadDir: SERVER_CONFIG.PATHS.UPLOAD_DIR,
-      fontDir: path.join(process.cwd(), 'public', 'fonts')
+      uploadDir: hostUploadDir,
+      fontDir: hostFontDir
     };
 
-    // 1. 智能判定：是否可以使用纯 FFmpeg 模式
     const isFastPath = canUsePureFFmpeg(project);
     
     if (isFastPath) {
-        console.log(`🚀 [GPU Mode] 判定为简单场景，启用 Fast Path (纯 FFmpeg 渲染)`);
+        console.log(`🚀 [GPU Mode] Fast Path`);
     } else {
-        console.log(`🐢 [GPU Mode] 判定为复杂场景，启用 Hybrid Path (FFmpeg + Remotion)`);
+        console.log(`🐢 [GPU Mode] Hybrid Path`);
     }
 
-    // 2. 根据判定结果清洗数据
     const stage1Project = sanitizeForGpuStage(project, isFastPath);
 
     const { command, mapper } = buildFfmpegCommand(
@@ -104,10 +104,10 @@ export const processWithGpu = async (
       return reject(e);
     }
 
-    const args: string[] = [];
+    const ffmpegArgs: string[] = [];
 
     mapper.remoteUrls.forEach(input => {
-       args.push('-i', input.localPath);
+       ffmpegArgs.push('-i', input.localPath);
     });
 
     const filterAndOutputArgs = [...command];
@@ -117,14 +117,28 @@ export const processWithGpu = async (
         filterAndOutputArgs.pop();
     }
 
-    args.push(...filterAndOutputArgs);
+    ffmpegArgs.push(...filterAndOutputArgs);
 
-    args.unshift('-y');
-    args.push(outputPath);
+    ffmpegArgs.unshift('-y');
+    ffmpegArgs.push(outputPath);
 
-    // console.log(`[GPU Stage 1] Executing: ${SYSTEM_FFMPEG_PATH} ${args.join(' ')}`);
+    const dockerArgs = [
+      'run', 
+      '--rm', 
+      '--gpus', 'all',
+      '-w', '/',
+      '-v', `${tempDir}:${tempDir}`,
+      '-v', `${hostUploadDir}:${hostUploadDir}:ro`,
+      '-v', `${hostFontDir}:${hostFontDir}:ro`,
+      '-v', `${hostFontDir}:/public/fonts:ro`,
+      DOCKER_IMAGE,
+      ...ffmpegArgs
+    ];
 
-    const ffmpegProcess = spawn(SYSTEM_FFMPEG_PATH, args);
+    // console.log(`🐳 [GPU Docker] Executing: docker ${dockerArgs.join(' ')}`);
+    console.log(`🐳 [GPU Docker] Executing!`);
+
+    const ffmpegProcess = spawn('docker', dockerArgs);
 
     let stderrData = '';
     ffmpegProcess.stderr.on('data', (data) => {
@@ -134,16 +148,16 @@ export const processWithGpu = async (
     ffmpegProcess.on('close', (code) => {
       if (code === 0) {
         console.log(`✅ [GPU Stage 1] Success: ${outputPath}`);
-        // 返回 isFinished 状态，通知 worker 是否需要跳过 Remotion
         resolve({ outputPath, isFinished: isFastPath });
       } else {
         console.error(`❌ [GPU Stage 1] Failed with code ${code}`);
-        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-1000)}`); 
+        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-2000)}`); 
         reject(new Error(`FFmpeg GPU process exited with code ${code}`));
       }
     });
 
     ffmpegProcess.on('error', (err) => {
+      console.error(`❌ [Docker Error] Failed to start docker process:`, err);
       reject(err);
     });
   });

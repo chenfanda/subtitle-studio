@@ -1,17 +1,24 @@
 
+export type WatermarkLayoutMode = 'row' | 'row-reverse' | 'col' | 'col-reverse' | 'overlay';
+
 export interface WatermarkConfig {
   enabled: boolean;
   text: string;
+  imageUrl?: string;
+  snapshotUrl?: string;
+  layout: WatermarkLayoutMode; 
   positionMode: 'preset' | 'custom';
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; // 预设模式
-  customPosition: { x: number; y: number }; // 自定义模式，百分比位置
-  opacity: number; // 0-100
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  customPosition: { x: number; y: number };
+  opacity: number;
   fontSize: number;
   fontFamily: string;
+  fontWeight?: number;
+  fontStyle?: string;
+  textDecoration?: string;
   color: string;
   backgroundColor: string;
 }
-
 export interface MaskConfig {
   enabled: boolean;
   x: number;      

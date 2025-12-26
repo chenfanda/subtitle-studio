@@ -236,7 +236,7 @@ export function BatchVoiceoverPanel() {
   };
 
   const handleSmartDubbing = async () => {
-    const audioUrl = sourceResources?.audioVocals || sourceResources?.video;
+    const audioUrl = sourceResources?.audioVocals || sourceResources?.video ;
     if (!audioUrl) return alert("错误：未找到视频或人声源文件");
 
     setIsLocalGenerating(true);

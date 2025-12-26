@@ -17,11 +17,9 @@ import {
   Zap, Cloud, Crown, AlertTriangle, CheckCircle2, ArrowRight,
   Loader2, Lock, Square, Maximize2, X
 } from 'lucide-react';
+import { captureWatermarkSnapshot } from '@/utils/watermarkUtils';
+import { fileUploader } from '@/utils/cloudUploader';
 
-
-// ==========================================
-// 主入口组件
-// ==========================================
 export default function GlobalModals() {
   return (
     <>
@@ -34,21 +32,16 @@ export default function GlobalModals() {
   );
 }
 
-// ==========================================
-// 1. 导出弹窗主逻辑组件 (Controller)
-// ==========================================
 function ExportModal() {
   const store = useExportStore();
   const isPremium = useIsPremium();
   const getProjectData = useProjectStore(state => state.exportProject);
   
-  // 本地 UI 状态
   const [localWarning, setLocalWarning] = useState<{ show: boolean; issues: string[] }>({ show: false, issues: [] });
   
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(store.exportStatus);
   const isSuccess = store.exportStatus === 'success';
 
-  // --- 核心逻辑：关闭处理 ---
   const handleClose = () => {
     if (store.exportStatus === 'success') {
       store.resetExport();
@@ -56,7 +49,6 @@ function ExportModal() {
     store.setShowExportModal(false);
   };
 
-  // --- 核心逻辑：取消/重置 ---
   const handleResetAndClose = () => {
     store.setShowExportModal(false);
     store.resetExport(); 
@@ -70,10 +62,9 @@ function ExportModal() {
     store.resetExport();
   };
 
-  // --- 业务逻辑：本地导出 ---
   const executeLocalExport = async (projectData: any) => {
     setLocalWarning({ show: false, issues: [] });
-    // 权限检查...
+    
     const needsPremiumRes = store.exportSettings.resolution > 720 || store.exportSettings.format === 'gif';
     if (needsPremiumRes && !isPremium) {
       store.setExportError('导出 1080p 或 GIF 格式是 Pro 会员功能。');
@@ -83,6 +74,16 @@ function ExportModal() {
     const controller = store.initExport();
     try {
       store.setResultBlob(null);
+
+      if (projectData.settings?.watermark?.enabled) {
+        store.setStatusMessage('正在生成水印...');
+        const snapshotBlob = await captureWatermarkSnapshot();
+        if (snapshotBlob) {
+          const blobUrl = URL.createObjectURL(snapshotBlob);
+          projectData.settings.watermark.snapshotUrl = blobUrl;
+        }
+      }
+      
       const blob = await runFrontendExport(
         projectData,
         store.exportSettings,
@@ -102,16 +103,16 @@ function ExportModal() {
   };
 
   const onLocalExportClick = () => {
-    const project = getProjectData();
-    const { isCompatible, issues } = checkFrontendCompatibility(project);
+    const rawProject = getProjectData();
+    const { isCompatible, issues } = checkFrontendCompatibility(rawProject);
     if (!isCompatible) {
       setLocalWarning({ show: true, issues });
     } else {
-      executeLocalExport(project);
+      const projectCopy = JSON.parse(JSON.stringify(rawProject));
+      executeLocalExport(projectCopy);
     }
   };
 
-  // --- 业务逻辑：云端导出 ---
   const onCloudExportClick = async () => {
     if (isExporting) return;
     if (!isPremium) {
@@ -126,11 +127,30 @@ function ExportModal() {
     store.setExportError(null);
     store.setJobId('');
     
-    // 使用 setTimeout 让 UI 先响应状态变化
     requestAnimationFrame(() => {
       setTimeout(async () => {
         try {
-          const project = getProjectData();
+          const rawProject = getProjectData();
+          const project = JSON.parse(JSON.stringify(rawProject));
+
+          if (project.settings?.watermark?.enabled) {
+            store.setStatusMessage('正在处理水印...');
+            const snapshotBlob = await captureWatermarkSnapshot();
+            
+            if (snapshotBlob) {
+              store.setStatusMessage('正在上传水印...');
+              const tempUrl = URL.createObjectURL(snapshotBlob);
+              const uploadedUrl = await fileUploader.uploadBlob(
+                tempUrl, 
+                'image', 
+                undefined, 
+                controller.signal
+              );
+              project.settings.watermark.snapshotUrl = uploadedUrl;
+              URL.revokeObjectURL(tempUrl);
+            }
+          }
+
           store.setStatusMessage('正在打包上传...');
           store.setExportStatus('uploading');
           
@@ -169,7 +189,7 @@ function ExportModal() {
       let finalUrl = store.downloadUrl;
          if (!finalUrl) {
         const apiBase = API_CLIENT.BASE_URL; 
-        const serverRoot = apiBase.replace(/\/api\/?$/, ''); // 去掉末尾的 /api
+        const serverRoot = apiBase.replace(/\/api\/?$/, ''); 
         finalUrl = `${serverRoot}/downloads/${store.jobId}.mp4`;
       }
 
@@ -193,7 +213,6 @@ function ExportModal() {
     }
   };
 
-  // --- 视图渲染路由 ---
   const renderContent = () => {
     if (isExporting) {
       return (
@@ -220,8 +239,9 @@ function ExportModal() {
           issues={localWarning.issues} 
           onBack={() => setLocalWarning({ show: false, issues: [] })}
           onContinue={() => {
-            const project = getProjectData();
-            executeLocalExport(sanitizeProjectForFrontend(project));
+            const rawProject = getProjectData();
+            const projectCopy = JSON.parse(JSON.stringify(rawProject));
+            executeLocalExport(sanitizeProjectForFrontend(projectCopy));
           }}
         />
       );
@@ -246,7 +266,6 @@ function ExportModal() {
       className="max-w-2xl"
     >
       <div className="p-6">
-        {/* 只有在选择阶段显示设置面板 */}
         {!isExporting && !isSuccess && !localWarning.show && (
           <SettingsPanel 
             settings={store.exportSettings}
@@ -268,11 +287,6 @@ function ExportModal() {
   );
 }
 
-// ==========================================
-// 2. 内部子组件 (Views) - 让主逻辑更清晰
-// ==========================================
-
-// 2.1 设置面板 (分辨率/格式)
 const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
   <div className="space-y-5 mb-6 border-b border-border-primary pb-6">
     <div className="grid grid-cols-2 gap-6">
@@ -316,7 +330,6 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
   </div>
 );
 
-// 2.2 选择视图 (本地/云端按钮)
 const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <button
@@ -372,7 +385,6 @@ const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => (
   </div>
 );
 
-// 2.3 进度视图 (导出中)
 const ProgressView = ({ status, progress, message, startTime, onCancel, onBackground }: any) => {
   const [elapsed, setElapsed] = useState('00:00');
 
@@ -447,7 +459,6 @@ const ResultView = ({ onDownload, onClose }: any) => (
     <p className="text-text-secondary text-sm mb-6">您的视频已准备就绪。</p>
     
     <div className="flex items-center justify-center gap-4 w-full max-w-xs mx-auto">
-      {/* 新增：关闭/重置按钮 */}
       <button
         className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-border-primary text-text-primary font-medium rounded transition-colors border border-transparent"
         onClick={onClose}
@@ -455,7 +466,6 @@ const ResultView = ({ onDownload, onClose }: any) => (
         关闭
       </button>
 
-      {/* 原有：下载按钮 */}
       <button
         className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors shadow-lg shadow-green-900/20"
         onClick={onDownload}
@@ -466,7 +476,6 @@ const ResultView = ({ onDownload, onClose }: any) => (
   </div>
 );
 
-// 2.5 警告视图
 const WarningView = ({ issues, onBack, onContinue }: any) => (
   <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-5">
     <div className="flex items-start space-x-4">
@@ -501,9 +510,6 @@ const WarningView = ({ issues, onBack, onContinue }: any) => (
   </div>
 );
 
-// ==========================================
-// 3. 悬浮 Toast 组件
-// ==========================================
 function ExportToast() {
   const { showExportModal, setShowExportModal, exportStatus, exportProgress } = useExportStore();
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(exportStatus);
@@ -542,19 +548,8 @@ function ExportToast() {
   );
 }
 
-// ==========================================
-// 4. 设置弹窗组件 (保持原样)
-// ==========================================
 function SettingsModal() {
   const { showSettingsModal, setShowSettingsModal } = useUIStore();
-  const isPremium = useIsPremium();
-  const { watermark, updateWatermark } = useSettingsStore();
-
-  const handleWatermarkToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEnabledState = e.target.checked;
-    if (newEnabledState === false && !isPremium) return;
-    updateWatermark({ enabled: newEnabledState });
-  };
 
   return (
     <Modal
@@ -565,24 +560,7 @@ function SettingsModal() {
     >
       <div className="p-6">
         <div className="space-y-4">
-          <h3 className="text-md font-medium text-text-primary border-b border-border-primary pb-2">水印</h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <label htmlFor="watermark-toggle" className="font-medium text-text-primary">启用项目水印</label>
-              <p className="text-sm text-text-secondary">{!isPremium ? 'Pro 会员可移除水印' : '在视频上显示您的水印'}</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                id="watermark-toggle"
-                className="sr-only peer"
-                checked={watermark.enabled}
-                onChange={handleWatermarkToggle}
-                disabled={!isPremium && watermark.enabled}
-              />
-              <div className={`w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${!isPremium && watermark.enabled ? 'cursor-not-allowed opacity-50' : 'peer-checked:bg-accent-purple'}`}></div>
-            </label>
-          </div>
+           <p className="text-text-secondary text-sm">更多通用设置即将推出...</p>
         </div>
       </div>
     </Modal>

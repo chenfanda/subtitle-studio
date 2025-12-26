@@ -5,7 +5,8 @@ import {
   Crown,
   Settings,
   UserCog,
-  Eraser
+  Eraser,
+  Stamp 
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -13,12 +14,13 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useExportStore } from '@/stores/useExportStore'; 
 import { useUserStore } from '@/stores/useUserStore';
 import { MaskControlPanel } from '../video/MaskControlPanel';
+import { WatermarkControlPanel } from '../video/WatermarkControlPanel'; 
 
 export function HeaderBar() {
   const { exportStatus } = useExportStore();
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(exportStatus);
   
-  // 1. 获取 appStage，用于判断当前页面
+
   const { title, updateProjectTitle, appStage } = useProjectStore(); 
   
   const { toggleLeftPanel } = useUIStore();
@@ -26,13 +28,13 @@ export function HeaderBar() {
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
+  const [showWatermarkPanel, setShowWatermarkPanel] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const { isLoggedIn, userInfo, logout, openAuthModal, _temp_togglePremium, openProfileModal } = useUserStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
    const [showMaskPanel, setShowMaskPanel] = useState(false);
 
-  // 判断是否是编辑模式（只有编辑模式才显示 撤销/重做/导出/设置/侧边栏切换）
   const isEditingMode = appStage === 'editing';
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export function HeaderBar() {
   };
 
   return (
-    <div className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-50 relative">
+    <div className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-[200] relative">
       <div className="flex items-center space-x-4">
         {/* 只有编辑模式显示侧边栏切换 */}
         {isEditingMode && (
@@ -171,6 +173,35 @@ export function HeaderBar() {
 
             <div className="flex items-center space-x-2">
                <div className="relative">
+                        <button 
+                          onClick={() => {
+                            setShowWatermarkPanel(!showWatermarkPanel);
+                            setShowMaskPanel(false); // 互斥：打开水印时关闭遮罩
+                          }}
+                          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                            showWatermarkPanel 
+                              ? 'bg-accent-purple text-white' 
+                              : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                          }`}
+                          title="水印设置"
+                        >
+                          <Stamp className="w-5 h-5" />
+                        </button>
+
+                        {showWatermarkPanel && (
+                          <>
+
+                            <div 
+                              className="fixed inset-0 z-40" 
+                              onClick={() => setShowWatermarkPanel(false)} 
+                            />
+                            <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                              <WatermarkControlPanel />
+                            </div>
+                          </>
+                        )}
+                      </div>
+               <div className="relative">
                 <button 
                   onClick={() => setShowMaskPanel(!showMaskPanel)}
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
@@ -189,7 +220,7 @@ export function HeaderBar() {
                       className="fixed inset-0 z-40" 
                       onClick={() => setShowMaskPanel(false)} 
                     />
-                    <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                       <MaskControlPanel />
                     </div>
                   </>
