@@ -70,6 +70,23 @@ const staticOptions = {
 app.use('/uploads', express.static(uploadDir, staticOptions));
 app.use('/downloads', express.static(downloadsDir, staticOptions));
 
+const allowLocalhostOnly = (req: express.Request, res: express.Response, next: express.NextFunction) => {  
+  const remote = req.ip || req.connection.remoteAddress;    
+  if (remote === '::1' || remote === '127.0.0.1' || remote === '::ffff:127.0.0.1') {  
+    next();  
+  } else {  
+    console.warn(`[Security] Blocked external access to temp dir from: ${remote}`);  
+    res.status(403).send('Forbidden');  
+  }  
+};  
+  
+  
+const tempDir = path.join(process.cwd(), 'temp');  
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });  
+  
+  
+app.use('/temp', allowLocalhostOnly, express.static(tempDir));
+
 
 app.post('/api/upload', (req, res) => {
   const uploadMiddleware = upload.single('file');

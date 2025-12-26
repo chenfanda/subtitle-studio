@@ -16,7 +16,7 @@ import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { DEFAULT_SUBTITLE_STYLE, DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
-import { createRichTextFromPlainText } from '@/utils/textStyleUtils'; // [确认] 用于生成富文本
+import { createRichTextFromPlainText } from '@/utils/textStyleUtils'; 
 import { MediaPopover } from './MediaPopover';
 import { createPortal } from 'react-dom';
 import { useMediaStore } from '@/stores/useMediaStore';
@@ -71,7 +71,7 @@ export function SubtitleList() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // [新增] 文件上传 Input 的引用
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { placeOnTimeline } = useMediaStore();
@@ -124,12 +124,12 @@ export function SubtitleList() {
     };
   }, []);
 
-  // [新增] 点击导入按钮
+  
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
 
-  // [新增] 核心逻辑：处理 SRT 文件上传、解析、格式化
+  
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -144,15 +144,15 @@ export function SubtitleList() {
         return;
       }
 
-      // 2. 转换为系统可用的完整数据结构
+    
       const formattedSubtitles = rawSubtitles.map(sub => ({
         ...sub,
-        id: generateId(), // 使用 storeUtils 中的 generateId 生成唯一 ID
-        // 关键：生成 richText，否则配音和编辑功能会出错
+        id: generateId(), 
+        
         richText: createRichTextFromPlainText(sub.text, DEFAULT_SUBTITLE_STYLE),
         position: { ...DEFAULT_SUBTITLE_POSITION },
         style: { ...DEFAULT_SUBTITLE_STYLE },
-        // 关键：重置音轨，确保配音弹窗将其视为"待配音"的新任务
+        
         audioTrack: undefined, 
         soundEffect: undefined,
         brollVideo: undefined

@@ -130,3 +130,37 @@ export const sanitizeProjectForFrontend = (project: ProjectExport): ProjectExpor
 
   return cleanProject;
 };
+
+export const canUsePureFFmpeg = (project: ProjectExport): boolean => {
+  if (project.content.subtitles) {
+    for (const sub of project.content.subtitles) {
+      if (sub.richText && sub.richText.some((seg: RichTextSegment) => seg.animation)) {
+        return false;
+      }
+
+      if (sub.style) {
+        if (sub.style.highlightColor && (sub.style.highlightIntensity || 0) > 0) {
+          return false;
+        }
+
+        if (sub.style.backgroundColor !== 'transparent' && (sub.style.backgroundShape || 0) > 0) {
+          return false;
+        }
+      }
+
+      if (sub.brollVideo?.transition === 'glow') {
+        return false;
+      }
+    }
+  }
+
+  if (project.content.textElements) {
+    for (const el of project.content.textElements) {
+      if (el.richText && el.richText.some((seg: RichTextSegment) => seg.animation)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};

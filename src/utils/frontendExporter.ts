@@ -114,24 +114,36 @@ const loadMediaToMEMFS = async (
   const total = remoteUrls.length;
   let completed = 0;
 
-  // 并行下载
-  await Promise.all(
-    remoteUrls.map(async ({ url, localPath }) => {
+  const resolveUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('blob:') || url.startsWith('data:') || url.startsWith('http')) return url;
+  if (url.startsWith('/')) return new URL(url, window.location.origin).toString();
+  return url;
+  };
+
+ await Promise.all(
+    remoteUrls.map(async ({ url: rawUrl, localPath }) => {
       checkAbort(signal);
+      const url = resolveUrl(rawUrl);
       
       try {
         let data: Uint8Array | FileData;
         
         if (url.startsWith('blob:')) {
-          const response = await fetch(url); // fetch 此时不支持 signal 传递（除非这里也透传），但我们在外部 Promise.all 检查了 signal
+          const response = await fetch(url); 
           const blob = await response.blob();
           const arrayBuffer = await blob.arrayBuffer();
           data = new Uint8Array(arrayBuffer);
         } else {
-          data = await fetchFile(url);
+      
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP Error ${response.status} at ${url}`);
+          const blob = await response.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          data = new Uint8Array(arrayBuffer);
         }
         
-        checkAbort(signal); // 下载完再次检查
+        checkAbort(signal); 
         await ffmpeg.writeFile(localPath, data);
         
         completed++;

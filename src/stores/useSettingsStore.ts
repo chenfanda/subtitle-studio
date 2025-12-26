@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { WatermarkConfig, SettingsState } from '../types/settings';
+import type { WatermarkConfig, SettingsState,MaskConfig } from '../types/settings';
 
 interface SettingsStore extends SettingsState {
   updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
@@ -10,6 +10,7 @@ interface SettingsStore extends SettingsState {
   updateWatermark: (config: Partial<WatermarkConfig>) => void;
   toggleWatermark: () => void;
   switchToCustomPosition: () => void;
+  updateMask: (config: Partial<MaskConfig>) => void;
   
   setCustomShortcut: (action: string, shortcut: string) => void;
   removeCustomShortcut: (action: string) => void;
@@ -65,6 +66,17 @@ const defaultSettings: SettingsState = {
     color: '#ffffff',
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
+
+    mask: {
+    enabled: false,       
+    x: 10,                
+    y: 85,                
+    width: 80,            
+    height: 10,           
+    mode: 'blur',        
+    intensity: 10,        
+  },
+
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -178,6 +190,19 @@ export const useSettingsStore = create<SettingsStore>()(
         delete presets[name];
         localStorage.setItem('subtitle-studio-presets', JSON.stringify(presets));
       },
+
+       updateMask: (config) => 
+        set((state) => {
+          
+          Object.assign(state.mask, config);
+          
+          
+          try {
+            localStorage.setItem('subtitle-studio-settings', JSON.stringify(get()));
+          } catch (error) {
+            console.warn('Failed to save mask settings:', error);
+          }
+        }),
       
       getPresets: () => {
         const presets = JSON.parse(localStorage.getItem('subtitle-studio-presets') || '{}');

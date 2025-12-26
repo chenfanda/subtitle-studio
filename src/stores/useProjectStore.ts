@@ -249,7 +249,8 @@ const projectStoreCreator: StateCreator<
         audioMix: state.audioMix,
       }, 
       settingsState: { 
-        watermark: settingsStore.watermark, 
+        watermark: settingsStore.watermark,
+        mask: settingsStore.mask, 
       }, 
       uiState: { 
         selectedSubtitleIds: uiStore.selectedSubtitleIds, 
@@ -281,7 +282,10 @@ const projectStoreCreator: StateCreator<
     useTextElementStore.getState().restoreTextElements(snapshot.textElements); 
     useMediaStore.getState().restorePlacedMedia(snapshot.placedMedia); 
     useBrollStore.getState().restorePlacedBrolls(snapshot.placedBrolls); 
-    useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic); 
+    useAudioStore.getState().restoreBackgroundMusic(snapshot.backgroundMusic);
+    if (snapshot.settingsState?.mask) {
+    useSettingsStore.getState().updateMask(snapshot.settingsState.mask);
+  }
     if (snapshot.videoSequenceSegments) { 
       useVideoSequenceStore.getState().restoreSegments(snapshot.videoSequenceSegments); 
     } 
@@ -319,7 +323,8 @@ const projectStoreCreator: StateCreator<
         sourceResources: state.sourceResources ?? undefined,
       }, 
       settings: { 
-        watermark: settingsStore.watermark, 
+        watermark: settingsStore.watermark,
+        mask: settingsStore.mask,
         referenceHeight: state.editorHeight
       } 
     }; 
@@ -347,6 +352,12 @@ const projectStoreCreator: StateCreator<
     } 
    
     useSettingsStore.getState().updateWatermark(project.settings.watermark); 
+    if (project.settings.mask) {
+    useSettingsStore.getState().updateMask(project.settings.mask);
+  } else {
+    
+    useSettingsStore.getState().updateMask({ enabled: false });
+  }
   }, 
   
   resetProject: () => { 

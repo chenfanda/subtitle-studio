@@ -4,6 +4,7 @@ import { SubtitleOverlay } from '../video/SubtitleOverlay';
 import { TextElementOverlay } from '../video/TextElementOverlay';
 import { MediaOverlay } from '../video/MediaOverlay';
 import { Watermark } from '../common/Watermark';
+import { MaskOverlay } from '../video/MaskOverlay'; 
 import { BrollVideoPlayer } from '../broll/BrollVideoPlayer';
 import { VoiceoverAudioPlayer } from '../audio/voiceover/VoiceoverAudioPlayer';
 import { useProjectStore } from '../../stores/useProjectStore';
@@ -112,7 +113,7 @@ export function VideoArea() {
             subtitle={currentSubtitle}
           />
         )}
-        
+        <MaskOverlay />
         <SubtitleOverlay />
         
         <TextElementOverlay />

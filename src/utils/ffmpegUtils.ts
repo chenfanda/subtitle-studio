@@ -1,5 +1,10 @@
 export type FFmpegTarget = 'frontend' | 'backend';
 
+export interface BackendContext {
+  uploadDir: string;
+  fontDir: string;
+}
+
 const FONT_MAP: Record<string, string> = {
   'Alibaba PuHuiTi': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
   '"Alibaba PuHuiTi", sans-serif': 'AlibabaPuHuiTi-3-105-Heavy.ttf',
@@ -26,21 +31,36 @@ export class InputMapper {
   private map = new Map<string, { index: number; localPath: string }>();
   public remoteUrls: { url: string; localPath: string }[] = [];
 
-  addInput(url: string): string {
+  addInput(url: string, context?: BackendContext): string {
     if (this.map.has(url)) {
       return this.map.get(url)!.localPath;
     }
 
     const index = this.map.size;
-    const pathPart = url.split('?')[0];
-    const parts = pathPart.split('.');
-    let extension = parts.length > 1 ? parts.pop() : undefined;
-    if (!extension || extension.includes(':') || extension.includes('/')) {
-      extension = 'mp4';
+    let localPath = '';
+
+    if (context) {
+      // === 后端模式 ===
+      localPath = url;
+      if (url.includes('/uploads/')) {
+        const filename = url.split('/uploads/')[1].split('?')[0];
+        // 手动拼接路径，不使用 path 模块
+        const baseDir = context.uploadDir.replace(/\/$/, '');
+        localPath = `${baseDir}/${filename}`;
+      }
+    } else {
+      // === 前端模式 ===
+      const pathPart = url.split('?')[0];
+      const parts = pathPart.split('.');
+      let extension = parts.length > 1 ? parts.pop() : undefined;
+      if (!extension || extension.includes(':') || extension.includes('/')) {
+        extension = 'mp4';
+      }
+      localPath = `/media/input_${index}.${extension}`;
     }
-    const localPath = `/media/input_${index}.${extension}`;
 
     this.map.set(url, { index, localPath });
+    // 必须保留这行
     this.remoteUrls.push({ url, localPath });
 
     return localPath;
@@ -116,7 +136,7 @@ export const escapeFfmpegText = (text: string): string => {
     .replace(/%/g, '%%');
 };
 
-export const getFontPath = (fontFamily: string, target: FFmpegTarget): string => {
+export const getFontPath = (fontFamily: string, target: FFmpegTarget, fontDir?: string): string => {
   let fontFile = FONT_MAP[fontFamily];
 
   if (!fontFile) {
@@ -131,6 +151,11 @@ export const getFontPath = (fontFamily: string, target: FFmpegTarget): string =>
   if (target === 'frontend') {
     return `/fonts/${fontFile}`;
   } else {
-    return `/usr/share/fonts/${fontFile}`;
+    if (fontDir) {
+      const baseDir = fontDir.replace(/\/$/, '');
+      return `${baseDir}/${fontFile}`;
+    }
+    
+    return `public/fonts/${fontFile}`;
   }
 };

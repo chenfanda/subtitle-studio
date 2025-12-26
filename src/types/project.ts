@@ -1,5 +1,5 @@
 import type { TimelineSegment } from './videoSequence';
-
+import type { MaskConfig } from './settings'; 
 export interface SourceResources {
   video: string;        
   audioVocals: string;
@@ -29,6 +29,7 @@ export interface ProjectState {
   lastSaved: Date | null;
   saveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
   editorHeight: number;
+  originalVocalsUrl: string | null;
 }
 
 export interface ProjectExport {
@@ -54,6 +55,7 @@ export interface ProjectExport {
   };
   settings: {
     watermark: any;
+    mask: MaskConfig; 
     referenceHeight?: number;          
   };
 }

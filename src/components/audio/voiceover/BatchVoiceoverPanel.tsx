@@ -153,13 +153,13 @@ export function BatchVoiceoverPanel() {
         const map = new Map<string, string>();
         parsed.forEach(ps => {
             const key = `${(ps.startTime/1000).toFixed(1)}-${(ps.endTime/1000).toFixed(1)}`;
-            map.set(key, ps.text); // Map 里存纯文本
+            map.set(key, ps.text); 
         });
         srtCacheRef.current = map;
-        alert(`原声字幕已更新，共 ${parsed.length} 条`);
+        
       } else {
-        // 保存新剧本：更新 Store
-        // 尝试保留原有 ID 以维持状态
+        
+        
         const merged = parsed.map((p, i) => {
             const old = subtitles[i];
             return {
@@ -167,11 +167,11 @@ export function BatchVoiceoverPanel() {
                 id: old ? old.id : p.id,
                 style: old ? old.style : p.style,
                 position: old ? old.position : p.position,
-                // audioTrack: undefined // 如果需要重置配音状态可以解开这行
+                
             };
         });
         restoreSubtitles(merged);
-        alert(`新剧本已更新，共 ${merged.length} 条`);
+        
       }
       setEditorMode(null);
     } catch (e) {
@@ -236,16 +236,14 @@ export function BatchVoiceoverPanel() {
   };
 
   const handleSmartDubbing = async () => {
-    const audioUrl = sourceResources?.video || sourceResources?.audioVocals;
+    const audioUrl = sourceResources?.audioVocals || sourceResources?.video;
     if (!audioUrl) return alert("错误：未找到视频或人声源文件");
 
     setIsLocalGenerating(true);
     setProgressMsg('正在生成全剧本配音...');
 
     try {
-      // 这里的 originalMap 只是用于 fallback 查找，实际上 ttsService.generateSmartDubbing
-      // 应该直接使用我们刚刚编辑好的 originalSubtitlesRef.current (如果它存在)
-      // 但为了保持接口一致性，我们还是传 Map，但在 generateSmartDubbing 内部可以优化
+
       
       const originalMap = srtCacheRef.current || new Map();
       const result = await ttsService.generateSmartDubbing(subtitles, originalMap, audioUrl);

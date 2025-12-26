@@ -4,7 +4,7 @@ import type { SubtitleItem, SubtitleStyle } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_STYLE, DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import type { TextElement } from '@/types/textElement';
 import type { PlacedMediaItem } from '@/types/media';
-import type { WatermarkConfig } from '@/types/settings';
+import type { WatermarkConfig, MaskConfig  } from '@/types/settings';
 import type { AnimationEffect } from '@/types/animation';
 import {
   type FFmpegTarget,
@@ -578,4 +578,60 @@ export const buildWatermarkTrack = (
   }
   
   return { videoStream: lastStream, filters };
+};
+
+export const buildMaskTrack = (
+  mask: MaskConfig,
+  lastStream: string,
+  targetW: number,
+  targetH: number
+): { videoStream: string; filters: string[] } => {
+  const filters: string[] = [];
+
+  if (!mask || !mask.enabled) {
+    return { videoStream: lastStream, filters };
+  }
+
+  const safeX = Number.isFinite(mask.x) ? mask.x : 0;
+  const safeY = Number.isFinite(mask.y) ? mask.y : 0;
+  const safeW = (Number.isFinite(mask.width) && mask.width >= 1) ? mask.width : 20;
+  const safeH = (Number.isFinite(mask.height) && mask.height >= 1) ? mask.height : 10;
+
+  const x = Math.floor((safeX / 100) * targetW / 2) * 2;
+  const y = Math.floor((safeY / 100) * targetH / 2) * 2;
+  const w = Math.floor((safeW / 100) * targetW / 2) * 2;
+  const h = Math.floor((safeH / 100) * targetH / 2) * 2;
+
+  if (w <= 0 || h <= 0) {
+    return { videoStream: lastStream, filters };
+  }
+
+  const maskStream = '[mask_region]';
+  const processedStream = '[mask_processed]';
+  const nextV = '[v_masked]';
+
+  filters.push(`${lastStream}split[base_for_mask][to_mask]`);
+  filters.push(`[to_mask]crop=${w}:${h}:${x}:${y}${maskStream}`);
+
+  let effectFilter = '';
+  let tintFilter = '';
+
+  if (mask.mode === 'mosaic') {
+    const pixelSize = Math.max(8, mask.intensity * 3);
+    
+
+    effectFilter = `gblur=sigma=2,scale=trunc(iw/${pixelSize}):trunc(ih/${pixelSize}):flags=area,scale=${w}:${h}:flags=neighbor`;
+    
+    tintFilter = `,drawbox=t=fill:c=black@0.1`;
+  } else {
+    
+    const radius = Math.max(2, mask.intensity * 4);
+    effectFilter = `avgblur=sizeX=${radius}:sizeY=${radius}`; 
+    tintFilter = `,drawbox=t=fill:c=white@0.1`;
+  }
+
+  filters.push(`${maskStream}${effectFilter}${tintFilter}${processedStream}`);
+  filters.push(`[base_for_mask]${processedStream}overlay=${x}:${y}${nextV}`);
+
+  return { videoStream: nextV, filters };
 };

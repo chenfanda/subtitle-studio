@@ -4,13 +4,15 @@ import {
   LogOut,
   Crown,
   Settings,
-  UserCog
+  UserCog,
+  Eraser
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useExportStore } from '@/stores/useExportStore'; 
 import { useUserStore } from '@/stores/useUserStore';
+import { MaskControlPanel } from '../video/MaskControlPanel';
 
 export function HeaderBar() {
   const { exportStatus } = useExportStore();
@@ -28,6 +30,7 @@ export function HeaderBar() {
   
   const { isLoggedIn, userInfo, logout, openAuthModal, _temp_togglePremium, openProfileModal } = useUserStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+   const [showMaskPanel, setShowMaskPanel] = useState(false);
 
   // 判断是否是编辑模式（只有编辑模式才显示 撤销/重做/导出/设置/侧边栏切换）
   const isEditingMode = appStage === 'editing';
@@ -167,6 +170,31 @@ export function HeaderBar() {
             </div>
 
             <div className="flex items-center space-x-2">
+               <div className="relative">
+                <button 
+                  onClick={() => setShowMaskPanel(!showMaskPanel)}
+                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                    showMaskPanel 
+                      ? 'bg-accent-purple text-white' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                  }`}
+                  title="去除原始字幕 / 遮挡工具"
+                >
+                  <Eraser className="w-5 h-5" />
+                </button>
+
+                {showMaskPanel && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowMaskPanel(false)} 
+                    />
+                    <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <MaskControlPanel />
+                    </div>
+                  </>
+                )}
+              </div>
               <button 
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
                 title="设置"

@@ -2,7 +2,7 @@ import type { SubtitleItem } from './subtitle';
 import type { TextElement } from './textElement';
 import type { TimelineSegment } from './videoSequence';
 import type { AudioTrack } from './audio';
-import type { WatermarkConfig } from './settings';
+import type { WatermarkConfig, MaskConfig } from './settings';
 import type { ProjectState } from './project';
 import type { UIState } from './ui';
 
@@ -10,6 +10,7 @@ type Snapshot_ProjectState = Pick<ProjectState, 'title' | 'volume' | 'playbackRa
 
 type Snapshot_SettingsState = {
   watermark: WatermarkConfig;
+  mask: MaskConfig; 
 };
 
 type Snapshot_UIState = Pick<UIState, 

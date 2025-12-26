@@ -1,17 +1,17 @@
 import type { ProjectExport } from '@/types/project';
 import type { ExportSettings } from '@/stores/useExportStore';
 import type { TimelineSegment } from '@/types/videoSequence';
-import { InputMapper, FFmpegTarget} from './ffmpegUtils';
+import { InputMapper, FFmpegTarget, BackendContext } from './ffmpegUtils';
 import {
   buildVideoTrack,
   buildAudioTrack,
   buildMediaTrack,
   buildBrollTrack,
   buildTextTrack,
-  buildWatermarkTrack
+  buildWatermarkTrack,
+  buildMaskTrack 
 } from './ffmpegFilterBuilder';
 
-// TimeWarpMap class remains unchanged...
 class TimeWarpMap {
   private mappingPoints: { global: number, new: number }[] = [];
 
@@ -98,38 +98,37 @@ class TimeWarpMap {
   }
 }
 
-// --- MODIFIED: scanProjectInputs ---
-const scanProjectInputs = (project: ProjectExport, mapper: InputMapper) => {
+
+const scanProjectInputs = (project: ProjectExport, mapper: InputMapper, context?: BackendContext) => {
   (project.content.videoSequenceSegments || []).forEach(seg => {
-    mapper.addInput(seg.sourceUrl);
+    mapper.addInput(seg.sourceUrl, context);
   });
 
-  // NEW: Scan for separated audio tracks
   if (project.content.sourceResources?.audioVocals) {
-    mapper.addInput(project.content.sourceResources.audioVocals);
+    mapper.addInput(project.content.sourceResources.audioVocals, context);
   }
   if (project.content.sourceResources?.audioBacking) {
-    mapper.addInput(project.content.sourceResources.audioBacking);
+    mapper.addInput(project.content.sourceResources.audioBacking, context);
   }
 
   (project.content.placedMedia || []).forEach(item => {
-    mapper.addInput(item.media.url);
+    mapper.addInput(item.media.url, context);
   });
 
   (project.content.subtitles || []).forEach(sub => {
     if (sub.brollVideo) {
-      mapper.addInput(sub.brollVideo.video.url);
+      mapper.addInput(sub.brollVideo.video.url, context);
     }
     if (sub.audioTrack) {
-      mapper.addInput(sub.audioTrack.track.url);
+      mapper.addInput(sub.audioTrack.track.url, context);
     }
     if (sub.soundEffect) {
-      mapper.addInput(sub.soundEffect.track.url);
+      mapper.addInput(sub.soundEffect.track.url, context);
     }
   });
 
   if (project.content.backgroundMusic) {
-    mapper.addInput(project.content.backgroundMusic.url);
+    mapper.addInput(project.content.backgroundMusic.url, context);
   }
 };
 
@@ -140,7 +139,9 @@ export const buildFfmpegCommand = (
   project: ProjectExport,
   settings: ExportSettings,
   target: FFmpegTarget,
-  isPremium: boolean
+  isPremium: boolean,
+  backendContext?: BackendContext,
+  enableHardwareAcceleration: boolean = false
 ): { command: string[]; mapper: InputMapper } => {
   const mapper = new InputMapper();
   const allVideoFilters: string[] = [];
@@ -150,7 +151,7 @@ export const buildFfmpegCommand = (
   timeWarper.build(project.content.videoSequenceSegments);
   const getNewTime = timeWarper.getNewTime.bind(timeWarper);
 
-  scanProjectInputs(project, mapper);
+  scanProjectInputs(project, mapper, backendContext);
 
   let finalResolution = settings.resolution;
   if (!isPremium && finalResolution > 720) {
@@ -162,22 +163,22 @@ export const buildFfmpegCommand = (
   const scaleFactor = targetH / refHeight;
   const targetW = Math.round(targetH * 16 / 9) & ~1;
 
-  // MODIFIED: Call to buildVideoTrack
+  
   const {
     videoStream: baseVideoStream,
     audioStream: baseAudioStream,
-    vocalsStream, // <-- Receive new stream
-    backingStream, // <-- Receive new stream
+    vocalsStream, 
+    backingStream, 
     filters: videoTrackFilters
   } = buildVideoTrack(
     project.content.videoSequenceSegments, 
-    project.content.sourceResources, // <-- Pass new argument
+    project.content.sourceResources, 
     mapper, 
     targetW, 
     targetH
   );
   
-  // This logic to split filters remains the same
+  
   videoTrackFilters.forEach(f => {
     if (f.includes('atrim') || f.includes('asetpts') || f.includes('acopy') || (f.includes('concat=n=') && f.includes(':a=1'))) {
       allAudioFilters.push(f);
@@ -188,7 +189,15 @@ export const buildFfmpegCommand = (
   
   let currentStream = baseVideoStream;
 
-  // ... (media, broll, text, watermark sections are unchanged) ...
+
+  const {
+    videoStream: maskStream,
+    filters: maskFilters
+  } = buildMaskTrack(project.settings.mask, currentStream, targetW, targetH);
+  
+  allVideoFilters.push(...maskFilters);
+  currentStream = maskStream; 
+  
   const {
     videoStream: mediaStream,
     filters: mediaFilters
@@ -233,13 +242,13 @@ export const buildFfmpegCommand = (
   } = buildWatermarkTrack(project.settings.watermark, isPremium, currentStream, target);
   allVideoFilters.push(...watermarkFilters);
 
-  // MODIFIED: Call to buildAudioTrack
+  
   const {
     audioStream: finalAudioStream,
     filters: audioFilters
   } = buildAudioTrack(
     project.content, 
-    { // <-- Pass new object structure
+    { 
       baseAudio: baseAudioStream,
       vocals: vocalsStream,
       backing: backingStream,
@@ -252,7 +261,9 @@ export const buildFfmpegCommand = (
   const filterComplex = [...allVideoFilters, ...allAudioFilters].join(';');
   const command = ['-filter_complex', filterComplex];
 
-  // ... (final command assembly logic is unchanged) ...
+  
+
+  
   if (isGif) {
     const gifFilters = `${filterComplex};${finalVideoStream}split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse[v_gif_out]`;
     command[1] = gifFilters;
@@ -262,10 +273,26 @@ export const buildFfmpegCommand = (
   } else {
     command.push(
       '-map', finalVideoStream,
-      '-map', finalAudioStream,
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-r', '30',
+      '-map', finalAudioStream
+    );
+
+    if (target === 'backend' && enableHardwareAcceleration) {
+      command.push(
+        '-c:v', 'h264_nvenc',
+        '-preset', 'p4',
+        '-cq', '20',
+        '-pix_fmt', 'yuv420p',
+        '-r', '30'
+      );
+    } else {
+      command.push(
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-r', '30'
+      );
+    }
+
+    command.push(
       '-c:a', 'aac',
       '-b:a', '128k',
       '-shortest',

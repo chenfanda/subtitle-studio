@@ -9,13 +9,51 @@ const checkAbort = (signal?: AbortSignal) => {
   }
 };
 
+const resolveUrl = (url: string) => {
+  if (url && url.startsWith('/')) {
+    return new URL(url, window.location.origin).toString();
+  }
+  return url;
+};
+
+function normalizeProjectUrls(content: ProjectExport['content']) {
+  if (content.videoSequenceSegments) {
+    content.videoSequenceSegments.forEach(seg => {
+      if (seg.sourceUrl) seg.sourceUrl = resolveUrl(seg.sourceUrl);
+    });
+  }
+
+  if (content.placedMedia) {
+    content.placedMedia.forEach(item => {
+      if (item.media?.url) item.media.url = resolveUrl(item.media.url);
+    });
+  }
+  
+  if (content.subtitles) {
+    content.subtitles.forEach(sub => {
+      if (sub.brollVideo?.video?.url) sub.brollVideo.video.url = resolveUrl(sub.brollVideo.video.url);
+      if (sub.audioTrack?.track?.url) sub.audioTrack.track.url = resolveUrl(sub.audioTrack.track.url);
+      if (sub.soundEffect?.track?.url) sub.soundEffect.track.url = resolveUrl(sub.soundEffect.track.url);
+    });
+  }
+
+  if (content.backgroundMusic?.url) {
+    content.backgroundMusic.url = resolveUrl(content.backgroundMusic.url);
+  }
+
+  if (content.sourceResources) {
+    if (content.sourceResources.audioVocals) content.sourceResources.audioVocals = resolveUrl(content.sourceResources.audioVocals);
+    if (content.sourceResources.audioBacking) content.sourceResources.audioBacking = resolveUrl(content.sourceResources.audioBacking);
+    if (content.sourceResources.video) content.sourceResources.video = resolveUrl(content.sourceResources.video);
+  }
+}
+
 function collectUploadTasks(content: ProjectExport['content']) {
   const tasks: { obj: any; key: string; url: string }[] = [];
 
   const checkAndAdd = (obj: any, key: string, force: boolean = false) => {
     const url = obj?.[key];
     if (typeof url === 'string') {
-    
       const isBlob = url.startsWith('blob:');
       const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1');
       
@@ -52,6 +90,9 @@ export const prepareProjectForExport = async (
   signal?: AbortSignal
 ): Promise<ProjectExport> => {
   const serverReadyProject = JSON.parse(JSON.stringify(project));
+  
+  normalizeProjectUrls(serverReadyProject.content);
+
   const tasks = collectUploadTasks(serverReadyProject.content);
   const total = tasks.length;
   
@@ -110,6 +151,5 @@ export const runBackendExport = async (
   
   const { jobId } = await api.startExportJob(payload as any, signal);
 
-  
   return jobId;
 };

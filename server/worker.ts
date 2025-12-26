@@ -8,6 +8,8 @@ import treeKill from 'tree-kill';
 import { connection, type RenderJobData, redisConfig } from './queue';
 import { hasGpu } from './gpu-utils';
 
+import { processWithGpu } from '../src/utils/backend-gpu-processor';
+import { SERVER_CONFIG } from './config/server-config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,9 +42,8 @@ export const worker = new Worker<RenderJobData>(
   async (job) => {
     const { project, jobId, exportSettings } = job.data;
     
-    return new Promise((resolve, reject) => {
+    return new Promise( async (resolve, reject) => {
       const scriptPath = path.join(__dirname, 'render.ts');
-      
       
       const safeJobId = jobId.replace(/[^a-zA-Z0-9-]/g, ''); 
       const jobTempDir = path.join(process.cwd(), 'temp', safeJobId);
@@ -51,12 +52,56 @@ export const worker = new Worker<RenderJobData>(
         fs.mkdirSync(jobTempDir, { recursive: true });
       }
 
+      let preRenderedUrl = '';
       
+       const isGpuAvailable = hasGpu();
+      console.log(`🕵️ [DEBUG] Job ${jobId}: hasGpu() 检测结果 = ${isGpuAvailable}`);
+
+      if (isGpuAvailable) {
+        try {
+          console.log(`🚀 [Worker] 检测到 GPU，开始 Stage 1 预处理... Job: ${jobId}`);
+          await job.updateProgress(5); 
+
+          const safeSettings = exportSettings || { resolution: 1080, format: 'mp4' ,forceBackend: false };
+          
+          const gpuResult = await processWithGpu(project, jobId, safeSettings); 
+          
+          const port = SERVER_CONFIG.PORT;
+          const generatedUrl = `http://localhost:${port}/temp/${jobId}/base_video.mp4`;
+
+          if (gpuResult.isFinished) {
+            console.log(`✅ [Worker] 快车道渲染完成，跳过 Remotion。URL: ${generatedUrl}`);
+            await job.updateProgress(100);
+            resolve({ url: generatedUrl });
+            return;
+          }
+
+          preRenderedUrl = generatedUrl;
+          
+          console.log(`✅ [Worker] Stage 1 完成，底板 URL: ${preRenderedUrl}`);
+          await job.updateProgress(15); 
+
+        } catch (e: any) {
+          console.error(`⚠️ [Worker] GPU 预处理失败，降级回 CPU 全量渲染: ${e.message}`);
+          console.error(e.stack); 
+        }
+      } else {
+        console.log(`⚠️ [DEBUG] Job ${jobId}: 跳过 GPU 预处理，因为 hasGpu() 返回 false。将使用前端 CSS 渲染。`);
+      }
+
+      const remotionProject = JSON.parse(JSON.stringify(project));
+      
+      if (preRenderedUrl) {
+        remotionProject.preRenderedVideoUrl = preRenderedUrl;
+        console.log(`💉 [DEBUG] 成功注入 preRenderedVideoUrl: ${preRenderedUrl}`);
+      } else {
+        console.log(`👻 [DEBUG] preRenderedVideoUrl 为空，前端将渲染 RenderMask (可能出现白色遮挡)`);
+      }
+
       const child = fork(scriptPath, [], {
         env: { 
           ...process.env, 
           IS_RENDER_CHILD: 'true',
-          
           TMPDIR: jobTempDir,
           TEMP: jobTempDir,
           TMP: jobTempDir,
@@ -78,7 +123,6 @@ export const worker = new Worker<RenderJobData>(
 
       const forceCleanupFiles = () => {
         setTimeout(() => {
-          
           if (jobTempDir.includes('temp') && fs.existsSync(jobTempDir)) {
             try {
               fs.rmSync(jobTempDir, { recursive: true, force: true });
@@ -98,18 +142,11 @@ export const worker = new Worker<RenderJobData>(
         }, 2000);
       };
 
-      
       const performKill = async () => {
         if (child.pid) {
           console.log(`🛑 [Worker] 正在停止进程树 PID: ${child.pid}`);
-          
-          
           await killProcessTree(child.pid, 'SIGTERM');
-          
-          
           await sleep(3000);
-          
-          
           await killProcessTree(child.pid, 'SIGKILL');
         }
         forceCleanupFiles();
@@ -136,6 +173,9 @@ export const worker = new Worker<RenderJobData>(
           cleanupResources();
           reject(new Error(msg.message));
         } else if (msg.type === 'progress') {
+          const adjustedProgress = preRenderedUrl 
+          ? 15 + (msg.value * 0.85) 
+          : msg.value;
           job.updateProgress(msg.value).catch(() => {});
         }
       });
@@ -153,7 +193,7 @@ export const worker = new Worker<RenderJobData>(
         reject(err);
       });
 
-      child.send({ type: 'start', project, jobId ,exportSettings});
+      child.send({ type: 'start', project: remotionProject, jobId, exportSettings });
 
       checkInterval = setInterval(async () => {
         try {
