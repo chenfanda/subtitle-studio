@@ -12,17 +12,23 @@ export function MaskOverlay() {
   const [isDragging, setIsDragging] = useState(false);
   
   const overlayRef = useRef<HTMLDivElement>(null);
+  // 仍然保留 state 用于 resizeObserver 的响应式更新，但在拖拽中我们使用 ref 里的实时值
   const [parentSize, setParentSize] = useState({ w: 0, h: 0 });
   
+  // 修改 1: 在 ref 中增加 parentW 和 parentH，用于拖拽时锁定尺寸
   const dragStartRef = useRef({
     mouseX: 0, mouseY: 0,
-    maskX: 0, maskY: 0, maskW: 0, maskH: 0
+    maskX: 0, maskY: 0, maskW: 0, maskH: 0,
+    parentW: 0, parentH: 0 
   });
 
   useLayoutEffect(() => {
     if (!overlayRef.current) return;
-    const parent = overlayRef.current.closest('.video-container') as HTMLElement;
+    // 修改 2: 增加兜底，如果找不到 .video-container，就用直接父级
+    const parent = overlayRef.current.closest('.video-container') as HTMLElement || overlayRef.current.parentElement;
     
+    if (!parent) return;
+
     const updateSize = () => {
       if (parent && parent.offsetWidth > 0) {
         setParentSize({ w: parent.offsetWidth, h: parent.offsetHeight });
@@ -38,6 +44,7 @@ export function MaskOverlay() {
   const safeMask = useMemo(() => {
     let { x, y, width, height } = mask;
     
+    // ... (保持原有逻辑不变)
     if (!Number.isFinite(width) || width < 1) width = 20;
     if (!Number.isFinite(height) || height < 1) height = 10;
     if (!Number.isFinite(x)) x = 0;
@@ -54,6 +61,17 @@ export function MaskOverlay() {
 
   if (!mask.enabled) return null;
 
+  // 辅助函数：获取当前父容器尺寸
+  const getCurrentParentSize = () => {
+    if (overlayRef.current) {
+        const parent = overlayRef.current.closest('.video-container') as HTMLElement || overlayRef.current.parentElement;
+        if (parent) {
+            return { w: parent.offsetWidth, h: parent.offsetHeight };
+        }
+    }
+    return parentSize; // 降级使用 state
+  };
+
   // 拖拽逻辑
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.resize-handle, .mask-close-btn')) return;
@@ -64,13 +82,18 @@ export function MaskOverlay() {
     setIsSelected(true);
     setIsDragging(true);
 
+    // 修改 3: 鼠标按下时，强制获取一次 DOM 尺寸
+    const currentSize = getCurrentParentSize();
+
     dragStartRef.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
       maskX: safeMask.x,
       maskY: safeMask.y,
       maskW: safeMask.width,
-      maskH: safeMask.height
+      maskH: safeMask.height,
+      parentW: currentSize.w, // 存入 ref
+      parentH: currentSize.h
     };
 
     document.addEventListener('mousemove', handleMove);
@@ -78,13 +101,15 @@ export function MaskOverlay() {
   };
 
   const handleMove = (e: MouseEvent) => {
-    if (parentSize.w === 0) return;
+    // 修改 4: 使用 ref 中的 parentW，而不是依赖 state
+    const { parentW, parentH } = dragStartRef.current;
+    if (parentW === 0 || parentH === 0) return;
 
     const deltaXPixel = e.clientX - dragStartRef.current.mouseX;
     const deltaYPixel = e.clientY - dragStartRef.current.mouseY;
 
-    const deltaXPercent = (deltaXPixel / parentSize.w) * 100;
-    const deltaYPercent = (deltaYPixel / parentSize.h) * 100;
+    const deltaXPercent = (deltaXPixel / parentW) * 100;
+    const deltaYPercent = (deltaYPixel / parentH) * 100;
 
     let newX = dragStartRef.current.maskX + deltaXPercent;
     let newY = dragStartRef.current.maskY + deltaYPercent;
@@ -110,26 +135,34 @@ export function MaskOverlay() {
     e.preventDefault();
     e.stopPropagation();
 
+    // 修改 5: 缩放开始时同样强制获取尺寸
+    const currentSize = getCurrentParentSize();
+
     dragStartRef.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
       maskX: safeMask.x,
       maskY: safeMask.y,
       maskW: safeMask.width,
-      maskH: safeMask.height
+      maskH: safeMask.height,
+      parentW: currentSize.w,
+      parentH: currentSize.h
     };
 
     const handleResize = (moveEvent: MouseEvent) => {
-      if (parentSize.w === 0) return;
+      // 修改 6: 使用 ref 中的尺寸
+      const { parentW, parentH } = dragStartRef.current;
+      if (parentW === 0 || parentH === 0) return;
 
       const deltaXPixel = moveEvent.clientX - dragStartRef.current.mouseX;
       const deltaYPixel = moveEvent.clientY - dragStartRef.current.mouseY;
 
-      const dx = (deltaXPixel / parentSize.w) * 100;
-      const dy = (deltaYPixel / parentSize.h) * 100;
+      const dx = (deltaXPixel / parentW) * 100;
+      const dy = (deltaYPixel / parentH) * 100;
 
       const { maskX, maskY, maskW, maskH } = dragStartRef.current;
       
+      // ... (后续计算逻辑保持不变)
       let newX = maskX;
       let newY = maskY;
       let newW = maskW;
