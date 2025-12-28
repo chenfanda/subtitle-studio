@@ -570,24 +570,40 @@ export const buildWatermarkTrack = (
     const wmStream = '[wm_scaled]';
     const nextV = '[v_with_wm]';
     
-    const scaleExpr = `iw*${scaleFactor}/2`;
-    filters.push(`[${snapshotInputIndex}:v]scale=trunc(${scaleExpr})*2:-1[wm_scaled]`);
+    const scaleExpr = `iw*${scaleFactor}`;
+    filters.push(`[${snapshotInputIndex}:v]scale=trunc(${scaleExpr}/2)*2:-1[wm_scaled]`);
 
     let xStr = '0', yStr = '0';
     
     if (watermark.positionMode === 'custom') {
-      xStr = `(W*${watermark.customPosition.x}/100)-(w/2)`;
-      yStr = `(H*${watermark.customPosition.y}/100)-(h/2)`;
-    } else {
-      const margin = 20 * scaleFactor;
-      switch (watermark.position) {
-        case 'top-left': xStr = `${margin}`; yStr = `${margin}`; break;
-        case 'top-right': xStr = `W-w-${margin}`; yStr = `${margin}`; break;
-        case 'bottom-left': xStr = `${margin}`; yStr = `H-h-${margin}`; break;
-        case 'bottom-right': xStr = `W-w-${margin}`; yStr = `H-h-${margin}`; break;
-        default: xStr = `W-w-${margin}`; yStr = `${margin}`; 
-      }
-    }
+          xStr = `(W*${watermark.customPosition.x}/100)-(w/2)`;
+          yStr = `(H*${watermark.customPosition.y}/100)-(h/2)`;
+        } else {
+          const margin = 5; // 与前端保持一致的 5% 边距
+          
+          switch (watermark.position) {
+            case 'top-left':
+              xStr = `W*${margin}/100`;  // 左边距 5%
+              yStr = `H*${margin}/100`;  // 上边距 5%
+              break;
+            case 'top-right':
+              xStr = `W*(100-${margin})/100-w`;  // 右边距 5%
+              yStr = `H*${margin}/100`;
+              break;
+            case 'bottom-left':
+              xStr = `W*${margin}/100`;
+              yStr = `H*(100-${margin})/100-h`;  // 下边距 5%
+              break;
+            case 'bottom-right':
+              xStr = `W*(100-${margin})/100-w`;
+              yStr = `H*(100-${margin})/100-h`;
+              break;
+            default:
+              // 默认右上角
+              xStr = `W*(100-${margin})/100-w`;
+              yStr = `H*${margin}/100`;
+          }
+        }
 
     filters.push(
       `${lastStream}${wmStream}overlay=x='${xStr}':y='${yStr}'${nextV}`

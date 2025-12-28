@@ -29,21 +29,41 @@ export function Watermark({ config }: WatermarkProps) {
   };
 
   const getPositionStyle = (): React.CSSProperties => {
-    if (isDragging && watermarkRef.current) {
-      return { left: watermarkRef.current.style.left, top: watermarkRef.current.style.top };
-    }
-    if (config.positionMode === 'custom') {
-      return { left: `${config.customPosition.x}%`, top: `${config.customPosition.y}%` };
-    } else {
-      const presetPositions: Record<string, { left: string, top: string }> = {
-        'top-left': { left: '5%', top: '5%' },
-        'top-right': { left: '85%', top: '5%' },
-        'bottom-left': { left: '5%', top: '85%' },
-        'bottom-right': { left: '85%', top: '85%' },
-      };
-      return presetPositions[config.position] || presetPositions['top-right'];
-    }
-  };
+  // 统一使用绝对定位 + 固定边距
+  if (config.positionMode === 'custom') {
+    return { 
+      left: `${config.customPosition.x}%`, 
+      top: `${config.customPosition.y}%`,
+      transform: 'translate(-50%, -50%)'  // 保持中心锚点
+    };
+  } else {
+    // 使用固定的边距百分比，确保全屏和非全屏一致
+    const margin = 5; // 5% 边距
+    const presetPositions: Record<string, React.CSSProperties> = {
+      'top-left': { 
+        left: `${margin}%`, 
+        top: `${margin}%`,
+        transform: 'translate(0, 0)'  // 左上角不需要居中
+      },
+      'top-right': { 
+        left: `${100 - margin}%`, 
+        top: `${margin}%`,
+        transform: 'translate(-100%, 0)'  // 右对齐
+      },
+      'bottom-left': { 
+        left: `${margin}%`, 
+        top: `${100 - margin}%`,
+        transform: 'translate(0, -100%)'  // 底部对齐
+      },
+      'bottom-right': { 
+        left: `${100 - margin}%`, 
+        top: `${100 - margin}%`,
+        transform: 'translate(-100%, -100%)'  // 右下对齐
+      },
+    };
+    return presetPositions[config.position] || presetPositions['top-right'];
+  }
+};
   
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -109,7 +129,6 @@ export function Watermark({ config }: WatermarkProps) {
     backgroundColor: config.backgroundColor,
     opacity: config.opacity / 100,
     userSelect: 'none',
-    transform: 'translate(-50%, -50%)',
     cursor: isDragging ? 'grabbing' : 'grab',
     zIndex: 30, 
     whiteSpace: 'nowrap',

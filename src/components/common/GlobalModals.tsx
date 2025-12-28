@@ -75,9 +75,11 @@ function ExportModal() {
     try {
       store.setResultBlob(null);
 
-      if (projectData.settings?.watermark?.enabled) {
+     if (projectData.settings?.watermark?.enabled) {
         store.setStatusMessage('正在生成水印...');
-        const snapshotBlob = await captureWatermarkSnapshot();
+        const snapshotBlob = await captureWatermarkSnapshot(
+          projectData.settings.referenceHeight
+        );
         if (snapshotBlob) {
           const blobUrl = URL.createObjectURL(snapshotBlob);
           projectData.settings.watermark.snapshotUrl = blobUrl;
@@ -134,8 +136,10 @@ function ExportModal() {
           const project = JSON.parse(JSON.stringify(rawProject));
 
           if (project.settings?.watermark?.enabled) {
-            store.setStatusMessage('正在处理水印...');
-            const snapshotBlob = await captureWatermarkSnapshot();
+              store.setStatusMessage('正在处理水印...');
+              const snapshotBlob = await captureWatermarkSnapshot(
+                project.settings.referenceHeight
+              );  
             
             if (snapshotBlob) {
               store.setStatusMessage('正在上传水印...');

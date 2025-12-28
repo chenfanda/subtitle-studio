@@ -298,7 +298,7 @@ const calculateElementPositions = (
 /**
  * 使用Canvas生成水印快照
  */
-export const captureWatermarkSnapshot = async (): Promise<Blob | null> => {
+export const captureWatermarkSnapshot = async (referenceHeight?: number): Promise<Blob | null> => {
   try {
     // 1. 获取配置
     const config = getWatermarkConfig();
@@ -392,7 +392,7 @@ export const captureWatermarkSnapshot = async (): Promise<Blob | null> => {
     canvas.height = canvasHeight * scale;
     canvas.style.width = `${canvasWidth}px`;
     canvas.style.height = `${canvasHeight}px`;
-    ctx.scale(scale, scale);
+    // ctx.scale(scale, scale);
     
     // 6. 绘制背景
     drawBackground(ctx, canvasWidth, canvasHeight, config);

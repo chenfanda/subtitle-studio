@@ -55,17 +55,21 @@ const defaultSettings: SettingsState = {
   showTimeCodes: true,
   
   watermark: {
-    enabled: false,
-    text: 'Subtitle Studio',
-    positionMode: 'preset',
-    position: 'top-right',
-    customPosition: { x: 85, y: 10 },
-    opacity: 80,
-    fontSize: 14,
-    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-    color: '#ffffff',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
+      enabled: false,
+      text: 'Subtitle Studio',
+      positionMode: 'preset',
+      position: 'top-right',
+      customPosition: { x: 95, y: 5 },  // 同时修正为 95, 5（对应右上角边缘对齐）
+      opacity: 80,
+      fontSize: 14,
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontWeight: 400,
+      fontStyle: 'normal',
+      textDecoration: 'none',
+      color: '#ffffff',
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+      layout: 'row',  // 添加默认布局
+    },
 
     mask: {
     enabled: false,       
@@ -124,9 +128,9 @@ export const useSettingsStore = create<SettingsStore>()(
           if (state.watermark.positionMode === 'preset') {
             const presetToCoords = {
               'top-left': { x: 5, y: 5 },
-              'top-right': { x: 85, y: 5 },
-              'bottom-left': { x: 5, y: 85 },
-              'bottom-right': { x: 85, y: 85 },
+              'top-right': { x: 95, y: 5 },
+              'bottom-left': { x: 5, y: 95 },
+              'bottom-right': { x: 95, y: 95 },
             };
             state.watermark.customPosition = presetToCoords[state.watermark.position];
             state.watermark.positionMode = 'custom';
