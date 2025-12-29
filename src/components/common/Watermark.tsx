@@ -5,9 +5,10 @@ import { WatermarkLogo } from './WatermarkLogo';
 
 interface WatermarkProps {
   config: WatermarkConfig;
+  scaleFactor?: number;
 }
 
-export function Watermark({ config }: WatermarkProps) {
+export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
   const { updateWatermark, switchToCustomPosition } = useSettingsStore();
   
   const [isDragging, setIsDragging] = useState(false);
@@ -133,8 +134,22 @@ export function Watermark({ config }: WatermarkProps) {
     zIndex: 30, 
     whiteSpace: 'nowrap',
     ...getPositionStyle(),
+    transform: `${getPositionStyle().transform} scale(${scaleFactor})`,
+    transformOrigin: getTransformOrigin(config.position, config.positionMode),
   };
-
+  
+  function getTransformOrigin(position: string, mode: string) {
+    if (mode === 'custom') return 'center center'; // 自定义模式锚点是中心
+    
+    // 预设模式锚点跟随角落
+    switch (position) {
+      case 'top-left': return 'top left';
+      case 'top-right': return 'top right';
+      case 'bottom-left': return 'bottom left';
+      case 'bottom-right': return 'bottom right';
+      default: return 'top right';
+    }
+  }
   const layout = config.layout || 'row';
   const isOverlay = layout === 'overlay';
 

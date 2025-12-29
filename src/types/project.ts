@@ -18,6 +18,10 @@ export interface ProjectState {
   title: string;
   videoUrl: string;
   duration: number;
+  videoMeta:{
+    width: number;
+    height: number;
+  };
   currentTime: number;
   sourceResources: SourceResources | null;
   audioMix: AudioMix;

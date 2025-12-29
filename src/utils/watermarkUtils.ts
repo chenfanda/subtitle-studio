@@ -27,72 +27,6 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   });
 };
 
-/**
- * 计算Canvas画布尺寸
- */
-const calculateCanvasSize = (config: WatermarkConfig): { width: number; height: number } => {
-  const padding = 24; // 内边距 (对应 px-3 py-2 → 12px*2)
-  const gap = 8; // 元素间距 (对应 space-x-2)
-  
-  const fontSize = config.fontSize || 16;
-  const imageHeight = fontSize * 1.5; // 与 Watermark.tsx 一致
-  
-  let width = padding * 2;
-  let height = padding * 2;
-  
-  const hasImage = !!config.imageUrl;
-  const hasText = !!config.text;
-  
-  // 预估图片实际宽度 (需要考虑maxWidth限制)
-  let imageWidth = 0;
-  if (hasImage) {
-    // 这里先预估，实际宽度会在加载图片后重新计算
-    imageWidth = Math.min(imageHeight * 2, 120); // 假设宽图，最大120px
-  }
-  
-  // 估算文本宽度
-  const textWidth = hasText ? estimateTextWidth(config.text!, config) : 0;
-  
-  const layout = config.layout || 'row';
-  
-  switch (layout) {
-    case 'row':
-    case 'row-reverse':
-      width += imageWidth + textWidth;
-      if (hasImage && hasText) width += gap;
-      height += Math.max(imageHeight, fontSize * 1.2);
-      break;
-      
-    case 'col':
-    case 'col-reverse':
-      width += Math.max(imageWidth, textWidth);
-      height += imageHeight + fontSize * 1.2;
-      if (hasImage && hasText) height += gap;
-      break;
-      
-    case 'overlay':
-      width += Math.max(imageWidth, textWidth);
-      height += Math.max(imageHeight, fontSize * 1.2);
-      break;
-  }
-  
-  return {
-    width: Math.ceil(width),
-    height: Math.ceil(height)
-  };
-};
-
-/**
- * 估算文本宽度 (粗略计算)
- */
-const estimateTextWidth = (text: string, config: WatermarkConfig): number => {
-  const fontSize = config.fontSize || 16;
-  const fontWeight = config.fontWeight || 400;
-  
-  // 粗略估算: 英文字符约0.6倍fontSize, 中文约1倍fontSize
-  const avgCharWidth = /[\u4e00-\u9fa5]/.test(text) ? fontSize * 0.9 : fontSize * 0.6;
-  return text.length * avgCharWidth;
-};
 
 /**
  * 绘制背景 (包括透明度和圆角)
@@ -104,10 +38,6 @@ const drawBackground = (
   config: WatermarkConfig
 ) => {
   const bgColor = config.backgroundColor || 'rgba(0, 0, 0, 0)';
-  const opacity = (config.opacity || 100) / 100;
-  
-  ctx.save();
-  ctx.globalAlpha = opacity;
   
   // 绘制圆角矩形
   const radius = 8; // 对应 rounded-lg
@@ -124,8 +54,6 @@ const drawBackground = (
   ctx.quadraticCurveTo(0, 0, radius, 0);
   ctx.closePath();
   ctx.fill();
-  
-  ctx.restore();
 };
 
 /**
@@ -298,7 +226,7 @@ const calculateElementPositions = (
 /**
  * 使用Canvas生成水印快照
  */
-export const captureWatermarkSnapshot = async (referenceHeight?: number): Promise<Blob | null> => {
+export const captureWatermarkSnapshot = async (_referenceHeight?: number): Promise<Blob | null> => {
   try {
     // 1. 获取配置
     const config = getWatermarkConfig();
@@ -310,7 +238,7 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
     const fontSize = config.fontSize || 16;
     const imageHeight = fontSize * 1.5;
     
-    // 2. 加载图片 (如果有) - 必须先加载才能知道实际尺寸
+    // 2. 加载图片
     let img: HTMLImageElement | null = null;
     let actualImageWidth = 0;
     let actualImageHeight = 0;
@@ -318,13 +246,10 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
     if (config.imageUrl) {
       try {
         img = await loadImage(config.imageUrl);
-        
-        // 计算实际绘制尺寸 (与 Watermark.tsx 完全一致)
         const aspectRatio = img.width / img.height;
         actualImageHeight = imageHeight;
         actualImageWidth = actualImageHeight * aspectRatio;
         
-        // 应用 maxWidth 限制
         if (actualImageWidth > 120) {
           actualImageWidth = 120;
           actualImageHeight = actualImageWidth / aspectRatio;
@@ -334,19 +259,17 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
       }
     }
     
-    // 3. 创建临时Canvas测量文本宽度
+    // 3. 测量文本宽度
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) {
-      throw new Error('无法创建Canvas上下文');
-    }
+    if (!tempCtx) throw new Error('无法创建临时Canvas');
     
     tempCtx.font = `${config.fontStyle || 'normal'} ${config.fontWeight || 400} ${fontSize}px ${config.fontFamily || 'Arial'}`;
     const textWidth = config.text ? tempCtx.measureText(config.text).width : 0;
     
-    // 4. 计算实际Canvas尺寸 (使用真实的图片宽度和文本宽度)
-    const padding = 12; // px-3 = 12px
-    const gap = 8; // space-x-2 = 8px
+    // 4. 计算Canvas尺寸
+    const padding = 12;
+    const gap = 8;
     const layout = config.layout || 'row';
     
     let canvasWidth = padding * 2;
@@ -362,14 +285,12 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
         if (hasImage && hasText) canvasWidth += gap;
         canvasHeight += Math.max(actualImageHeight, fontSize * 1.2);
         break;
-        
       case 'col':
       case 'col-reverse':
         canvasWidth += Math.max(actualImageWidth, textWidth);
         canvasHeight += actualImageHeight + fontSize * 1.2;
         if (hasImage && hasText) canvasHeight += gap;
         break;
-        
       case 'overlay':
         canvasWidth += Math.max(actualImageWidth, textWidth);
         canvasHeight += Math.max(actualImageHeight, fontSize * 1.2);
@@ -379,25 +300,29 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
     canvasWidth = Math.ceil(canvasWidth);
     canvasHeight = Math.ceil(canvasHeight);
     
-    // 5. 创建最终Canvas
+    // 5. 创建最终Canvas并绘制
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    
     if (!ctx) {
       throw new Error('无法创建Canvas上下文');
     }
     
-    // 设置高清画布 (scale: 2)
+    // 设置高清画布
     const scale = 2;
     canvas.width = canvasWidth * scale;
     canvas.height = canvasHeight * scale;
-    canvas.style.width = `${canvasWidth}px`;
-    canvas.style.height = `${canvasHeight}px`;
-    // ctx.scale(scale, scale);
+    // 这里的 scale 是为了让图片更清晰，不影响透明度
+    ctx.scale(scale, scale); 
     
-    // 6. 绘制背景
+    // 【核心修复】设置全局透明度
+    // 这行代码决定了接下来画的所有东西（背景、图、文）都是半透明的
+    const opacity = (config.opacity !== undefined ? config.opacity : 100) / 100;
+    ctx.globalAlpha = opacity;
+    
+    // 6. 绘制所有元素
     drawBackground(ctx, canvasWidth, canvasHeight, config);
     
-    // 7. 计算元素位置
     const positions = calculateElementPositions(
       canvasWidth,
       canvasHeight,
@@ -407,21 +332,18 @@ export const captureWatermarkSnapshot = async (referenceHeight?: number): Promis
       config
     );
     
-    // 8. 绘制元素
     const isOverlay = config.layout === 'overlay';
     
-    // 先绘制图片 (overlay模式下图片在底层)
     if (img) {
       drawImageElement(
         ctx,
         img,
         positions.imagePos.x,
         positions.imagePos.y,
-        imageHeight // 传入目标高度，函数内部会按比例计算宽度
+        imageHeight
       );
     }
     
-    // 再绘制文字 (overlay模式下文字在顶层)
     if (config.text) {
       drawTextElement(
         ctx,

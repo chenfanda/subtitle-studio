@@ -30,6 +30,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     setGlobalTime,
     globalDuration,
     setDuration,
+    setVideoMeta ,
   } = useProjectStore();
 
   const { 
@@ -64,7 +65,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
         // 使用一个微小的容差，防止浮点数计算导致的边界问题
         return segment.type === 'cut' && 
                currentTimeMs >= segment.globalStartTime - 1 && 
-               currentTimeMs < endTime; // 注意这里用 < 而不是 <=，防止卡在结束点
+               currentTimeMs < endTime; 
       });
 
       if (activeSegment) {
@@ -217,6 +218,9 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
       if (useProjectStore.getState().duration !== newDuration) {
         setDuration(newDuration);
       }
+      if (mainPlayer.videoWidth && mainPlayer.videoHeight) {
+        setVideoMeta(mainPlayer.videoWidth, mainPlayer.videoHeight);
+      }
     }
   };
 
@@ -226,7 +230,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     left: 0,
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
+    objectFit: 'cover',
     transition: 'opacity 0.2s ease-out',
     opacity: 0,
     zIndex: 0

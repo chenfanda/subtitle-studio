@@ -570,7 +570,7 @@ export const buildWatermarkTrack = (
     const wmStream = '[wm_scaled]';
     const nextV = '[v_with_wm]';
     
-    const scaleExpr = `iw*${scaleFactor}`;
+    const scaleExpr = `iw*${scaleFactor}*0.5`;
     filters.push(`[${snapshotInputIndex}:v]scale=trunc(${scaleExpr}/2)*2:-1[wm_scaled]`);
 
     let xStr = '0', yStr = '0';

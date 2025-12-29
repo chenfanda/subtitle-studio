@@ -32,6 +32,7 @@ interface ProjectStore extends ProjectState {
 
   setAudioMix: (mix: Partial<AudioMix>) => void;
   setVideoUrl: (url: string) => void;
+  setVideoMeta: (width: number, height: number) => void;
   setDuration: (duration: number) => void;
   updateProjectTitle: (title: string) => void;
   
@@ -64,6 +65,7 @@ const initialState: Omit<ProjectState, 'id'> = {
   title: 'Untitled Project',
   videoUrl: '',
   duration: 0,
+  videoMeta: { width: 1920, height: 1080 },
   currentTime: 0,
   globalTime: 0,
   globalDuration: 0,
@@ -134,6 +136,14 @@ const projectStoreCreator: StateCreator<
     }
   },
   
+   setVideoMeta: (width, height) => {
+    set((state) => {
+      if (state.videoMeta.width !== width || state.videoMeta.height !== height) {
+        state.videoMeta = { width, height };
+      }
+    });
+  },
+
   updateProjectTitle: (title) => {
     set((state) => {
       state.title = title;
