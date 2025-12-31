@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { TextStyleCategory, TextStyleTemplate, TextStyleConfig } from '@/types/textStyle';
 import { TEXT_STYLE_TEMPLATES } from '@/constants/textStyleTemplates';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
+import { useTextElementStore } from '@/stores/useTextElementStore';
 import { 
   applyStyleToAllSegments, 
   applyStyleToSegments, 
@@ -63,11 +64,12 @@ export const useTextStyleStore = create<TextStyleStore>()(
         state.selectedTemplate = null;
       }),
     
-    applyToRange: (subtitleId, startIndex?, endIndex?) => {
+    applyToRange: (targetId, startIndex?, endIndex?) => { 
       const { selectedTemplate } = get();
       if (!selectedTemplate) return;
       
-      const subtitleStyle = {
+      
+      const styleConfig = {
         fontSize: selectedTemplate.style.fontSize,
         fontFamily: selectedTemplate.style.fontFamily,
         fontWeight: convertFontWeight(selectedTemplate.style.fontWeight),
@@ -76,38 +78,49 @@ export const useTextStyleStore = create<TextStyleStore>()(
         backgroundColor: selectedTemplate.style.backgroundColor || 'transparent',
         position: 'bottom' as const,
         alignment: selectedTemplate.style.textAlign || 'center' as const,
+        verticalAlignment: 'bottom' as const, 
         opacity: 1,
         shadow: convertToSubtitleShadow(selectedTemplate.style.shadow),
       };
       
       const subtitleStore = useSubtitleStore.getState();
-      const subtitle = subtitleStore.subtitles.find(s => s.id === subtitleId);
+      const textElementStore = useTextElementStore.getState(); 
+
+
+      const subtitle = subtitleStore.subtitles.find(s => s.id === targetId);
       
-      if (!subtitle) return;
-      
-      if (startIndex !== undefined && endIndex !== undefined) {
-        let richTextSegments = subtitle.richText;
-        
-        if (!richTextSegments) {
-          richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
-        }
-        
-        const updatedSegments = applyStyleToSegments(
-          richTextSegments, 
-          startIndex, 
-          endIndex, 
-          subtitleStyle
-        );
-        
-        const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-        subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
-        
-      } else {
-        if (subtitle.richText) {
-          const updatedSegments = applyStyleToAllSegments(subtitle.richText, subtitleStyle);
-          subtitleStore.updateSubtitleRichText(subtitleId, updatedSegments);
+      if (subtitle) {
+        if (startIndex !== undefined && endIndex !== undefined) {
+          let richTextSegments = subtitle.richText;
+          if (!richTextSegments) {
+            richTextSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
+          }
+          const updatedSegments = applyStyleToSegments(richTextSegments, startIndex, endIndex, styleConfig);
+          const optimizedSegments = mergeAdjacentSegments(updatedSegments);
+          subtitleStore.updateSubtitleRichText(targetId, optimizedSegments);
         } else {
-          subtitleStore.updateSubtitle(subtitleId, { style: subtitleStyle });
+          if (subtitle.richText) {
+            const updatedSegments = applyStyleToAllSegments(subtitle.richText, styleConfig);
+            subtitleStore.updateSubtitleRichText(targetId, updatedSegments);
+          } else {
+            subtitleStore.updateSubtitle(targetId, { style: styleConfig });
+          }
+        }
+        return; 
+      }
+
+      const textElement = textElementStore.textElements.find(t => t.id === targetId);
+      
+      if (textElement) {
+      
+        textElementStore.updateTextElement(targetId, { style: styleConfig });
+        
+     
+        if (textElement.richText) {
+     
+             const updatedSegments = applyStyleToAllSegments(textElement.richText, styleConfig);
+            
+             textElementStore.updateTextElement(targetId, { richText: updatedSegments });
         }
       }
     },

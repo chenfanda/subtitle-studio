@@ -49,7 +49,14 @@ function normalizeProjectUrls(project: ProjectExport) {
     if (content.sourceResources.video) content.sourceResources.video = resolveUrl(content.sourceResources.video);
   }
 
-  // 处理水印快照 URL
+  if (project.content.textElements) {
+    project.content.textElements.forEach(el => {
+      if ((el as any).snapshotUrl) {
+        (el as any).snapshotUrl = resolveUrl((el as any).snapshotUrl);
+      }
+    });
+  }
+
   if (project.settings?.watermark?.snapshotUrl) {
     project.settings.watermark.snapshotUrl = resolveUrl(project.settings.watermark.snapshotUrl);
   }
@@ -88,9 +95,13 @@ function collectUploadTasks(project: ProjectExport) {
     checkAndAdd(content.sourceResources, 'audioVocals');
     checkAndAdd(content.sourceResources, 'audioBacking');
   }
+  
+  if (project.content.textElements) {
+    project.content.textElements.forEach(el => {
+      checkAndAdd(el, 'snapshotUrl'); 
+    });
+  }
 
-  // --- 新增：检查水印快照 ---
-  // 如果 GlobalModals 里的上传逻辑失败或未执行完全，这里作为兜底，确保所有 blob 资源都被上传
   if (project.settings?.watermark?.snapshotUrl) {
     checkAndAdd(project.settings.watermark, 'snapshotUrl');
   }
@@ -105,7 +116,7 @@ export const prepareProjectForExport = async (
 ): Promise<ProjectExport> => {
   const serverReadyProject = JSON.parse(JSON.stringify(project));
   
-  // 传入整个 project 对象，而不仅仅是 content
+  
   normalizeProjectUrls(serverReadyProject);
 
   const tasks = collectUploadTasks(serverReadyProject);

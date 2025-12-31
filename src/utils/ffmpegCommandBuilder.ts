@@ -129,7 +129,11 @@ const scanProjectInputs = (project: ProjectExport, mapper: InputMapper, context?
   if (project.content.backgroundMusic) {
     mapper.addInput(project.content.backgroundMusic.url, context);
   }
-
+  (project.content.textElements || []).forEach(el => {
+    if ((el as any).snapshotUrl) {
+      mapper.addInput((el as any).snapshotUrl, context);
+    }
+  });
   if (project.settings?.watermark?.enabled && project.settings.watermark.snapshotUrl) {
     mapper.addInput(project.settings.watermark.snapshotUrl, context);
   }
@@ -232,7 +236,9 @@ export const buildFfmpegCommand = (
     currentStream, 
     target, 
     getNewTime,
-    scaleFactor
+    scaleFactor,
+    mapper, 
+    targetW 
   );
   allVideoFilters.push(...textFilters);
   currentStream = textStream;

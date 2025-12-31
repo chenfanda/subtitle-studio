@@ -165,7 +165,7 @@ export function VideoArea() {
           <SubtitleOverlay />
           <TextElementOverlay />
           <MediaOverlay />
-          <Watermark config={watermark} />
+          <Watermark config={watermark} scaleFactor={scaleFactor}/>
         </div>
       </div>
     </div>

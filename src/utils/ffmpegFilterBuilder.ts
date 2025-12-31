@@ -448,6 +448,30 @@ const buildAnimationFilter = (
   }
 };
 
+const buildTextSnapshotStream = (
+  snapshotUrl: string,
+  pos: any, 
+  mapper: InputMapper,
+  targetW: number,
+  targetH: number, 
+  scaleFactor: number,
+  streamName: string
+): { filter: string, inputIndex: number } => {
+  const inputIndex = mapper.getIndex(snapshotUrl);
+  
+  const scaleExpr = `trunc(iw/2*${scaleFactor}*${pos.scaleX || 1}/2)*2`;
+  
+  const filters = [
+    `[${inputIndex}:v]format=rgba`,
+    `scale=${scaleExpr}:-1:flags=bicubic`,
+    `rotate=${pos.rotation || 0}*PI/180:c=none:ow=rotw(iw):oh=roth(ih)`
+  ];
+  
+  return { 
+    filter: `${filters.join(',')}${streamName}`,
+    inputIndex 
+  };
+};
 export const buildTextTrack = (
   content: ProjectExport['content'],
   brollRanges: string[],
@@ -455,7 +479,9 @@ export const buildTextTrack = (
   lastStream: string,
   target: FFmpegTarget,
   getNewTime: GetNewTimeFn,
-  scaleFactor: number = 1.0
+  scaleFactor: number = 1.0,
+  mapper: InputMapper, 
+  targetW: number = 1920 
 ): { videoStream: string; filters: string[] } => {
   const filters: string[] = [];
   let currentStream = lastStream;
@@ -479,33 +505,26 @@ export const buildTextTrack = (
     : '';
   
   (content.subtitles || []).forEach((sub: SubtitleItem, i) => {
+
     const newStartTimeS = msToS(getNewTime(sub.startTime));
     const newEndTimeS = msToS(getNewTime(sub.endTime));
-    
     if (newEndTimeS <= newStartTimeS) return;
-
     const pos = sub.position || { ...DEFAULT_SUBTITLE_POSITION };
-    const baseStyle: SubtitleStyle = { ...DEFAULT_SUBTITLE_STYLE, ...sub.style };
+    const baseStyle = { ...DEFAULT_SUBTITLE_STYLE, ...sub.style };
     const richSegments = sub.richText || [{ text: sub.text, style: sub.style }];
-
     richSegments.forEach((seg, j) => {
-      const segStyle: SubtitleStyle = { ...baseStyle, ...seg.style };
-      const nextV = `[v_sub_${i}_${j}]`;
-      const escapedText = escapeFfmpegText(seg.text);
-      
-      let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
-      
-      const yMatch = textFilter.match(/y=([^:]+)/);
-      const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;
-
-      if (seg.animation) {
-        textFilter = buildAnimationFilter(seg.animation, textFilter, newStartTimeS, yExpr);
-      }
-      
-      textFilter += `:enable='between(t,${newStartTimeS},${newEndTimeS})${brollEnableExpr}${insertEnableExpr}'`;
-      
-      filters.push(`${currentStream}drawtext=text='${escapedText}':${textFilter}${nextV}`);
-      currentStream = nextV;
+        const segStyle = { ...baseStyle, ...seg.style };
+        const nextV = `[v_sub_${i}_${j}]`;
+        const escapedText = escapeFfmpegText(seg.text);
+        let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
+        const yMatch = textFilter.match(/y=([^:]+)/);
+        const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;
+        if (seg.animation) {
+            textFilter = buildAnimationFilter(seg.animation, textFilter, newStartTimeS, yExpr);
+        }
+        textFilter += `:enable='between(t,${newStartTimeS},${newEndTimeS})${brollEnableExpr}${insertEnableExpr}'`;
+        filters.push(`${currentStream}drawtext=text='${escapedText}':${textFilter}${nextV}`);
+        currentStream = nextV;
     });
   });
 
@@ -515,40 +534,70 @@ export const buildTextTrack = (
 
     if (newEndTimeS <= newStartTimeS) return;
     
-    const pos = el.position;
-    const baseStyle: SubtitleStyle = { ...DEFAULT_SUBTITLE_STYLE, ...el.style };
-    const richSegments = el.richText || [{ text: el.text, style: el.style }];
+    const snapshotUrl = (el as any).snapshotUrl;
 
-    richSegments.forEach((seg, j) => {
-      const segStyle: SubtitleStyle = { ...baseStyle, ...seg.style };
-      const nextV = `[v_txt_${i}_${j}]`;
-      const escapedText = escapeFfmpegText(seg.text);
-      
-      let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
-      
-      const yMatch = textFilter.match(/y=([^:]+)/);
-      const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;
-
-      if (seg.animation) {
-        textFilter = buildAnimationFilter(seg.animation, textFilter, newStartTimeS, yExpr);
-      }
-      
-      textFilter += `:enable='between(t,${newStartTimeS},${newEndTimeS})${brollEnableExpr}${insertEnableExpr}'`;
-
-      if (pos.rotation !== 0) {
-        const rotatedV = `[v_txt_rotated_${i}_${j}]`;
-        const canvasV = `[v_txt_canvas_${i}_${j}]`;
-        filters.push(`nullsrc=size=1920x1080:color=black@0.0,format=rgba[canvas]`);
-        filters.push(`[canvas][${currentStream}]scale2ref[canvas_scaled][base_scaled]`);
-        filters.push(`[canvas_scaled]drawtext=text='${escapedText}':${textFilter}${canvasV}`);
-        filters.push(`${canvasV}rotate=${pos.rotation}*PI/180:c=none:ow=rotw(iw):oh=roth(ih)${rotatedV}`);
-        filters.push(`[base_scaled]${rotatedV}overlay=(W-w)/2:(H-h)/2${nextV}`);
+    if (snapshotUrl) {
         
-      } else {
-        filters.push(`${currentStream}drawtext=text='${escapedText}':${textFilter}${nextV}`);
-      }
-      currentStream = nextV;
-    });
+        const processedStreamName = `[txt_snap_${i}]`;
+        const nextV = `[v_txt_${i}]`;
+        
+
+        const { filter } = buildTextSnapshotStream(
+            snapshotUrl,
+            el.position,
+            mapper,
+            targetW,
+            0,
+            scaleFactor,
+            processedStreamName
+        );
+        filters.push(filter);
+
+
+        const x = `(W*${el.position.x}/100)-(w/2)`;
+        const y = `(H*${el.position.y}/100)-(h/2)`;
+        
+        
+        filters.push(
+            `${currentStream}${processedStreamName}overlay=x='${x}':y='${y}':enable='between(t,${newStartTimeS},${newEndTimeS})${brollEnableExpr}${insertEnableExpr}'${nextV}`
+        );
+        currentStream = nextV;
+
+    } else {
+        
+        const pos = el.position;
+        const baseStyle = { ...DEFAULT_SUBTITLE_STYLE, ...el.style };
+        const richSegments = el.richText || [{ text: el.text, style: el.style }];
+
+        richSegments.forEach((seg, j) => {
+            const segStyle = { ...baseStyle, ...seg.style };
+            const nextV = `[v_txt_${i}_${j}]`;
+            const escapedText = escapeFfmpegText(seg.text);
+            
+            let textFilter = buildTextStyle(segStyle, pos, target, scaleFactor);
+            const yMatch = textFilter.match(/y=([^:]+)/);
+            const yExpr = yMatch ? yMatch[1] : `(h*${pos.y}/100)-(text_h/2)`;
+
+            if (seg.animation) {
+                textFilter = buildAnimationFilter(seg.animation, textFilter, newStartTimeS, yExpr);
+            }
+            
+            textFilter += `:enable='between(t,${newStartTimeS},${newEndTimeS})${brollEnableExpr}${insertEnableExpr}'`;
+
+            if (pos.rotation !== 0) {
+                const rotatedV = `[v_txt_rotated_${i}_${j}]`;
+                const canvasV = `[v_txt_canvas_${i}_${j}]`;
+                filters.push(`nullsrc=size=1920x1080:color=black@0.0,format=rgba[canvas]`);
+                filters.push(`[canvas][${currentStream}]scale2ref[canvas_scaled][base_scaled]`);
+                filters.push(`[canvas_scaled]drawtext=text='${escapedText}':${textFilter}${canvasV}`);
+                filters.push(`${canvasV}rotate=${pos.rotation}*PI/180:c=none:ow=rotw(iw):oh=roth(ih)${rotatedV}`);
+                filters.push(`[base_scaled]${rotatedV}overlay=(W-w)/2:(H-h)/2${nextV}`);
+            } else {
+                filters.push(`${currentStream}drawtext=text='${escapedText}':${textFilter}${nextV}`);
+            }
+            currentStream = nextV;
+        });
+    }
   });
 
   return { videoStream: currentStream, filters };
@@ -579,20 +628,20 @@ export const buildWatermarkTrack = (
           xStr = `(W*${watermark.customPosition.x}/100)-(w/2)`;
           yStr = `(H*${watermark.customPosition.y}/100)-(h/2)`;
         } else {
-          const margin = 5; // 与前端保持一致的 5% 边距
+          const margin = 5; 
           
           switch (watermark.position) {
             case 'top-left':
-              xStr = `W*${margin}/100`;  // 左边距 5%
-              yStr = `H*${margin}/100`;  // 上边距 5%
+              xStr = `W*${margin}/100`;  
+              yStr = `H*${margin}/100`;  
               break;
             case 'top-right':
-              xStr = `W*(100-${margin})/100-w`;  // 右边距 5%
+              xStr = `W*(100-${margin})/100-w`;  
               yStr = `H*${margin}/100`;
               break;
             case 'bottom-left':
               xStr = `W*${margin}/100`;
-              yStr = `H*(100-${margin})/100-h`;  // 下边距 5%
+              yStr = `H*(100-${margin})/100-h`;
               break;
             case 'bottom-right':
               xStr = `W*(100-${margin})/100-w`;

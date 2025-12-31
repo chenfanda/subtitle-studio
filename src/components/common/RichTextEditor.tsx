@@ -18,6 +18,7 @@ import {
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
 import type { AnimationEffect } from '@/types/animation';
 import { Target, Hourglass, Check } from 'lucide-react';
+import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 
 interface RichTextEditorProps {
   targetType: 'subtitle' | 'textElement';
@@ -176,11 +177,59 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     }
     setIsSaveModalOpen(false);
   };
+  const [startTimeStr, setStartTimeStr] = useState('');
+  const [endTimeStr, setEndTimeStr] = useState('');
+
+  useEffect(() => {
+    if (currentObject) {
+      setStartTimeStr(formatMillisecondsToTime(currentObject.startTime));
+      setEndTimeStr(formatMillisecondsToTime(currentObject.endTime));
+    }
+  }, [currentObject?.id, currentObject?.startTime, currentObject?.endTime]);
+
+  const parseTimeStr = (str: string): number | null => {
+    try {
+      // 支持 MM:SS.ms 或 HH:MM:SS.ms
+      const parts = str.split(':');
+      let totalMs = 0;
+      
+      if (parts.length === 3) { // HH:MM:SS
+         const [h, m, sWithMs] = parts;
+         const [s, ms] = sWithMs.split('.');
+         totalMs = parseInt(h) * 3600000 + parseInt(m) * 60000 + parseInt(s) * 1000;
+         if (ms) totalMs += parseInt(ms.padEnd(3,'0').slice(0,3));
+      } else if (parts.length === 2) { // MM:SS
+         const [m, sWithMs] = parts;
+         const [s, ms] = sWithMs.split('.');
+         totalMs = parseInt(m) * 60000 + parseInt(s) * 1000;
+         if (ms) totalMs += parseInt(ms.padEnd(3,'0').slice(0,3)); // 补全毫秒位
+      }
+      return isNaN(totalMs) ? null : totalMs;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleTimeBlur = () => {
+    if (!currentObject || targetType !== 'textElement') return;
+    
+    const newStart = parseTimeStr(startTimeStr);
+    const newEnd = parseTimeStr(endTimeStr);
+    
+    const updates: any = {};
+    if (newStart !== null && newStart !== currentObject.startTime) updates.startTime = newStart;
+    if (newEnd !== null && newEnd !== currentObject.endTime) updates.endTime = newEnd;
+    
+    if (Object.keys(updates).length > 0) {
+
+      useTextElementStore.getState().updateTextElement(targetId, updates);
+    }
+  };
 
   if (!currentObject) return null;
 
   return (
-    <div className="w-75 h-full bg-bg-primary border-l border-border-primary overflow-y-auto flex flex-col">
+    <div className="w-80 h-full bg-bg-primary border-l border-border-primary overflow-y-auto flex flex-col">
       <div className="flex-shrink-0 p-4 border-b border-border-secondary flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">样式编辑</h2>
@@ -194,20 +243,49 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {targetType === 'textElement' && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-text-secondary">文字内容</label>
-            <textarea
-              value={localText}
-              onChange={(e) => handleTextChange(e.target.value)}
-              onBlur={handleTextBlur}
-              className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary resize-none focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-colors"
-              rows={3}
-              placeholder="输入文字内容..."
-            />
+       {targetType === 'textElement' && (
+          <div className="space-y-3 w-full">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-text-secondary">文字内容</label>
+              <textarea
+                value={localText}
+                onChange={(e) => handleTextChange(e.target.value)}
+                onBlur={handleTextBlur}
+                className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary resize-none focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-colors"
+                rows={3}
+                placeholder="输入文字内容..."
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full">
+              {/* 开始时间 */}
+              <div className="flex-1 min-w-0 space-y-1">
+                <label className="text-[10px] text-text-tertiary block truncate">开始</label>
+                <input
+                  type="text"
+                  value={startTimeStr}
+                  onChange={(e) => setStartTimeStr(e.target.value)}
+                  onBlur={handleTimeBlur}
+                  className="w-full min-w-0 px-1 py-1 bg-bg-tertiary border border-border-secondary rounded text-xs text-text-primary font-mono text-center focus:border-accent-purple focus:outline-none h-7"
+                  placeholder="00:00.00"
+                />
+              </div>
+              
+              <div className="text-text-disabled pt-4 flex-shrink-0">-</div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <label className="text-[10px] text-text-tertiary block truncate">结束</label>
+                <input
+                  type="text"
+                  value={endTimeStr}
+                  onChange={(e) => setEndTimeStr(e.target.value)}
+                  onBlur={handleTimeBlur}
+                  className="w-full min-w-0 px-1 py-1 bg-bg-tertiary border border-border-secondary rounded text-xs text-text-primary font-mono text-center focus:border-accent-purple focus:outline-none h-7"
+                  placeholder="00:00.00"
+                />
+              </div>
+            </div>
+
           </div>
         )}
-
         {targetType === 'subtitle' && (
           <TemplateQuickAccess
             targetType={targetType}

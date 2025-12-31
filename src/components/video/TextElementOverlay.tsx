@@ -30,24 +30,20 @@ export function TextElementOverlay() {
   const [hasMoved, setHasMoved] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
-
-
-  
   const visibleElements = useMemo(() => {
-
     if (isInsertClip) return [];
     const currentTimeMs = currentTime * 1000;
     return textElements.filter(el => {
       return currentTimeMs >= el.startTime && currentTimeMs <= el.endTime;
     });
-  
   }, [textElements, currentTime, isInsertClip]);
   
+  // ... (中间的 handleElementClick, handleElementDrag 等逻辑保持不变，省略以节省空间) ...
+  // 请直接保留原文件中的事件处理逻辑，只替换 return 部分的渲染逻辑
+
   const handleElementClick = (element: TextElement, e: React.MouseEvent) => {
     if (e.detail === 2) return;
-    
     e.preventDefault();
-    
     setSelectedTextElements([element.id]);
     clearSelectedSubtitles();
     setVideoToolbar({
@@ -127,13 +123,16 @@ export function TextElementOverlay() {
   const currentToolbarElement = visibleElements.find(
     el => videoToolbar.targetType === 'textElement' && videoToolbar.targetId === el.id
   );
-  
+
   return (
     <div className="absolute inset-0 pointer-events-none z-30">
       {visibleElements.map(element => {
         const isSelected = videoToolbar.targetType === 'textElement' && 
                           videoToolbar.targetId === element.id;
         
+        // 转换样式
+        const cssStyle = convertStyleToCSS(element.style);
+
         return (
           <div
             key={element.id}
@@ -164,14 +163,29 @@ export function TextElementOverlay() {
               maxScale={3.0}
             >
               <div 
-                style={convertStyleToCSS(element.style)}
-                className={`px-4 py-2 rounded inline-block ${
+                style={cssStyle}
+                className={`inline-block whitespace-nowrap ${
                   isSelected 
                     ? 'ring-2 ring-accent-purple' 
                     : ''
                 }`}
               >
-                {element.text}
+                {/* 核心修改：如果 style 中有 icon，渲染 img 标签 */}
+                {(element.style as any).icon  && (
+                  <img 
+                    src={(element.style as any).icon } 
+                    alt="icon" 
+                    style={{
+                      width: (element.style as any).icon  || 20, 
+                      height: (element.style as any).icon || 20,
+                      objectFit: 'contain',
+                      display: 'inline-block',
+                      flexShrink: 0
+                    }} 
+                    draggable={false}
+                  />
+                )}
+                <span>{element.text}</span>
               </div>
             </TransformBorder>
           </div>

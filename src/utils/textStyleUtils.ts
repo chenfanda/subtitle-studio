@@ -40,10 +40,17 @@ export const convertTemplateToSubtitleStyle = (
     
     alignment: templateStyle.textAlign || DEFAULT_SUBTITLE_STYLE.alignment,
   };
-  
   if (templateStyle.borderRadius) {
-    convertedStyle.backgroundShape = templateStyle.borderRadius;
-  }
+      if (typeof templateStyle.borderRadius === 'number') {
+        convertedStyle.backgroundShape = templateStyle.borderRadius;
+      } else {
+        // 如果是字符串（例如 '20px' 或 '50%'），尝试解析出数字
+        const parsed = parseInt(templateStyle.borderRadius, 10);
+        if (!isNaN(parsed)) {
+          convertedStyle.backgroundShape = parsed;
+        }
+      }
+    }
   
   return convertedStyle;
 };
@@ -117,7 +124,7 @@ export const updateRichTextFromPlainText = (
   }
 };
 
-export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties => {
+export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any): React.CSSProperties => {
   if (!style) return {};
   
   const cssProperties: React.CSSProperties = {
@@ -128,17 +135,52 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     color: style.color,
     backgroundColor: style.backgroundColor,
     opacity: style.opacity,
-    // textAlign: style.alignment,
+    // textAlign: style.alignment, // 注意：SubtitleStyle 用 alignment，TextElement 用 textAlign
+    textAlign: style.textAlign || style.alignment,
+    
+    // --- 新增支持：图片背景与布局 ---
+    backgroundImage: style.backgroundImage,
+    backgroundSize: style.backgroundSize,
+    backgroundRepeat: style.backgroundRepeat,
+    backgroundPosition: 'center', // 默认居中
+    
+    // --- 新增支持：Flex 布局 (用于社交媒体左图右文) ---
+    display: style.display,
+    alignItems: style.alignItems,
+    justifyContent: style.justifyContent,
+    gap: style.gap,
+    
+    // --- 新增支持：内边距与圆角 ---
+    padding: style.padding,
+    border: style.border,
   };
   
+  // 处理圆角：兼容 TextElement 的 string/number 和 SubtitleStyle 的 backgroundShape
+  if (style.borderRadius !== undefined) {
+    cssProperties.borderRadius = typeof style.borderRadius === 'number' 
+      ? `${style.borderRadius}px` 
+      : style.borderRadius;
+  } else if (style.backgroundShape !== undefined && style.backgroundShape > 0) {
+    // 兼容旧逻辑
+    if (style.backgroundShape === 50) {
+      cssProperties.borderRadius = '50%';
+    } else {
+      cssProperties.borderRadius = `${style.backgroundShape}px`;
+    }
+  }
+  
+  // 处理阴影逻辑
   const textShadows: string[] = [];
   
-  if (style.shadow?.enabled) {
+  if (style.shadow?.enabled || (style.shadow && typeof style.shadow.offsetX === 'number')) {
+    // 兼容两种 shadow 结构
+    const shadow = style.shadow;
     textShadows.push(
-      `${style.shadow.offsetX}px ${style.shadow.offsetY}px ${style.shadow.blur}px ${style.shadow.color}`
+      `${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.color}`
     );
   }
   
+  // 字幕特有的高亮逻辑 (TextElement 可能没有，安全访问)
   if (style.highlightColor) {
     const intensity = style.highlightIntensity || 15;
     textShadows.push(
@@ -152,8 +194,12 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     cssProperties.textShadow = textShadows.join(', ');
   }
   
+  // 处理描边
   if (style.stroke?.enabled && style.stroke.width > 0) {
     cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
+  } else if (style.stroke && typeof style.stroke.width === 'number' && !('enabled' in style.stroke)) {
+     // 兼容 TextStyleConfig 的简单结构
+     cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
   }
   
   if (style.letterSpacing !== undefined && style.letterSpacing !== 0) {
@@ -164,19 +210,8 @@ export const convertStyleToCSS = (style?: SubtitleStyle): React.CSSProperties =>
     cssProperties.textDecoration = style.textDecoration;
   }
   
-  if (style.backgroundColor && style.backgroundColor !== 'transparent') {
-    if (style.backgroundShape !== undefined && style.backgroundShape > 0) {
-      if (style.backgroundShape === 50) {
-        cssProperties.borderRadius = '50%';
-      } else {
-        cssProperties.borderRadius = `${style.backgroundShape}px`;
-      }
-    }
-  }
-  
   return cssProperties;
 };
-
 export const applyStyleToSegments = (
   segments: RichTextSegment[],
   startIndex: number,

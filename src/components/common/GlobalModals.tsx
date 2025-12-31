@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { useUIStore } from '@/stores/useUIStore';
 import { useExportStore } from '@/stores/useExportStore';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { captureTextElementSnapshot } from '@/utils/textElementSnapshotUtils';
 import { useIsPremium } from '@/stores/useUserStore';
 import { UserProfileModal } from '../auth/UserProfileModal';
 import { useProjectStore } from '@/stores/useProjectStore';
@@ -48,6 +48,35 @@ function ExportModal() {
     }
     store.setShowExportModal(false);
   };
+  const processTextElements = async (projectData: any, controller: AbortController, isCloud: boolean) => {
+    if (!projectData.content?.textElements?.length) return;
+
+    store.setStatusMessage('正在生成文字贴纸...');
+    const state = useProjectStore.getState();
+    const videoWidth = state.videoMeta?.width || 1920; 
+    const tasks = projectData.content.textElements.map(async (element: any) => {
+      const snapshotBlob = await captureTextElementSnapshot(element ,2, videoWidth);
+      
+          if (snapshotBlob) {
+            if (isCloud) {
+              const tempUrl = URL.createObjectURL(snapshotBlob);
+              const uploadedUrl = await fileUploader.uploadBlob(
+                tempUrl, 
+                'image', 
+                undefined, 
+                controller.signal
+              );
+              element.snapshotUrl = uploadedUrl;
+              URL.revokeObjectURL(tempUrl);
+            } else {
+              const blobUrl = URL.createObjectURL(snapshotBlob);
+              element.snapshotUrl = blobUrl; 
+            }
+          }
+        });
+
+        await Promise.all(tasks);
+      };
 
   const handleResetAndClose = () => {
     store.setShowExportModal(false);
@@ -85,7 +114,7 @@ function ExportModal() {
           projectData.settings.watermark.snapshotUrl = blobUrl;
         }
       }
-      
+      await processTextElements(projectData, controller, false);
       const blob = await runFrontendExport(
         projectData,
         store.exportSettings,
@@ -129,6 +158,7 @@ function ExportModal() {
     store.setExportError(null);
     store.setJobId('');
     
+  
     requestAnimationFrame(() => {
       setTimeout(async () => {
         try {
@@ -154,7 +184,7 @@ function ExportModal() {
               URL.revokeObjectURL(tempUrl);
             }
           }
-
+          await processTextElements(project, controller, true);
           store.setStatusMessage('正在打包上传...');
           store.setExportStatus('uploading');
           

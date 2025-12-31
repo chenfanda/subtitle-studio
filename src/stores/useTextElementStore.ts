@@ -19,6 +19,7 @@ interface TextElementStore {
   
   updateTextElementPosition: (id: string, x: number, y: number) => void;
   updateTextElementTransform: (id: string, scaleX: number, scaleY: number, rotation: number) => void;
+  updateAllTextElementStyles: (style: SubtitleStyle) => void; 
   
   applyStyleToAllTextElementsOfType: (type: string, style: SubtitleStyle) => void;
   getTextElementType: (id: string) => string;
@@ -150,6 +151,28 @@ export const useTextElementStore = create<TextElementStore>()(
         useProjectStore.getState().markUnsaved();
         useHistoryStore.getState().endBatch();
       },
+
+      updateAllTextElementStyles: (style) => {
+          useHistoryStore.getState().startBatch();
+          
+          set((state) => {
+            // 遍历所有元素，不进行 type 判断，直接应用样式
+            state.textElements.forEach(element => {
+              element.style = { ...element.style, ...style };
+              
+              // 同步更新富文本样式
+              if (element.richText) {
+                element.richText = element.richText.map(segment => ({
+                  ...segment,
+                  style: { ...segment.style, ...style }
+                }));
+              }
+            });
+          });
+          
+          useProjectStore.getState().markUnsaved();
+          useHistoryStore.getState().endBatch();
+        },
       
       getTextElementType: (id) => {
         const element = findById(get().textElements, id);
