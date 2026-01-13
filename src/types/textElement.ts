@@ -1,6 +1,6 @@
-// 🆕 文字元素类型定义
-import type { SubtitleStyle, RichTextSegment } from './subtitle';
 
+import type { SubtitleStyle, RichTextSegment } from './subtitle';
+import type { KaraokeEffectConfig } from './animation'; 
 export type TextElementType = 'basic' | 'socialMedia' | 'title' | 'note';
 
 export interface TextElementPosition {
@@ -14,13 +14,14 @@ export interface TextElementPosition {
 export interface TextElement {
   id: string;
   type: TextElementType;
-  text: string;                    // ✅ 可编辑的文字内容
+  text: string;                    
   position: TextElementPosition;
   style: SubtitleStyle;
   richText?: RichTextSegment[];
-  startTime: number;               // 毫秒
-  endTime: number;                 // 毫秒
-  layer: number;                   // 图层顺序，数字越大越靠上
+  startTime: number;               
+  endTime: number;                 
+  layer: number;                 
+  dynamicConfig?: KaraokeEffectConfig;
 }
 
 export const DEFAULT_TEXT_ELEMENT_POSITION: TextElementPosition = {

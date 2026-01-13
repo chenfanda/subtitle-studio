@@ -38,8 +38,6 @@ export function TextElementOverlay() {
     });
   }, [textElements, currentTime, isInsertClip]);
   
-  // ... (中间的 handleElementClick, handleElementDrag 等逻辑保持不变，省略以节省空间) ...
-  // 请直接保留原文件中的事件处理逻辑，只替换 return 部分的渲染逻辑
 
   const handleElementClick = (element: TextElement, e: React.MouseEvent) => {
     if (e.detail === 2) return;
@@ -176,11 +174,13 @@ export function TextElementOverlay() {
                     src={(element.style as any).icon } 
                     alt="icon" 
                     style={{
-                      width: (element.style as any).icon  || 20, 
-                      height: (element.style as any).icon || 20,
+                      width: (element.style as any).iconSize || 40, 
+                      height: (element.style as any).iconSize || 40,
                       objectFit: 'contain',
                       display: 'inline-block',
-                      flexShrink: 0
+                      verticalAlign: 'middle',
+                      flexShrink: 0,
+                      marginRight: (element.style as any).gap || '4px'
                     }} 
                     draggable={false}
                   />

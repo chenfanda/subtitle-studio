@@ -121,22 +121,40 @@ export const worker = new Worker<RenderJobData>(
         if (checkInterval) clearInterval(checkInterval);
       };
 
-      const forceCleanupFiles = () => {
+     const forceCleanupFiles = () => {
         setTimeout(() => {
-          if (jobTempDir.includes('temp') && fs.existsSync(jobTempDir)) {
+  
+          if (fs.existsSync(jobTempDir)) {
             try {
               fs.rmSync(jobTempDir, { recursive: true, force: true });
-              console.log(`🧹 [Worker] 沙盒清理完成: ${jobId}`);
+              console.log(`🧹 [Worker] 任务沙盒清理完成: ${jobId}`);
             } catch (e: any) {
               console.error(`⚠️ [Worker] 沙盒清理受阻: ${e.message}`);
             }
           }
           
+
+          const parentDir = path.join(process.cwd(), 'temp');
+          const SEVEN_DAYS_MS = 24 * 60 * 60 * 1000;
+          if (fs.existsSync(parentDir)) {
+            try {
+              const files = fs.readdirSync(parentDir);
+              const now = Date.now();
+              files.forEach(file => {
+                if (file.startsWith('remotion-') || file.startsWith('react-motion-')) {
+                  const fullPath = path.join(parentDir, file);
+                  const stats = fs.statSync(fullPath);
+
+                  if (file.includes(jobId) || (now - stats.mtimeMs > SEVEN_DAYS_MS)) {
+                    fs.rmSync(fullPath, { recursive: true, force: true });
+                  }
+                }
+              });
+            } catch (e) {}
+          }
           if (childBundlePath && fs.existsSync(childBundlePath)) {
              try {
-               if (!childBundlePath.startsWith(jobTempDir)) {
-                 fs.rmSync(childBundlePath, { recursive: true, force: true });
-               }
+               fs.rmSync(childBundlePath, { recursive: true, force: true });
              } catch (e) {}
           }
         }, 2000);

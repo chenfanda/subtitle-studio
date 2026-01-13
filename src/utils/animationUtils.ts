@@ -1,163 +1,200 @@
-import type { AnimationTemplate, AnimationEffect } from '@/types/animation';
+import { 
+  AnimationEffect, 
+  AdvancedSceneTemplate,
+  AdvancedTextEffectConfig,
+  DecorationConfig
+} from '@/types/animation';
+import { SubtitleStyle, DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
+import { STATIC_STYLE_TEMPLATES } from '@/constants/staticStyleTemplates';
+import { DYNAMIC_STYLE_TEMPLATES } from '@/constants/dynamicStyleTemplates';
+import { ADVANCED_SCENE_TEMPLATES } from '@/constants/advancedTemplates';
 
-export const generateAnimationCSS = (effects: AnimationEffect[]): string => {
-  const keyframes: string[] = [];
-  const animations: string[] = [];
 
-  effects.forEach((effect, index) => {
-    const keyframeName = `${effect.name}-${index}`;
-    const keyframe = createKeyframe(keyframeName, effect);
-    keyframes.push(keyframe);
+export const calculatePathTransform = (progress: number, config: any) => {
+  const { 
+    animation, 
+    moveX = 0, 
+    moveY = 0, 
+    amplitude = 1, 
+    frequency = 1, 
+    flipX = false,
+    isActive = false 
+  } = config;
+  
+  const flip = flipX ? -1 : 1;
+  let tx = 0, ty = 0, r = 0, s = config.scale || 1;
 
-    const animationDef = `${keyframeName} ${effect.duration}ms ${effect.easing || 'ease'} ${effect.delay || 0}ms`;
-    animations.push(animationDef);
-  });
+  switch (animation) {
+    case 'snow':
+    case 'bubbles':
+      ty = progress * (moveY || 800);
+      tx = Math.sin(progress * Math.PI * 4 * frequency) * (amplitude * 20);
+      r = progress * 360; 
+      break;
+    case 'meteor': 
+      tx = interpolateValue(progress, [0, 1], [200, -200]);
+      ty = interpolateValue(progress, [0, 1], [-200, 200]);
+      r = -45;
+      break;
+    case 'floating': 
+      ty = Math.sin(progress * Math.PI * 4 * frequency) * (amplitude * 15);
+      break;
+      
+    case 'breathing': 
+      s *= (1 + Math.sin(progress * Math.PI * 2 * frequency) * (amplitude * 0.05));
+      break;
 
-  return `
-    <style>
-      ${keyframes.join('\n')}
-      .animated-text {
-        animation: ${animations.join(', ')};
+    case 'swing': 
+      r = Math.sin(progress * Math.PI * 2 * frequency) * (amplitude * 12);
+      break;
+
+    case 'meteor': 
+      tx = interpolateValue(progress, [0, 1], [200, -200]);
+      ty = interpolateValue(progress, [0, 1], [-200, 200]);
+      r = -45;
+      break;
+
+    case 'arc-move': 
+      tx = progress * moveX;
+      ty = (progress * moveY) - Math.sin(progress * Math.PI) * (amplitude * 100);
+      break;
+
+    case 'pop-elastic': 
+    case 'elastic-pop':
+      if (isActive) {
+        const localSpring = Math.sin(progress * Math.PI * 10) * 0.2;
+        s *= (1 + localSpring);
       }
-    </style>
-  `;
+      break;
+
+    default:
+      tx = progress * moveX;
+      ty = progress * moveY;
+  }
+
+  return `translate(${tx}px, ${ty}px) rotate(${r}deg) scale(${s * flip}, ${s})`;
 };
 
-export const applyAnimationToElement = (element: HTMLElement, effects: AnimationEffect[]): void => {
-  effects.forEach((effect, index) => {
-    setTimeout(() => {
-      applyEffect(element, effect);
-    }, effect.delay || 0);
+
+export const resolveSceneConfig = (templateId: string): AdvancedSceneTemplate | null => {
+  const template = ADVANCED_SCENE_TEMPLATES.find(t => t.id === templateId);
+  if (!template) return null;
+
+  const resolvedLayers = template.layers.map(layer => {
+    if (layer.type === 'text') {
+      const config = layer.config as AdvancedTextEffectConfig;
+      let resolvedMotion = {};
+      
+      if (config.motionId) {
+        
+        const motionPart = DYNAMIC_STYLE_TEMPLATES.advanced.find(t => t.id === config.motionId)
+                        || DYNAMIC_STYLE_TEMPLATES.featured.find(t => t.id === config.motionId);
+        if (motionPart) {
+          resolvedMotion = motionPart.karaokeConfig || {};
+        }
+      }
+
+      return {
+        ...layer,
+        config: {
+          ...resolvedMotion,
+          ...config
+        }
+      };
+    }
+    return layer;
   });
+
+  let baseStyle = { ...DEFAULT_SUBTITLE_STYLE };
+  if (template.baseStyleId) {
+    const staticPart = STATIC_STYLE_TEMPLATES.find(t => t.id === template.baseStyleId);
+    if (staticPart) {
+      baseStyle = { ...DEFAULT_SUBTITLE_STYLE, ...(staticPart.style as any) };
+    }
+  }
+
+  return {
+    ...template,
+    layers: resolvedLayers,
+    baseStyleFallback: baseStyle
+  } as any;
 };
 
-export const createAnimationSequence = (effects: AnimationEffect[]): string => {
-  const sequence = effects.map((effect, index) => {
-    const startTime = effects.slice(0, index).reduce((acc, e) => acc + (e.delay || 0), 0);
-    const endTime = startTime + effect.duration;
-    
-    return {
-      name: effect.name,
-      startTime,
-      endTime,
-      properties: effect.properties
-    };
+
+export const deepMergeStyle = (base: SubtitleStyle, override: Partial<SubtitleStyle>): SubtitleStyle => {
+  const result = { ...base };
+  Object.entries(override).forEach(([key, value]) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      (result as any)[key] = { ...(result as any)[key], ...value };
+    } else {
+      (result as any)[key] = value;
+    }
   });
-
-  return JSON.stringify(sequence);
+  return result;
 };
 
-export const getAnimationDuration = (template: AnimationTemplate): number => {
-  return template.effects.reduce((total, effect) => {
-    return Math.max(total, (effect.delay || 0) + effect.duration);
-  }, 0);
+
+export const getSpringValue = (frame: number, stiffness = 180, damping = 12, mass = 1) => {
+  const fps = 60;
+  const t = frame / fps;
+  if (t <= 0) return 0;
+  const w0 = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  if (zeta < 1) {
+    const wd = w0 * Math.sqrt(1 - zeta * zeta);
+    return 1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + (zeta * w0 / wd) * Math.sin(wd * t));
+  }
+  return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
 };
+
+
+export const interpolateValue = (value: number, input: [number, number], output: [number, number]) => {
+  const [inMin, inMax] = input;
+  const [outMin, outMax] = output;
+  const clamped = Math.max(inMin, Math.min(inMax, value));
+  return outMin + (clamped - inMin) * (outMax - outMin) / (inMax - inMin);
+};
+
 
 export const convertToWebAnimation = (effect: AnimationEffect): Keyframe[] => {
   const keyframes: Keyframe[] = [];
-  
   Object.entries(effect.properties).forEach(([property, values]) => {
     if (Array.isArray(values)) {
       values.forEach((value, index) => {
         const offset = index / (values.length - 1);
-        if (!keyframes[index]) {
-          keyframes[index] = { offset };
-        }
+        if (!keyframes[index]) keyframes[index] = { offset };
         keyframes[index][property] = value;
       });
     }
   });
-
   return keyframes;
 };
 
-export const createEntranceEffect = (type: string, duration: number = 500): AnimationEffect => {
-  const effects: Record<string, any> = {
-    fadeIn: { opacity: [0, 1] },
-    slideUp: { transform: ['translateY(50px)', 'translateY(0)'], opacity: [0, 1] },
-    slideDown: { transform: ['translateY(-50px)', 'translateY(0)'], opacity: [0, 1] },
-    slideLeft: { transform: ['translateX(50px)', 'translateX(0)'], opacity: [0, 1] },
-    slideRight: { transform: ['translateX(-50px)', 'translateX(0)'], opacity: [0, 1] },
-    scaleIn: { transform: ['scale(0.8)', 'scale(1)'], opacity: [0, 1] },
-    rotateIn: { transform: ['rotate(180deg) scale(0.5)', 'rotate(0) scale(1)'], opacity: [0, 1] }
-  };
-
-  return {
-    type: 'entrance',
-    name: type,
-    duration,
-    properties: effects[type] || effects.fadeIn
-  };
-};
-
-export const createExitEffect = (type: string, duration: number = 500): AnimationEffect => {
-  const effects: Record<string, any> = {
-    fadeOut: { opacity: [1, 0] },
-    slideOutUp: { transform: ['translateY(0)', 'translateY(-50px)'], opacity: [1, 0] },
-    slideOutDown: { transform: ['translateY(0)', 'translateY(50px)'], opacity: [1, 0] },
-    slideOutLeft: { transform: ['translateX(0)', 'translateX(-50px)'], opacity: [1, 0] },
-    slideOutRight: { transform: ['translateX(0)', 'translateX(50px)'], opacity: [1, 0] },
-    scaleOut: { transform: ['scale(1)', 'scale(0.8)'], opacity: [1, 0] },
-    rotateOut: { transform: ['rotate(0) scale(1)', 'rotate(-180deg) scale(0.5)'], opacity: [1, 0] }
-  };
-
-  return {
-    type: 'exit',
-    name: type,
-    duration,
-    properties: effects[type] || effects.fadeOut
-  };
-};
-
-export const createContinuousEffect = (type: string, duration: number = 2000): AnimationEffect => {
-  const effects: Record<string, any> = {
-    breathe: { transform: ['scale(1)', 'scale(1.05)', 'scale(1)'] },
-    pulse: { opacity: [1, 0.7, 1] },
-    bounce: { transform: ['translateY(0)', 'translateY(-10px)', 'translateY(0)'] },
-    shake: { transform: ['translateX(0)', 'translateX(-5px)', 'translateX(5px)', 'translateX(0)'] },
-    glow: { textShadow: ['0 0 5px currentColor', '0 0 20px currentColor', '0 0 5px currentColor'] },
-    rainbow: { 
-      color: ['#ff0000', '#ff8000', '#ffff00', '#00ff00', '#0080ff', '#8000ff', '#ff0000'] 
-    }
-  };
-
-  return {
-    type: 'continuous',
-    name: type,
-    duration,
-    properties: effects[type] || effects.breathe
-  };
-};
 
 export const createKeyframe = (name: string, effect: AnimationEffect): string => {
   const steps: string[] = [];
-  
   Object.entries(effect.properties).forEach(([property, values]) => {
     if (Array.isArray(values)) {
       values.forEach((value, index) => {
         const percentage = (index / (values.length - 1)) * 100;
-        if (!steps[index]) {
-          steps[index] = `${percentage}% {`;
-        }
-        steps[index] += ` ${property}: ${value};`;
+        if (!steps[index]) steps[index] = `${percentage}% {`;
+        const cssProperty = property.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+        steps[index] += ` ${cssProperty}: ${value};`;
       });
     }
   });
-
-  steps.forEach((step, index) => {
-    steps[index] += ' }';
-  });
-
+  steps.forEach((step, index) => steps[index] += ' }');
   return `@keyframes ${name} { ${steps.join(' ')} }`;
 };
 
-const applyEffect = (element: HTMLElement, effect: AnimationEffect): void => {
-  const keyframes = convertToWebAnimation(effect);
-  const options: KeyframeAnimationOptions = {
-    duration: effect.duration,
-    easing: effect.easing || 'ease',
-    fill: 'forwards'
-  };
 
-  element.animate(keyframes, options);
+export const generateAnimationCSS = (effects: AnimationEffect[]): string => {
+  const keyframes: string[] = [];
+  const animations: string[] = [];
+  effects.forEach((effect, index) => {
+    const keyframeName = `${effect.name}-${index}`;
+    keyframes.push(createKeyframe(keyframeName, effect));
+    animations.push(`${keyframeName} ${effect.duration}ms ${effect.easing || 'ease'} ${effect.delay || 0}ms`);
+  });
+  return `<style>${keyframes.join('\n')}.animated-text { animation: ${animations.join(', ')}; }</style>`;
 };

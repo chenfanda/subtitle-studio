@@ -63,7 +63,7 @@ const createSocial = (id: string, iconName: string, name: string, bgColor = '#FF
     justifyContent: 'center' as const,
     gap: '8px',
     icon: `${ASSET_PATH}/${iconName}`,
-    iconSize: 24,
+    iconSize: 36,
     minWidth: '100px'
   }
 });

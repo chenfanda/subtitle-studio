@@ -20,9 +20,9 @@ const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boole
     cleanProject.content.placedMedia = []; 
   }
 
-  if (cleanProject.settings?.watermark && !keepOverlays) {
-    cleanProject.settings.watermark.enabled = false;
-  }
+  // if (cleanProject.settings?.watermark && !keepOverlays) {
+  //   cleanProject.settings.watermark.enabled = false;
+  // }
   
   return cleanProject;
 };
@@ -158,6 +158,73 @@ export const processWithGpu = async (
 
     ffmpegProcess.on('error', (err) => {
       console.error(`❌ [Docker Error] Failed to start docker process:`, err);
+      reject(err);
+    });
+  });
+};
+
+
+export const mergeFramesWithGpu = async (
+  tempDir: string,
+  framesDir: string,
+  fps: number,
+  outputPath: string
+): Promise<void> => {
+  return new Promise(async (resolve, reject) => {
+    const absoluteTempDir = path.resolve(tempDir);
+    const absoluteFramesDir = path.resolve(framesDir);
+    const absoluteOutputDir = path.resolve(path.dirname(outputPath));
+
+    const hostUploadDir = path.resolve(SERVER_CONFIG.PATHS.UPLOAD_DIR);
+    const hostFontDir = path.resolve(path.join(process.cwd(), 'public', 'fonts'));
+
+    const ffmpegArgs = [
+      '-y',
+      '-i', path.join(absoluteTempDir, 'base_video.mp4'), 
+      '-framerate', fps.toString(),
+      '-pattern_type', 'glob', 
+      '-i', path.join(absoluteFramesDir, '*.png'), 
+      '-filter_complex', '[0:v][1:v]overlay=0:0[v]',
+      '-map', '[v]',
+      '-map', '0:a',
+      '-c:v', 'h264_nvenc',
+      '-preset', 'p4',
+      '-cq', '22',
+      '-pix_fmt', 'yuv420p',
+      outputPath
+    ];
+
+    const dockerArgs = [
+      'run', '--rm', '--gpus', 'all',
+      '-w', '/',
+      '-v', `${absoluteTempDir}:${absoluteTempDir}`,
+      '-v', `${absoluteOutputDir}:${absoluteOutputDir}`,
+      '-v', `${hostUploadDir}:${hostUploadDir}:ro`,
+      '-v', `${hostFontDir}:${hostFontDir}:ro`,
+      '-v', `${hostFontDir}:/public/fonts:ro`,
+      DOCKER_IMAGE,
+      ...ffmpegArgs
+    ];
+
+    console.log(`🐳 [GPU Docker] 开始 Stage 3 最终合成...`);
+    const ffmpegProcess = spawn('docker', dockerArgs);
+
+    let stderrData = '';
+    ffmpegProcess.stderr.on('data', (data) => { stderrData += data.toString(); });
+
+    ffmpegProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log(`✅ [GPU Stage 3] 合成成功: ${outputPath}`);
+        resolve();
+      } else {
+        console.error(`❌ [GPU Stage 3] 合成失败 Code: ${code}`);
+        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-1000)}`);
+        reject(new Error(`FFmpeg GPU merge process exited with code ${code}`));
+      }
+    });
+
+    ffmpegProcess.on('error', (err) => {
+      console.error(`❌ [Docker Error]`, err);
       reject(err);
     });
   });

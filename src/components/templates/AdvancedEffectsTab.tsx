@@ -7,13 +7,13 @@ export function AdvancedEffectsTab() {
   const getTemplatesByCategory = useTemplateStore((state) => state.getTemplatesByCategory);
   
   const templates = getTemplatesByCategory('dynamic');
-  const defaultCount = 12;
+  const defaultCount = 20;
   const visibleTemplates = isExpanded ? templates : templates.slice(0, defaultCount);
   const hasMore = templates.length > defaultCount;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {visibleTemplates.map((template) => (
           <EffectPreviewCard key={template.id} template={template} />
         ))}

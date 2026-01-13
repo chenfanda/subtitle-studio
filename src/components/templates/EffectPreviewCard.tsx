@@ -6,7 +6,8 @@ import {
   isDynamicTemplate,
   isStaticTemplate,
   isAnimationTemplate,
-  isRichTextStyleTemplate
+  isRichTextStyleTemplate,
+  isSceneTemplate 
 } from '@/stores/useTemplateStore';
 import { useSelectedSubtitles, useRichTextSelection } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -22,6 +23,7 @@ import {
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { Modal } from '@/components/common/Modal';
 import { XMarkIcon } from '@heroicons/react/24/solid';
+import { SubtitleScene } from '@/components/video/SubtitleScene';
 
 interface EffectPreviewCardProps {
   template: AnyTemplate;
@@ -32,13 +34,11 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   const selectedTemplate = useSelectedTemplate();
   const selectTemplate = useTemplateStore((state) => state.selectTemplate);
   const removeCustomTemplate = useTemplateStore((state) => state.removeCustomTemplate);
-
   const applyTemplateToSubtitle = useTemplateStore((state) => state.applyTemplateToSubtitle);
   const removeTemplateFromSubtitle = useTemplateStore((state) => state.removeTemplateFromSubtitle);
 
   const globalSelectedSubtitleIds = useSelectedSubtitles();
   const globalRichTextSelection = useRichTextSelection();
-
   const selectedSubtitleIds = targetSubtitleId ? [targetSubtitleId] : globalSelectedSubtitleIds;
   const hasSelectedSubtitles = selectedSubtitleIds.length > 0;
 
@@ -55,34 +55,29 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   const [isApplied, setIsApplied] = useState(false);
   const [hasThisEffect, setHasThisEffect] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [previewTime, setPreviewTime] = useState(0);
 
   const isSelected = selectedTemplate?.id === template.id;
+  const isScene = isSceneTemplate(template);
   const hasRichTextSelection = richTextSelection && selectedSubtitleIds.includes(richTextSelection.subtitleId);
 
   const getPreviewText = () => {
-    if (isRichTextStyleTemplate(template)) {
-      return template.preview || template.segments[0]?.text || 'Rich Text';
-    }
+    if (isRichTextStyleTemplate(template)) return template.preview || 'Rich Text';
     if (hasRichTextSelection && selectedSubtitle) {
-      if (selectedSubtitle.richText) {
-        const fullText = convertRichTextToPlainText(selectedSubtitle.richText);
-        return fullText.substring(richTextSelection.startIndex, richTextSelection.endIndex);
-      } else {
-        return selectedSubtitle.text.substring(richTextSelection.startIndex, richTextSelection.endIndex);
-      }
+      const text = selectedSubtitle.richText 
+        ? convertRichTextToPlainText(selectedSubtitle.richText) 
+        : selectedSubtitle.text;
+      return text.substring(richTextSelection.startIndex, richTextSelection.endIndex);
     }
-    return selectedSubtitle?.text || template.preview;
+    return selectedSubtitle?.text || template.name;
   };
 
   const previewText = getPreviewText();
 
   const templateStyle = useMemo(() => {
-    if (isRichTextStyleTemplate(template)) {
-        return template.segments[0]?.style || DEFAULT_SUBTITLE_STYLE;
-    }
-    if (isDynamicTemplate(template) || isStaticTemplate(template)) {
-      return convertTemplateToSubtitleStyle(template.style);
-    }
+    if (isRichTextStyleTemplate(template)) return template.segments[0]?.style || DEFAULT_SUBTITLE_STYLE;
+    if (isDynamicTemplate(template) || isStaticTemplate(template)) return convertTemplateToSubtitleStyle(template.style);
     return selectedSubtitle?.style || DEFAULT_SUBTITLE_STYLE;
   }, [template, selectedSubtitle]);
 
@@ -93,71 +88,64 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   }, [templateStyle]);
 
   const primaryEffect = useMemo((): AnimationEffect | null => {
-    if (isRichTextStyleTemplate(template)) {
-        return template.segments[0]?.animation || null;
-    }
-    if (isDynamicTemplate(template)) {
-      return template.animation;
-    }
-    if (isAnimationTemplate(template) && template.effects.length > 0) {
-      return template.effects[0];
-    }
+    if (isRichTextStyleTemplate(template)) return template.segments[0]?.animation || null;
+    if (isDynamicTemplate(template)) return template.animation;
+    if (isAnimationTemplate(template) && template.effects.length > 0) return template.effects[0];
     return null;
   }, [template]);
 
   useEffect(() => {
-    if (selectedSubtitle?.richText && primaryEffect) {
-        const effectName = primaryEffect.name;
-        const hasAnimationEffect = selectedSubtitle.richText.some(
-            (segment) => segment.animation?.name === effectName
-        );
-        setHasThisEffect(hasAnimationEffect);
+    if (isScene) {
+      setHasThisEffect(selectedSubtitle?.templateId === template.id);
+    } else if (selectedSubtitle?.richText && primaryEffect) {
+      setHasThisEffect(selectedSubtitle.richText.some(seg => seg.animation?.name === primaryEffect.name));
     } else if (isStaticTemplate(template) && selectedSubtitle?.style) {
-        const currentStyle = selectedSubtitle.style || DEFAULT_SUBTITLE_STYLE;
-        const templateStyleConverted = convertTemplateToSubtitleStyle(template.style);
-        const stylesMatch = Object.keys(templateStyleConverted).every(
-            key => currentStyle[key as keyof typeof currentStyle] === templateStyleConverted[key as keyof typeof templateStyleConverted]
-        );
-        setHasThisEffect(stylesMatch);
-    }
-     else {
+      const current = selectedSubtitle.style;
+      const target = convertTemplateToSubtitleStyle(template.style);
+      setHasThisEffect(Object.keys(target).every(k => current[k as keyof typeof current] === target[k as keyof typeof target]));
+    } else {
       setHasThisEffect(false);
     }
-  }, [selectedSubtitle, template, primaryEffect, richTextSelection, isSelected]);
+  }, [selectedSubtitle, template, primaryEffect, isScene]);
 
   useEffect(() => {
-    if (isSelected && previewRef.current && primaryEffect) {
-      playAnimation();
+    if (isScene) {
+      if (!isHovered && !isSelected) {
+        setPreviewTime(0);
+        return;
+      }
+      let frameId: number;
+      const start = performance.now();
+      const update = () => {
+        setPreviewTime(((performance.now() - start) % 3000) / 1000);
+        frameId = requestAnimationFrame(update);
+      };
+      frameId = requestAnimationFrame(update);
+      return () => cancelAnimationFrame(frameId);
     } else {
-      stopAnimation();
+      if (isSelected && previewRef.current && primaryEffect) {
+        playAnimation();
+      } else {
+        stopAnimation();
+      }
     }
     return () => stopAnimation();
-  }, [isSelected, selectedSubtitle, richTextSelection, primaryEffect]);
+  }, [isSelected, isHovered, isScene, primaryEffect]);
 
   const playAnimation = () => {
     if (!primaryEffect || !previewRef.current) return;
-
     const element = previewRef.current;
     const keyframes = convertToWebAnimation(primaryEffect);
-
     const options: KeyframeAnimationOptions = {
       duration: primaryEffect.duration,
       easing: primaryEffect.easing || 'ease',
       iterations: primaryEffect.type === 'continuous' ? Infinity : 1,
       fill: 'both'
     };
-
-    const newAnimation = element.animate(keyframes, options);
-    setAnimation(newAnimation);
-
+    const anim = element.animate(keyframes, options);
+    setAnimation(anim);
     if (primaryEffect.type !== 'continuous') {
-      newAnimation.onfinish = () => {
-        setTimeout(() => {
-          if (isSelected) {
-            playAnimation();
-          }
-        }, 500);
-      };
+      anim.onfinish = () => setTimeout(() => isSelected && playAnimation(), 500);
     }
   };
 
@@ -168,167 +156,92 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     }
   };
 
-  const handleCardClick = () => {
-    selectTemplate(template);
-  };
+  const mockSubtitle = useMemo(() => {
+    if (!isScene) return null;
+    return {
+      id: `prev-${template.id}`,
+      text: template.name,
+      startTime: 0,
+      endTime: 3000,
+      templateId: template.id,
+      style: { ...DEFAULT_SUBTITLE_STYLE, fontSize: 48, fontWeight: 900, color: '#FFFFFF' }
+    };
+  }, [template, isScene]);
 
   const handleApply = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 阻止冒泡仍然很重要
-
-    const applyFn = hasThisEffect ? removeTemplateFromSubtitle : applyTemplateToSubtitle;
-
+    e.stopPropagation();
+    const fn = hasThisEffect ? removeTemplateFromSubtitle : applyTemplateToSubtitle;
     if (hasRichTextSelection && !isRichTextStyleTemplate(template)) {
-      applyFn(
-        richTextSelection.subtitleId,
-        template,
-        richTextSelection.startIndex,
-        richTextSelection.endIndex
-      );
+      fn(richTextSelection.subtitleId, template, richTextSelection.startIndex, richTextSelection.endIndex);
     } else {
-      selectedSubtitleIds.forEach(subtitleId => {
-        applyFn(subtitleId, template);
-      });
+      selectedSubtitleIds.forEach(id => fn(id, template));
     }
-
     if (!hasThisEffect) {
       setIsApplied(true);
       setTimeout(() => setIsApplied(false), 1500);
     }
   };
 
-  const handleRemoveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    removeCustomTemplate(template.id);
-    setIsDeleteConfirmOpen(false);
-  };
-
-  const getButtonText = () => {
-    if (hasThisEffect) {
-      return '移除效果';
-    }
-    if (isApplied) {
-      return '✓ 已应用';
-    }
-    return hasRichTextSelection && !isRichTextStyleTemplate(template) ? '应用到选中片段' : '应用到整个字幕';
-  };
-
-  const getButtonStyle = () => {
-    if (hasThisEffect) {
-      return 'bg-red-600 hover:bg-red-700 text-white';
-    }
-    if (isApplied) {
-      return 'bg-green-600 text-white';
-    }
-    return 'bg-accent-purple hover:bg-accent-purple/80 text-white';
-  };
-
-  const isCustomTemplate = template.category === 'custom';
-
   return (
     <Fragment>
-      {/* 🟢 修复：将外层 <button> 改为 <div> 并添加交互属性 */}
       <div
-        onClick={handleCardClick}
+        onClick={() => selectTemplate(template)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleCardClick();
-          }
-        }}
-        className={`
-          relative w-full h-24 rounded-lg border-2 transition-all duration-200
-          hover:scale-105 overflow-hidden group cursor-pointer
-          ${isSelected
-            ? 'border-accent-purple shadow-lg shadow-accent-purple/20'
-            : 'border-border-secondary hover:border-border-primary'
-          }
-        `}
+        className={`relative w-full h-24 rounded-lg border-2 transition-all duration-200 hover:scale-105 overflow-hidden group cursor-pointer ${
+          isSelected ? 'border-accent-purple shadow-lg shadow-accent-purple/20' : 'border-border-secondary'
+        }`}
       >
         <div className="absolute inset-0 bg-bg-secondary flex items-center justify-center p-2">
-          <div
-            ref={previewRef}
-            className="text-sm font-medium text-text-primary truncate"
-            style={cssPreviewStyle}
-          >
-            {previewText}
-          </div>
+          {isScene ? (
+            <div className="w-full h-full pointer-events-none scale-[0.3] origin-center flex items-center justify-center">
+               <SubtitleScene subtitle={mockSubtitle} currentTime={previewTime} scaleFactor={1} isPreview={true} />
+            </div>
+          ) : (
+            <div ref={previewRef} className="text-sm font-medium text-text-primary truncate" style={cssPreviewStyle}>
+              {previewText}
+            </div>
+          )}
         </div>
 
-        {isSelected && (
-          <div className="absolute top-1 right-1 w-3 h-3 bg-accent-purple rounded-full" />
-        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white px-2 py-0.5 z-10 truncate">
+          {template.name}
+        </div>
 
-        {/* 内部按钮 1：删除按钮 */}
-        {isCustomTemplate && (
+        {isSelected && <div className="absolute top-1 right-1 w-3 h-3 bg-accent-purple rounded-full z-20" />}
+        
+        {template.category === 'custom' && (
           <button
-            onClick={handleRemoveClick}
-            className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all z-10"
-            title="删除模板"
+            onClick={(e) => { e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
+            className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 z-30"
           >
-            <XMarkIcon className="w-3.5 h-3.5" />
+            <XMarkIcon className="w-3 h-3" />
           </button>
         )}
 
-        {hasThisEffect && !isCustomTemplate && (
-          <div className="absolute top-1 left-1 w-3 h-3 bg-orange-500 rounded-full" />
-        )}
-
-        {isApplied && !isCustomTemplate && (
-          <div className="absolute top-1 left-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-        )}
-
-        {/* 内部按钮 2：应用按钮 */}
         {isSelected && hasSelectedSubtitles && (
-          <div className="absolute bottom-1 left-1 right-1">
+          <div className="absolute bottom-1 left-1 right-1 z-20">
             <button
               onClick={handleApply}
-              className={`w-full py-1 px-2 text-xs rounded transition-colors ${getButtonStyle()}`}
+              className={`w-full py-1 text-[10px] rounded ${
+                hasThisEffect ? 'bg-red-600' : isApplied ? 'bg-green-600' : 'bg-accent-purple'
+              } text-white`}
             >
-              {getButtonText()}
+              {hasThisEffect ? '移除' : isApplied ? '✓ 已应用' : '应用'}
             </button>
-          </div>
-        )}
-
-        {isSelected && !hasSelectedSubtitles && !targetSubtitleId && (
-          <div className="absolute bottom-1 left-1 right-1">
-            <div className="w-full py-1 px-2 text-xs bg-gray-600 text-gray-300 rounded text-center">
-              请先选择字幕
-            </div>
           </div>
         )}
       </div>
 
       {isDeleteConfirmOpen && (
-        <Modal
-          title="删除预设"
-          isOpen={true}
-          onClose={() => setIsDeleteConfirmOpen(false)}
-        >
+        <Modal title="删除预设" isOpen={true} onClose={() => setIsDeleteConfirmOpen(false)}>
           <div className="p-4 space-y-4">
-            <p className="text-sm text-text-primary">
-              您确定要删除模板 "{template.name}" 吗？此操作无法撤销。
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsDeleteConfirmOpen(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-bg-tertiary text-text-primary hover:bg-border-secondary transition-colors"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-              >
-                删除
-              </button>
+            <p className="text-sm">确定删除 "{template.name}" 吗？</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 bg-bg-tertiary rounded-lg text-sm">取消</button>
+              <button onClick={() => { removeCustomTemplate(template.id); setIsDeleteConfirmOpen(false); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">删除</button>
             </div>
           </div>
         </Modal>

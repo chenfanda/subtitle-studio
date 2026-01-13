@@ -34,9 +34,9 @@ export function StylePreviewCard({ template }: StylePreviewCardProps) {
       display: templateStyle.display,
       alignItems: templateStyle.alignItems,
       justifyContent: templateStyle.justifyContent,
-      gap: templateStyle.gap,
+      gap: templateStyle.gap || '4px',
       icon: templateStyle.icon,
-      iconSize: templateStyle.iconSize,
+      iconSize: templateStyle.iconSize || 40,
     };
   };
   

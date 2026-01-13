@@ -1,11 +1,11 @@
 import type { AudioTrack } from './audio';
 import type { BrollVideoData } from './broll';
-
+import type { KaraokeEffectConfig } from './animation'; 
 export interface SubtitlePosition {
   x: number;
   y: number;
   scale: number;
-  width?: number;  // 容器宽度（像素）
+  width?: number; 
 }
 
 export interface SubtitleShadow {
@@ -19,7 +19,7 @@ export interface SubtitleShadow {
 export interface SubtitleStyle {
   fontSize: number;
   fontFamily: string;
-  fontWeight: number;
+  fontWeight: number | string; 
   fontStyle: 'normal' | 'italic';
   color: string;
   
@@ -81,6 +81,8 @@ export interface SubtitleItem {
   brollVideo?: BrollVideoData;
   sourceMix?: SourceMixConfig;
   speaker?: string;
+  dynamicConfig?: KaraokeEffectConfig;
+  templateId?: string; 
 }
 
 export const DEFAULT_SUBTITLE_POSITION: SubtitlePosition = {

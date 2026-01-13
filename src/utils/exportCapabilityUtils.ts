@@ -31,10 +31,13 @@ const checkStyleCompatibility = (style: SubtitleStyle | undefined, label: string
 export const checkFrontendCompatibility = (project: ProjectExport): CompatibilityResult => {
   const issues = new Set<string>();
 
-  // 1. 检查字幕
   if (project.content.subtitles) {
     project.content.subtitles.forEach((sub: SubtitleItem) => {
       const prefix = "字幕";
+
+      if (sub.templateId) {
+        issues.add(`${prefix}使用了高级动态模板`);
+      }
 
       if (sub.style) {
         const styleIssue = checkStyleCompatibility(sub.style, prefix);
@@ -56,7 +59,6 @@ export const checkFrontendCompatibility = (project: ProjectExport): Compatibilit
     });
   }
 
-  // 2. 检查文字元素
   if (project.content.textElements) {
     project.content.textElements.forEach((el: TextElement) => {
       const prefix = "贴纸文字";
@@ -134,6 +136,10 @@ export const sanitizeProjectForFrontend = (project: ProjectExport): ProjectExpor
 export const canUsePureFFmpeg = (project: ProjectExport): boolean => {
   if (project.content.subtitles) {
     for (const sub of project.content.subtitles) {
+      if (sub.templateId) {
+        return false;
+      }
+
       if (sub.richText && sub.richText.some((seg: RichTextSegment) => seg.animation)) {
         return false;
       }

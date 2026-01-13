@@ -1,6 +1,6 @@
 import type { ProjectExport } from '@/types/project';
 import type { TimelineSegment } from '@/types/videoSequence';
-import type { SubtitleItem, SubtitleStyle } from '@/types/subtitle';
+import type { SubtitleItem } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_STYLE, DEFAULT_SUBTITLE_POSITION } from '@/types/subtitle';
 import type { TextElement } from '@/types/textElement';
 import type { PlacedMediaItem } from '@/types/media';
@@ -447,30 +447,35 @@ const buildAnimationFilter = (
       return baseStyle;
   }
 };
-
 const buildTextSnapshotStream = (
   snapshotUrl: string,
   pos: any, 
   mapper: InputMapper,
   targetW: number,
-  targetH: number, 
+  _targetH: number, 
   scaleFactor: number,
   streamName: string
 ): { filter: string, inputIndex: number } => {
   const inputIndex = mapper.getIndex(snapshotUrl);
   
-  const scaleExpr = `trunc(iw/2*${scaleFactor}*${pos.scaleX || 1}/2)*2`;
-  
+  // 从快照中获取真实的背景宽度和画布宽度的比例
+  const metadata = (pos as any)._snapshotMetadata || { barW: 1, canvasW: 1 };
+  const marginRatio = metadata.canvasW / metadata.barW;
+
+  // 1. 确定元素在视频中的逻辑宽度 (由 targetW 和 pos.width 决定)
+  const logicalWidth = pos.width && pos.width > 0 
+      ? `${targetW} * ${pos.width / 100}` 
+      : `iw/2 * ${scaleFactor}`;
+  const finalWidth = `trunc(${logicalWidth} * ${pos.scaleX || 1} * ${marginRatio}/2)*2`;
+
   const filters = [
     `[${inputIndex}:v]format=rgba`,
-    `scale=${scaleExpr}:-1:flags=bicubic`,
+    // 使用 -1 保持纵横比，防止椭圆变形
+    `scale=${finalWidth}:-1:flags=bicubic`,
     `rotate=${pos.rotation || 0}*PI/180:c=none:ow=rotw(iw):oh=roth(ih)`
   ];
   
-  return { 
-    filter: `${filters.join(',')}${streamName}`,
-    inputIndex 
-  };
+  return { filter: `${filters.join(',')}${streamName}`, inputIndex };
 };
 export const buildTextTrack = (
   content: ProjectExport['content'],
@@ -505,7 +510,8 @@ export const buildTextTrack = (
     : '';
   
   (content.subtitles || []).forEach((sub: SubtitleItem, i) => {
-
+    
+    if (sub.templateId) return;
     const newStartTimeS = msToS(getNewTime(sub.startTime));
     const newEndTimeS = msToS(getNewTime(sub.endTime));
     if (newEndTimeS <= newStartTimeS) return;
@@ -607,7 +613,7 @@ export const buildWatermarkTrack = (
   watermark: WatermarkConfig | undefined,
   isPremium: boolean,
   lastStream: string,
-  target: FFmpegTarget,
+  _target: FFmpegTarget,
   scaleFactor: number = 1,
   snapshotInputIndex?: number
 ): { videoStream: string; filters: string[] } => {

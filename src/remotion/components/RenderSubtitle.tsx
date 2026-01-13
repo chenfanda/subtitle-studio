@@ -1,10 +1,11 @@
 import React from 'react';
+import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { convertStyleToCSS } from '@/utils/textStyleUtils';
 import { createKeyframe, generateAnimationStyle } from '../utils/css-adapter';
+import { SubtitleScene } from '@/components/video/SubtitleScene';
 import type { SubtitleItem, RichTextSegment } from '@/types/subtitle';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 
-// 🟢 1. 接口增加 scaleFactor
 interface RenderSubtitleProps {
   subtitle: SubtitleItem;
   scaleFactor?: number; 
@@ -12,22 +13,25 @@ interface RenderSubtitleProps {
 
 export const RenderSubtitle: React.FC<RenderSubtitleProps> = ({ 
   subtitle, 
-  scaleFactor = 1 // 🟢 2. 默认值
+  scaleFactor = 1 
 }) => {
+  const { fps } = useVideoConfig();
+  const frame = useCurrentFrame();
+  
+  const absoluteCurrentTime = (frame / fps) + (subtitle.startTime / 1000);
+
   const position = subtitle.position || { x: 50, y: 85, scale: 1.0, width: undefined };
   
   const baseStyle = (subtitle.richText && subtitle.richText.length > 0)
     ? (subtitle.richText[0].style || DEFAULT_SUBTITLE_STYLE)
     : (subtitle.style || DEFAULT_SUBTITLE_STYLE);
 
-  // 🟢 3. 计算最终缩放：原有 scale * scaleFactor
   const finalScale = (position.scale || 1.0) * scaleFactor;
 
   const containerStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${position.x}%`,
     top: `${position.y}%`,
-    // 应用缩放
     transform: `translate(-50%, -50%) scale(${finalScale})`,
     width: position.width ? `${position.width}px` : 'auto',
     minWidth: '330px', 
@@ -40,6 +44,19 @@ export const RenderSubtitle: React.FC<RenderSubtitleProps> = ({
       'center',
     pointerEvents: 'none', 
   };
+
+  if (subtitle.templateId) {
+    return (
+      <div style={containerStyle}>
+        <SubtitleScene 
+          subtitle={subtitle} 
+          currentTime={absoluteCurrentTime} 
+          scaleFactor={1} 
+          isPreview={false}
+        />
+      </div>
+    );
+  }
 
   const contentWrapperStyle: React.CSSProperties = {
     wordBreak: 'break-word',

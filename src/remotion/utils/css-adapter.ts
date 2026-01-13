@@ -1,29 +1,31 @@
 import type { AnimationEffect } from '@/types/animation';
 
-/**
- * 将 AnimationEffect 配置转换为 CSS @keyframes 字符串
- * 用于后端 Remotion 渲染时注入样式
- */
 export const createKeyframe = (name: string, effect: AnimationEffect): string => {
   const steps: string[] = [];
   
   Object.entries(effect.properties).forEach(([property, values]) => {
     if (Array.isArray(values)) {
       values.forEach((value, index) => {
-        // 计算当前关键帧的百分比位置 (0% - 100%)
         const percentage = (index / (values.length - 1)) * 100;
         
         if (!steps[index]) {
           steps[index] = `${percentage}% {`;
         }
-        // 将属性名转换为 CSS 格式 (如 textShadow -> text-shadow)
+        
         const cssProperty = property.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
-        steps[index] += ` ${cssProperty}: ${value};`;
+        
+        let finalValue = value;
+        if (property === 'transform' && typeof value === 'number') {
+          finalValue = `scale(${value})`;
+        } else if (property === 'filter' && typeof value === 'number') {
+          finalValue = `blur(${value}px)`;
+        }
+        
+        steps[index] += ` ${cssProperty}: ${finalValue};`;
       });
     }
   });
 
-  // 闭合每个关键帧的大括号
   steps.forEach((step, index) => {
     steps[index] += ' }';
   });
@@ -31,19 +33,45 @@ export const createKeyframe = (name: string, effect: AnimationEffect): string =>
   return `@keyframes ${name} { ${steps.join(' ')} }`;
 };
 
-/**
- * 生成用于注入的 CSS 样式对象
- */
 export const generateAnimationStyle = (
   name: string, 
   effect: AnimationEffect
 ): React.CSSProperties => {
-  return {
+  const isContinuous = effect.type === 'continuous';
+  
+  const easingMap: Record<string, string> = {
+    'elastic': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+    'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+    'stiff': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    'bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    'in-out': 'cubic-bezier(0.42, 0, 0.58, 1)',
+    'linear': 'linear'
+  };
+
+  const style: React.CSSProperties = {
     animationName: name,
     animationDuration: `${effect.duration}ms`,
-    animationTimingFunction: effect.easing || 'ease',
+    animationTimingFunction: easingMap[effect.easing || ''] || effect.easing || 'ease',
     animationDelay: `${effect.delay || 0}ms`,
-    animationFillMode: 'both', // 保持动画结束状态
-    animationIterationCount: effect.type === 'continuous' ? 'infinite' : 1,
+    animationFillMode: 'both',
+    animationIterationCount: isContinuous ? 'infinite' : 1,
+    transformOrigin: 'center bottom',
+    willChange: 'transform, opacity, filter'
   };
+
+  if (effect.name === 'wipe') {
+    style.backgroundImage = 'linear-gradient(to right, currentColor var(--wipe-progress), transparent var(--wipe-progress))';
+    style.WebkitBackgroundClip = 'text';
+    style.WebkitTextFillColor = 'transparent';
+  }
+
+  return style;
+};
+
+export const getEffectCSSVariables = (progress: number) => {
+  return {
+    '--wipe-progress': `${progress * 100}%`,
+    '--dynamic-scale': 1 + Math.sin(progress * Math.PI) * 0.2,
+    '--dynamic-rotate': `${Math.sin(progress * Math.PI) * 5}deg`
+  } as React.CSSProperties;
 };

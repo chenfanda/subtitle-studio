@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { AnimationEffect } from '@/types/animation';
+import { useUIStore } from './useUIStore'; 
 import type { 
   SubtitleItem, 
   SubtitlePosition, 
@@ -110,6 +111,10 @@ export const useSubtitleStore = create<SubtitleStore>()(
           const subtitle = findById(state.subtitles, id);
           if (!subtitle) return;
 
+             if (updates.richText && updates.richText.length > 1) {
+                  subtitle.dynamicConfig = undefined;
+                }
+
           if (updates.richText) {
             updates.text = convertRichTextToPlainText(updates.richText);
           } else if (updates.text && updates.text !== subtitle.text) {
@@ -140,6 +145,9 @@ export const useSubtitleStore = create<SubtitleStore>()(
 
           subtitle.richText = richText;
           subtitle.text = convertRichTextToPlainText(richText);
+          if (richText.length > 1) {
+            subtitle.dynamicConfig = undefined;
+           }
         });
 
         useProjectStore.getState().markUnsaved();
@@ -460,18 +468,40 @@ export const useSubtitleStore = create<SubtitleStore>()(
         useHistoryStore.getState().pushState();
       },
 
-      applyStyleToAllSubtitles: (style, animation, position) => {
+          
+    applyStyleToAllSubtitles: (style, animation, position) => {
         useHistoryStore.getState().startBatch();
 
         set((state) => {
-          state.subtitles.forEach(subtitle => {
-            subtitle.style = { ...subtitle.style, ...style };
+          const uiState = useUIStore.getState(); 
+          const activeSubtitleId = uiState.selectedSubtitleIds[0];
+          
+          const activeSubtitle = state.subtitles.find(s => s.id === activeSubtitleId);
+          
+    
+          const templateIdToApply = activeSubtitle?.templateId;
+          const dynamicConfigToApply = activeSubtitle?.dynamicConfig;
 
+          state.subtitles.forEach(subtitle => {
+            
+            subtitle.style = { ...subtitle.style, ...style };
             if (position) {
               subtitle.position = { ...subtitle.position, ...position };
             }
 
-            if (animation) {
+            
+            subtitle.templateId = templateIdToApply;
+
+            
+            subtitle.dynamicConfig = dynamicConfigToApply;
+
+            
+            if (templateIdToApply) {
+              
+              subtitle.richText = createRichTextFromPlainText(subtitle.text, style);
+            } else if (dynamicConfigToApply) {
+              subtitle.richText = createRichTextFromPlainText(subtitle.text, style);
+            } else if (animation) {
               const chars = Array.from(subtitle.text);
               subtitle.richText = chars.map(char => ({
                 text: char,

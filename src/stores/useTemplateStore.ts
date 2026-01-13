@@ -3,21 +3,21 @@ import { immer } from 'zustand/middleware/immer';
 import type { SubtitleStyle, RichTextSegment } from '@/types/subtitle';
 import type {
   AnimationTemplate,
-  AnimationEffect,
   DynamicStyleTemplate,
-  RichTextStyleTemplate
+  RichTextStyleTemplate,
+  AdvancedSceneTemplate 
 } from '@/types/animation';
-import type { TextStyleTemplate, TextStyleCategory } from '@/types/textStyle';
+import type { TextStyleTemplate} from '@/types/textStyle';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
-import { ANIMATION_TEMPLATES } from '@/constants/animationTemplates';
 import { DYNAMIC_STYLE_TEMPLATES } from '@/constants/dynamicStyleTemplates';
-import { TEXT_STYLE_TEMPLATES } from '@/constants/textStyleTemplates';
+import { STATIC_STYLE_TEMPLATES } from '@/constants/staticStyleTemplates';
+import { ADVANCED_SCENE_TEMPLATES } from '@/constants/advancedTemplates';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
+
 import {
   applyAnimationToSegments,
   applyStyleToAllSegments,
   convertTemplateToSubtitleStyle,
-  convertSubtitleStyleToTemplate,
   createRichTextFromPlainText,
   mergeAdjacentSegments,
   removeAnimationFromSegments
@@ -25,8 +25,10 @@ import {
 import { generateId } from '@/utils/storeUtils';
 
 // Export AnyTemplate
-export type AnyTemplate = AnimationTemplate | DynamicStyleTemplate | TextStyleTemplate | RichTextStyleTemplate;
+export type AnyTemplate = AnimationTemplate | DynamicStyleTemplate | TextStyleTemplate | RichTextStyleTemplate | AdvancedSceneTemplate;
 export type TemplateCategory = 'custom' | 'featured' | 'dynamic' | 'static'; // Also export TemplateCategory if needed elsewhere
+export const isSceneTemplate = (template: AnyTemplate): template is AdvancedSceneTemplate => 
+  template.category === 'scene';
 
 interface TemplateStore {
   activeCategory: TemplateCategory;
@@ -67,6 +69,9 @@ interface TemplateStore {
 const isDynamicTemplate = (template: AnyTemplate): template is DynamicStyleTemplate =>
   (template as DynamicStyleTemplate).animation !== undefined && (template as DynamicStyleTemplate).style !== undefined && !(template as RichTextStyleTemplate).segments;
 
+const isKaraokeTemplate = (template: AnyTemplate): template is DynamicStyleTemplate =>
+  (template as DynamicStyleTemplate).karaokeConfig !== undefined;
+
 const isStaticTemplate = (template: AnyTemplate): template is TextStyleTemplate =>
   (template as DynamicStyleTemplate).animation === undefined && (template as DynamicStyleTemplate).style !== undefined && !(template as RichTextStyleTemplate).segments;
 
@@ -101,38 +106,59 @@ export const useTemplateStore = create<TemplateStore>()(
         state.selectedTemplate = null;
       }),
 
-    applyTemplateToSubtitle: (subtitleId, template, startIndex?, endIndex?) => {
+  applyTemplateToSubtitle: (subtitleId, template, startIndex?, endIndex?) => {
       const subtitleStore = useSubtitleStore.getState();
       const subtitle = subtitleStore.subtitles.find(s => s.id === subtitleId);
-
       if (!subtitle) return;
 
-      let baseSegments = subtitle.richText;
-      if (!baseSegments) {
-        baseSegments = createRichTextFromPlainText(subtitle.text, subtitle.style);
-      }
+      // 🟢 1. 严格互斥重置：这是解决“切换模板不覆盖参数”的关键
+      const cleanState = {
+        templateId: undefined,      // 物理清除高级场景 ID
+        dynamicConfig: undefined,   // 物理清除动态卡拉OK配置
+        style: DEFAULT_SUBTITLE_STYLE,
+        // 重新生成不带任何残留样式的纯文本分段
+        richText: createRichTextFromPlainText(subtitle.text, DEFAULT_SUBTITLE_STYLE)
+      };
 
+      // 处理选区逻辑（用于基础动画/样式应用）
       const hasSelection = startIndex !== undefined && endIndex !== undefined;
       const start = hasSelection ? startIndex : 0;
       const end = hasSelection ? endIndex : subtitle.text.length;
 
-      let updatedSegments = [...baseSegments];
+      // 🟢 2. 高级场景模板渲染 (最高优先级，原创轨道)
+      if (isSceneTemplate(template)) {
+        subtitleStore.updateSubtitle(subtitleId, {
+          ...cleanState,
+          templateId: template.id,
+        });
+        return; // 场景模板通过 SubtitleScene 渲染，直接结束
+      }
 
+      // 🟢 3. 卡拉OK动态模板 (包含样式 + 动态配置)
+      if (isKaraokeTemplate(template)) {
+        const finalStyle = { 
+          ...DEFAULT_SUBTITLE_STYLE, 
+          ...convertTemplateToSubtitleStyle(template.style) 
+        };
+        subtitleStore.updateSubtitle(subtitleId, {
+          ...cleanState,
+          dynamicConfig: template.karaokeConfig,
+          style: finalStyle,
+          richText: createRichTextFromPlainText(subtitle.text, finalStyle)
+        });
+        return;
+      }
+
+      // 🟢 4. 富文本模板 (自定义样式分段)
       if (isRichTextStyleTemplate(template)) {
         if (template.segments.length === 0) return;
 
         const templateSegments = template.segments;
         const templateLength = templateSegments.length;
+        const words = subtitle.text.match(/\S+\s*/g) || [subtitle.text];
 
-        // 1. Get the full plain text from the target subtitle's existing segments.
-        const fullText = baseSegments.map(seg => seg.text).join('');
-        
-        // 2. Split the full text into words + trailing spaces/punctuation.
-        // This regex (\S+\s*) splits "Hello world!" into ["Hello ", "world!"]
-        const words = fullText.match(/\S+\s*/g) || [fullText];
-
-        // 3. Create new segments by applying template styles cyclically to the words.
-        updatedSegments = words.map((word, index) => {
+        // 将模板分段映射到当前字幕的单词上
+        const updatedSegments = words.map((word, index) => {
           const templateSegment = templateSegments[index % templateLength];
           return {
             text: word,
@@ -140,25 +166,43 @@ export const useTemplateStore = create<TemplateStore>()(
             animation: templateSegment.animation
           };
         });
-        
-        const firstSegmentStyle = template.segments[0]?.style || DEFAULT_SUBTITLE_STYLE;
-        subtitleStore.updateSubtitle(subtitleId, { style: firstSegmentStyle });
-      }
-      else if (isDynamicTemplate(template)) {
-        const convertedStyle = convertTemplateToSubtitleStyle(template.style);
-        const segmentsWithStyle = applyStyleToAllSegments(updatedSegments, convertedStyle);
-        updatedSegments = applyAnimationToSegments(segmentsWithStyle, start, end, template.animation);
 
-      } else if (isStaticTemplate(template)) {
-        const convertedStyle = convertTemplateToSubtitleStyle(template.style);
-        updatedSegments = applyStyleToAllSegments(updatedSegments, convertedStyle);
-
-      } else if (isAnimationTemplate(template) && template.effects.length > 0) {
-        updatedSegments = applyAnimationToSegments(updatedSegments, start, end, template.effects[0]);
+        const optimizedSegments = mergeAdjacentSegments(updatedSegments);
+        subtitleStore.updateSubtitle(subtitleId, { 
+          ...cleanState,
+          style: { ...DEFAULT_SUBTITLE_STYLE, ...template.segments[0].style },
+          richText: optimizedSegments
+        });
+        return;
       }
 
-      const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-      subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+      // 🟢 5. 基础模板与动画 (静态模板、基础动态效果、单一动画)
+      let finalStyle = { ...DEFAULT_SUBTITLE_STYLE };
+      let currentSegments = [...cleanState.richText];
+
+      if (isDynamicTemplate(template)) {
+        // 动态模板：样式 + 动画
+        finalStyle = { ...finalStyle, ...convertTemplateToSubtitleStyle(template.style) };
+        const styledSegments = applyStyleToAllSegments(currentSegments, finalStyle);
+        currentSegments = applyAnimationToSegments(styledSegments, start, end, template.animation);
+      } 
+      else if (isStaticTemplate(template)) {
+        // 静态模板：仅样式
+        finalStyle = { ...finalStyle, ...convertTemplateToSubtitleStyle(template.style) };
+        currentSegments = applyStyleToAllSegments(currentSegments, finalStyle);
+      } 
+      else if (isAnimationTemplate(template) && template.effects.length > 0) {
+        // 基础动画：仅应用动画到选区
+        currentSegments = applyAnimationToSegments(currentSegments, start, end, template.effects[0]);
+      }
+
+      // 最后执行优化合并并更新状态
+      const finalOptimizedSegments = mergeAdjacentSegments(currentSegments);
+      subtitleStore.updateSubtitle(subtitleId, {
+        ...cleanState,
+        style: finalStyle,
+        richText: finalOptimizedSegments
+      });
     },
 
     removeTemplateFromSubtitle: (subtitleId, template, startIndex?, endIndex?) => {
@@ -183,7 +227,11 @@ export const useTemplateStore = create<TemplateStore>()(
 
 
       const optimizedSegments = mergeAdjacentSegments(updatedSegments);
-      subtitleStore.updateSubtitleRichText(subtitleId, optimizedSegments);
+      subtitleStore.updateSubtitle(subtitleId, {
+        richText: optimizedSegments,
+        templateId: undefined,    
+        dynamicConfig: undefined  
+  });
     },
 
     saveCustomTemplate: (segments, name) => {
@@ -230,28 +278,21 @@ export const useTemplateStore = create<TemplateStore>()(
     },
 
     getTemplatesByCategory: (category) => {
-      const { customDynamicTemplates, customStaticTemplates, customRichTextTemplates } = get();
       switch (category) {
         case 'featured':
-          return DYNAMIC_STYLE_TEMPLATES.featured || [];
+          return [
+            ...DYNAMIC_STYLE_TEMPLATES.featured,
+            ...STATIC_STYLE_TEMPLATES.slice(0, 6) // 取前6个静态
+          ];
         case 'static':
-          return Object.values(TEXT_STYLE_TEMPLATES).flat();
+          return STATIC_STYLE_TEMPLATES;
         case 'dynamic':
           return [
-            ...(DYNAMIC_STYLE_TEMPLATES.featured || []),
-            ...(DYNAMIC_STYLE_TEMPLATES.advanced || []),
-            ...(ANIMATION_TEMPLATES.featured || []),
-            ...(ANIMATION_TEMPLATES.advanced || []),
-            ...(ANIMATION_TEMPLATES.basic || [])
-          ];
+        ...ADVANCED_SCENE_TEMPLATES,
+        ...DYNAMIC_STYLE_TEMPLATES.advanced 
+      ];
         case 'custom':
-           return [
-            ...customRichTextTemplates,
-            ...customStaticTemplates,
-            ...customDynamicTemplates,
-            ...(DYNAMIC_STYLE_TEMPLATES.custom || []),
-            ...(ANIMATION_TEMPLATES.custom || [])
-          ];
+          return get().customRichTextTemplates;
         default:
           return [];
       }

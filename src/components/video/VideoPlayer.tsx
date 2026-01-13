@@ -55,7 +55,8 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
     if (!mainPlayer || !insertPlayer) return;
 
-    // --- 1. 处理 Cut 逻辑 (修复版) ---
+    
+
     if (isCutSegment) {
       const storeTime = useProjectStore.getState().globalTime;
       const currentTimeMs = storeTime * 1000;
@@ -77,9 +78,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
         }
       }
 
-      // [关键修复]：立即暂停底层视频播放！
-      // 防止在 React 状态更新完成前，视频继续播放出"被剪切"的画面。
-      // 下一次渲染时，因为 isPlaying 仍为 true 且 isCutSegment 变为 false，视频会自动恢复播放。
+
       safePause(mainPlayer);
       safePause(insertPlayer);
       
@@ -88,6 +87,12 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
 
     // --- 2. 确定当前活跃与非活跃播放器 ---
     const activePlayer = isInsertClip ? insertPlayer : mainPlayer;
+    if (activePlayer.readyState >= 1) {
+    const { videoMeta, setVideoMeta } = useProjectStore.getState();
+    if (activePlayer.videoWidth !== videoMeta.width || activePlayer.videoHeight !== videoMeta.height) {
+      setVideoMeta(activePlayer.videoWidth, activePlayer.videoHeight);
+    }
+  }
     const inactivePlayer = isInsertClip ? mainPlayer : insertPlayer;
 
     // --- 3. 设置基本属性 ---
@@ -151,7 +156,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     volume, playbackRate, isCutSegment, segments, setGlobalTime, isMutedOverride
   ]);
 
-  // ... (handleInsertEnded, handleTimeUpdate, handleMetadataLoaded 等其余代码保持不变) ...
+
 
   const handleInsertEnded = () => {
     if (isInsertClip) {
@@ -211,15 +216,22 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
     }
   };
   
-  const handleMetadataLoaded = (_event: React.SyntheticEvent<HTMLVideoElement>) => {
-    const mainPlayer = mainVideoRef.current;
-    if (mainPlayer && mainPlayer.duration) {
-      const newDuration = mainPlayer.duration;
-      if (useProjectStore.getState().duration !== newDuration) {
-        setDuration(newDuration);
+  const handleMetadataLoaded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    const { videoMeta, setVideoMeta, setDuration, duration: storeDuration } = useProjectStore.getState();
+
+    const isActive = isInsertClip ? (video === insertVideoRef.current) : (video === mainVideoRef.current);
+
+    if (isActive && video.videoWidth && video.videoHeight) {
+      if (video.videoWidth !== videoMeta.width || video.videoHeight !== videoMeta.height) {
+        setVideoMeta(video.videoWidth, video.videoHeight);
       }
-      if (mainPlayer.videoWidth && mainPlayer.videoHeight) {
-        setVideoMeta(mainPlayer.videoWidth, mainPlayer.videoHeight);
+    }
+
+    if (video === mainVideoRef.current && video.duration) {
+      const newDuration = video.duration;
+      if (storeDuration !== newDuration) {
+        setDuration(newDuration);
       }
     }
   };
@@ -251,6 +263,7 @@ export function VideoPlayer({ isMutedOverride = false }: VideoPlayerProps) {
         style={commonVideoStyle}
         playsInline
         onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleMetadataLoaded}
         onEnded={handleInsertEnded}
       />
       <SourceAudioMixer />

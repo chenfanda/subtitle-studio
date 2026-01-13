@@ -12,13 +12,13 @@ import { RenderWatermark } from './components/RenderWatermark';
 import { RenderMask } from './components/RenderMask';
 
 export interface VideoCompositionProps {
-  // [修改] 扩展类型，接收预渲染的底板 URL
+  
   project: ProjectExport & { preRenderedVideoUrl?: string };
 }
 
 export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) => {
   const { fps, height, durationInFrames } = useVideoConfig();
-  // [修改] 解构出 preRenderedVideoUrl
+  
   const { content, settings, video, preRenderedVideoUrl } = project;
 
   const referenceHeight = settings.referenceHeight || 540;
@@ -26,11 +26,9 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
 
   const hasSeparatedTracks = !!(content.sourceResources?.audioVocals && content.sourceResources?.audioBacking);
 
-  // ---------------------------------------------------------------------------
-  // 1. 音量表计算 (优化)
-  // ---------------------------------------------------------------------------
+
   const { timeWarper, backingVolumeMap, vocalVolumeMap } = useMemo(() => {
-    // [新增] 如果有底板，说明音频已由 FFmpeg 混合，无需计算音量表
+    
     if (preRenderedVideoUrl) {
        const mapper = new TimeWarpMap();
        mapper.build(content.videoSequenceSegments || []);
@@ -41,7 +39,7 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
        };
     }
 
-    // ... 原有逻辑保持不变 (用于本地/前端模式) ...
+    
     const mapper = new TimeWarpMap();
     mapper.build(content.videoSequenceSegments || []);
     const backingMap = new Float32Array(durationInFrames).fill(1);
@@ -70,7 +68,7 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
     return { timeWarper: mapper, backingVolumeMap: backingMap, vocalVolumeMap: vocalMap };
   }, [content.subtitles, content.videoSequenceSegments, durationInFrames, fps, preRenderedVideoUrl]);
 
-  // 辅助函数
+  
   const getAdjustedFrame = (ms: number) => {
     const newTime = timeWarper.getNewTime(ms);
     return Math.round((newTime / 1000) * fps);
@@ -78,18 +76,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
   const durationToFrames = (ms: number) => Math.round((ms / 1000) * fps);
   const rawMsToFrames = (ms: number) => Math.round((ms / 1000) * fps);
 
-  // ===========================================================================
-  // [分支 A] 预渲染模式 (云端 GPU 加速)
-  // ===========================================================================
   if (preRenderedVideoUrl) {
     return (
-      <AbsoluteFill style={{ backgroundColor: 'black' }}>
-        {/* 1. 底板视频 */}
-        {/* 包含：剪辑片段、Mask(马赛克)、所有音频、普通 B-Roll、水印(如果在FFmpeg加了) */}
-        <OffthreadVideo
-          src={preRenderedVideoUrl}
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-        />
+      <AbsoluteFill style={{ backgroundColor: 'transparent' }}>
+
 
         {/* 2. 贴图素材 (图片层) */}
         {content.placedMedia?.map((item) => {
@@ -127,23 +117,11 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ project }) =
           );
         })}
 
-        {/* 5. 水印 (可选) */}
-        {/* 如果 FFmpeg 阶段已经加了水印，这里就不需要。
-            为了保险起见，如果 FFmpegCommandBuilder 里加了水印，这里就注释掉。
-            根据之前的代码，FFmpeg 已经处理了 buildWatermarkTrack。
-            所以这里**不需要** RenderWatermark。
-        */}
-        
-        {/* 6. 遮罩 (Mask) - 不需要 */}
-        {/* FFmpeg 已经烧录了马赛克，这里不需要 RenderMask */}
+
 
       </AbsoluteFill>
     );
   }
-
-  // ===========================================================================
-  // [分支 B] 完整渲染模式 (本地/前端/降级)
-  // ===========================================================================
   return (
     <AbsoluteFill style={{ backgroundColor: 'black' }}>
       

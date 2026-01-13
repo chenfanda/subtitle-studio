@@ -1,8 +1,8 @@
 import path from 'path';
 import fs from 'fs';
 import { bundle, WebpackOverrideFn } from '@remotion/bundler';
-import { renderMedia, selectComposition } from '@remotion/renderer';
-import { getCodecConfig } from './gpu-utils';
+import { renderFrames, selectComposition } from '@remotion/renderer';
+import { mergeFramesWithGpu } from '../src/utils/backend-gpu-processor';
 import type { ProjectExport } from '../src/types/project';
 import os from 'os';
 
@@ -17,10 +17,8 @@ interface ExportSettings {
   format: 'mp4' | 'gif';
 }
 
-// 辅助函数：等待
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 🔥 优化 1: 暴力清理函数 (解决文件锁导致的删除失败)
 const deleteWithRetry = async (dirPath: string, retries = 5) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -32,14 +30,13 @@ const deleteWithRetry = async (dirPath: string, retries = 5) => {
       if (i === retries - 1) {
         console.error(`❌ [Cleanup] 删除失败 ${dirPath}: ${e.message}`);
       } else {
-        await sleep(500); // 等待文件锁释放
+        await sleep(500);
       }
     }
   }
 };
 
 const handleTermination = async (signal: string) => {
-  // 🔥 优化 2: 使用异步清理
   if (currentTempDir) await deleteWithRetry(currentTempDir);
   if (currentBundlePath) await deleteWithRetry(currentBundlePath);
   process.exit(0);
@@ -93,6 +90,9 @@ const normalizeProjectUrls = (rawProject: ProjectExport): ProjectExport => {
       return sub;
     });
   }
+  if (project.settings?.watermark?.snapshotUrl) {
+    project.settings.watermark.snapshotUrl = fixUrl(project.settings.watermark.snapshotUrl);
+  }
   return project;
 };
 
@@ -104,11 +104,11 @@ export const renderVideo = async (
 ): Promise<string> => {
   
   const tempDir = path.join(process.cwd(), 'temp', jobId);
+  const framesDir = path.join(tempDir, 'frames');
   currentTempDir = tempDir;
 
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+  if (!fs.existsSync(framesDir)) fs.mkdirSync(framesDir, { recursive: true });
 
   let bundleLocation: string | null = null;
 
@@ -129,7 +129,11 @@ export const renderVideo = async (
       };
     };
 
-    bundleLocation = await bundle({ entryPoint, webpackOverride });
+    bundleLocation = await bundle({ 
+      entryPoint, 
+      webpackOverride, 
+      publicDir: path.join(process.cwd(), 'public') 
+    });
     currentBundlePath = bundleLocation;
     
     if (process.send && bundleLocation) {
@@ -140,61 +144,54 @@ export const renderVideo = async (
       serveUrl: bundleLocation,
       id: 'MainVideo',
       inputProps: { project }, 
-      chromiumOptions: {
-        headless: true
-      }
+      chromiumOptions: { headless: true }
     });
 
-    let scale = 1;
-    if (exportSettings?.resolution && composition.height) {
-      scale = exportSettings.resolution / composition.height;
-    }
-
-    const outputLocation = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
-    const codecConfig = getCodecConfig();
     const fps = composition.fps || 30;
     const durationInFrames = calculateDurationInFrames(project, fps);
-    
     if (durationInFrames > 0) {
       composition.durationInFrames = durationInFrames;
     }
 
-    const cpuCount = os.cpus().length;
-    const optimalConcurrency = Math.max(1, cpuCount - 1); 
-
-    await renderMedia({
+    await renderFrames({
       composition,
       serveUrl: bundleLocation,
-      outputLocation,
+      outputDir: framesDir,
       inputProps: { project },
-      scale,
-      codec: 'h264',
-      audioCodec: 'aac',
+      imageFormat: 'png', 
+      concurrency: 6,
+      frameName: (f: number) => `${f}`, 
       chromiumOptions: {
         headless: true, 
         ignoreCertificateErrors: true,
-        // 🔥 优化 3: 删除了 userDataDir: tempDir
-        // 这避免了高并发下 Chrome 实例争抢同一个文件夹导致崩溃
         args: [
           '--no-sandbox', 
+          '--ignore-gpu-blocklist',
           '--disable-setuid-sandbox', 
           '--enable-gpu-rasterization', 
           '--enable-zero-copy',
-          '--disable-dev-shm-usage' // 增加这个参数防止 Docker 内存不足
+          '--disable-dev-shm-usage' 
         ]
+      } as any,
+      onFrameRendered: ({ frame }: { frame: number }) => {
+        if (onProgress) {
+          const progress = Math.round((frame / composition.durationInFrames) * 90);
+          onProgress(progress);
+        }
       },
-      ...(codecConfig.ffmpegOverride ? { ffmpegOverride: codecConfig.ffmpegOverride } : {}),
-      concurrency: optimalConcurrency,
-      onProgress: ({ progress }: { progress: number }) => {
-        if (onProgress) onProgress(Math.round(progress * 100));
-      },
-      tries: 1,
     } as any);
+
+    const sampleFiles = fs.readdirSync(framesDir);
+    console.log(`📂 [Debug] 截图完成，首个文件: ${sampleFiles[0]}, 总数: ${sampleFiles.length}`);
+
+    const finalVideoPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
+    await mergeFramesWithGpu(tempDir, framesDir, fps, finalVideoPath);
+
+    if (onProgress) onProgress(100);
 
     return `/downloads/${jobId}.mp4`;
 
   } finally {
-    // 🔥 优化 4: 使用重试删除
     if (currentTempDir) await deleteWithRetry(currentTempDir);
     if (currentBundlePath) await deleteWithRetry(currentBundlePath);
   }

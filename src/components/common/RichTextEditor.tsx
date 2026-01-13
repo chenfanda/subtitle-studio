@@ -16,7 +16,6 @@ import {
   applyStyleToSegments,
 } from '@/utils/textStyleUtils';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
-import type { AnimationEffect } from '@/types/animation';
 import { Target, Hourglass, Check } from 'lucide-react';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 

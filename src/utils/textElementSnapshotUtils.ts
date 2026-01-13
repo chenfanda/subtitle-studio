@@ -1,5 +1,4 @@
 import type { TextElement } from '@/types/textElement';
-import type { TextStyleConfig } from '@/types/textStyle';
 
 const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -31,13 +30,12 @@ const extractUrl = (bgString?: string) => {
 export const captureTextElementSnapshot = async (
   element: TextElement,
   scaleFactor: number = 2,
-  referenceWidth: number = 1920
+  _referenceWidth: number = 1920
 ): Promise<Blob | null> => {
   try {
-    const style = element.style as any as TextStyleConfig;
-    const position = element.position as any;
+    const style = element.style as any;
     
-    // 1. 加载资源 (背景图和图标)
+    // 1. 加载资源 (修复变量定义)
     let bgImg: HTMLImageElement | null = null;
     let iconImg: HTMLImageElement | null = null;
     const bgUrl = extractUrl(style.backgroundImage);
@@ -48,96 +46,82 @@ export const captureTextElementSnapshot = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // 2. 测量
-    const fontSize = style.fontSize || 24;
+    // 2. 严格读取模板配置 (对齐 socialMedia 模板)
+    const fontSize = Number(style.fontSize) || 16;
+    const iconSize = Number(style.iconSize) || 40; 
+    const gap = parseInt(String(style.gap || '8px').replace('px', ''), 10);
+    const minWidth = parseInt(String(style.minWidth || '0px').replace('px', ''), 10);
+    const pad = parsePadding(style.padding);
+
+    // 3. 测量文字
     ctx.font = `${style.fontStyle || 'normal'} ${style.fontWeight || 400} ${fontSize}px ${style.fontFamily || 'Arial'}`;
     const textWidth = Math.ceil(ctx.measureText(element.text).width);
-    const textHeight = fontSize * 1.2;
+    const textHeight = fontSize;
 
-    const iconSize = style.iconSize || fontSize * 1.2;
+    // 4. 计算内容驱动的尺寸 (不再受 referenceWidth 强制拉伸)
     const iconW = iconImg ? iconSize : 0;
     const iconH = iconImg ? iconSize : 0;
-
-    const pad = parsePadding(style.padding);
-    const gap = style.gap ? parseInt(String(style.gap).replace('px', ''), 10) : 8;
-
-    // 3. 计算尺寸 (兼容所有模板)
     const contentW = iconW + (iconImg ? gap : 0) + textWidth;
-    const contentH = Math.max(iconH, textHeight);
+    
+    // 背景条的真实尺寸 (紧凑包裹内容)
+    const barW = Math.max(contentW + pad.l + pad.r, minWidth);
+    const barH = Math.max(Math.max(iconH, textHeight) + pad.t + pad.b, 32); 
 
-    // 获取模板定义的最小尺寸
-    const minW = parseInt(String(style.minWidth || 0).replace('px', ''));
-    const minH = parseInt(String((style as any).minHeight || 0).replace('px', ''));
+    // 增加足够的安全余量防止切边
+    const safeMargin = 80;
+    const canvasW = barW + safeMargin;
+    const canvasH = barH + safeMargin;
 
-    let finalW = Math.max(contentW + pad.l + pad.r, minW);
-    let finalH = Math.max(contentH + pad.t + pad.b, minH);
-
-    // 百分比宽度处理
-    if (position.width && position.width > 0) {
-      finalW = Math.max(finalW, (referenceWidth * position.width) / 100);
-    }
-
-    // 安全余量：增加 10px 防止切边
-    const margin = 10;
-    const canvasW = Math.ceil(finalW + margin);
-    const canvasH = Math.ceil(finalH + margin);
-
-    // 4. 初始化画布
+    // 5. 初始化画布
     canvas.width = canvasW * scaleFactor;
     canvas.height = canvasH * scaleFactor;
     ctx.scale(scaleFactor, scaleFactor);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // 5. 绘制背景 (分流处理)
-    const drawX = margin / 2;
-    const drawY = margin / 2;
-    const drawW = finalW;
-    const drawH = finalH;
+    const drawX = safeMargin / 2;
+    const drawY = safeMargin / 2;
 
-    if (bgImg) {
-      // --- 标题/便签模式 ---
-      ctx.drawImage(bgImg, drawX, drawY, drawW, drawH);
-    } else if (style.backgroundColor && style.backgroundColor !== 'transparent') {
-      // --- 媒体模式 ---
+    // 6. 绘制背景 (椭圆胶囊形状)
+    if (style.backgroundColor && style.backgroundColor !== 'transparent') {
       ctx.fillStyle = style.backgroundColor;
-      const radius = drawH / 2; // 强制胶囊圆角
+      const radius = barH / 2; 
       ctx.beginPath();
       if (ctx.roundRect) {
-        ctx.roundRect(drawX, drawY, drawW, drawH, radius);
+        ctx.roundRect(drawX, drawY, barW, barH, radius);
       } else {
+        // 兼容性绘制逻辑
         ctx.arc(drawX + radius, drawY + radius, radius, Math.PI, Math.PI * 1.5);
-        ctx.lineTo(drawX + drawW - radius, drawY);
-        ctx.arc(drawX + drawW - radius, drawY + radius, radius, Math.PI * 1.5, Math.PI * 2);
-        ctx.lineTo(drawX + drawW, drawY + drawH - radius);
-        ctx.arc(drawX + drawW - radius, drawY + drawH - radius, radius, 0, Math.PI * 0.5);
-        ctx.lineTo(drawX + radius, drawY + drawH);
-        ctx.arc(drawX + radius, drawY + drawH - radius, radius, Math.PI * 0.5, Math.PI);
+        ctx.lineTo(drawX + barW - radius, drawY);
+        ctx.arc(drawX + barW - radius, drawY + radius, radius, Math.PI * 1.5, Math.PI * 2);
+        ctx.lineTo(drawX + barW, drawY + barH - radius);
+        ctx.arc(drawX + barW - radius, drawY + barH - radius, radius, 0, Math.PI * 0.5);
+        ctx.lineTo(drawX + radius, drawY + barH);
+        ctx.arc(drawX + radius, drawY + barH - radius, radius, Math.PI * 0.5, Math.PI);
       }
       ctx.closePath();
       ctx.fill();
+    } else if (bgImg) {
+      ctx.drawImage(bgImg, drawX, drawY, barW, barH);
     }
 
-    // 6. 绘制内容
-    const centerY = canvasH / 2;
-    const totalContentW = textWidth + (iconImg ? iconW + gap : 0);
-    // 水平居中起始点
-    let currentX = drawX + (drawW - totalContentW) / 2;
+    // 7. 绘制内容 (左对齐布局，完全匹配 Padding)
+    const centerY = drawY + barH / 2;
+    let currentX = drawX + pad.l; 
 
-    // 绘制图标
     if (iconImg) {
-      const iconY = centerY - iconH / 2;
-      ctx.drawImage(iconImg, Math.round(currentX), Math.round(iconY), iconW, iconH);
+      ctx.drawImage(iconImg, currentX, centerY - iconH / 2, iconW, iconH);
       currentX += iconW + gap;
     }
 
-    // 绘制文字
     ctx.font = `${style.fontStyle || 'normal'} ${style.fontWeight || 400} ${fontSize}px ${style.fontFamily || 'Arial'}`;
-    ctx.fillStyle = style.color || '#ffffff';
+    ctx.fillStyle = style.color || '#000000';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    
-    ctx.fillText(element.text, Math.round(currentX), centerY + 1);
+    ctx.fillText(element.text, currentX, centerY);
+
+    // 记录关键元数据供导出脚本使用
+    (element as any)._snapshotMetadata = { barW, canvasW };
 
     return new Promise((resolve) => {
       canvas.toBlob((blob) => resolve(blob), 'image/png');
