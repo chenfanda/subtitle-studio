@@ -1,53 +1,32 @@
-import { useState, useEffect } from 'react';
-import { useMediaStore, useTrendingItems, useUploadedMedia } from '@/stores/useMediaStore';
-import { GifCard } from './GifCard';
-import type { GifItem, UploadedGifItem } from '@/types/media';
+import { useMediaStore } from '@/stores/useMediaStore';
 import type { SubtitleItem } from '@/types/subtitle';
 
-interface GifsLibraryProps {
-  currentSubtitle?: SubtitleItem | null;
-}
+export function GifsLibrary({ currentSubtitle }: { currentSubtitle: SubtitleItem | null }) {
+  const { presetMedia, uploadedMedia, placeOnTimeline } = useMediaStore();
 
-export function GifsLibrary({ currentSubtitle }: GifsLibraryProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { loadTrending } = useMediaStore();
-  const trendingItems = useTrendingItems();
-  const uploadedMedia = useUploadedMedia();
-  
-  const uploadedGifs = uploadedMedia.filter((item): item is UploadedGifItem => item.type === 'gif');
-  const trendingGifs = trendingItems.filter((item): item is GifItem => item.type === 'gif');
-  const allGifs = [...uploadedGifs, ...trendingGifs];
-  const visibleGifs = isExpanded ? allGifs : allGifs.slice(0, 3);
-  const hasMore = allGifs.length > 3;
+  const gifs = [
+    ...presetMedia.filter((m) => m.type === 'gif'),
+    ...uploadedMedia.filter((m) => m.type === 'gif'),
+  ];
 
-  useEffect(() => {
-    loadTrending('gif');
-  }, [loadTrending]);
+  if (gifs.length === 0) return null;
 
   return (
-    <div className="px-4 pb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-medium text-text-primary">Giphy GIFS</h4>
-        {hasMore && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-accent-purple hover:text-accent-purple/80 transition-colors"
-          >
-            查看更多
-          </button>
-        )}
-      </div>
-      
+    <div className="p-4">
+      <h3 className="text-xs font-medium text-text-secondary mb-3 uppercase tracking-wider">GIF 动图</h3>
       <div className="grid grid-cols-3 gap-2">
-        {visibleGifs.length > 0 ? (
-          visibleGifs.map((gif) => (
-            <GifCard key={gif.id} gif={gif} currentSubtitle={currentSubtitle} />
-          ))
-        ) : (
-          <div className="aspect-square bg-bg-tertiary rounded border-2 border-dashed border-border-secondary flex items-center justify-center text-text-tertiary text-xl">
-            +
-          </div>
-        )}
+        {gifs.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              const start = currentSubtitle?.startTime ?? 0;
+              placeOnTimeline(item, start, start + 3000);
+            }}
+            className="aspect-square bg-bg-secondary rounded-lg hover:ring-2 hover:ring-accent-purple transition-all p-2 flex items-center justify-center group"
+          >
+            <img src={item.url} alt="" className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+          </button>
+        ))}
       </div>
     </div>
   );

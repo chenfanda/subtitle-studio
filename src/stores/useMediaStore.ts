@@ -5,6 +5,7 @@ import { searchStickers, searchGifs, getTrendingStickers, getTrendingGifs } from
 import { useProjectStore } from './useProjectStore';
 import { useHistoryStore } from './useHistoryStore';
 
+
 interface SearchState {
   query: string;
   isLoading: boolean;
@@ -18,12 +19,15 @@ interface MediaStore {
   trendingItems: MediaItem[];
   searchHistory: string[];
   
+  
   selectedMedia: MediaItem | null;
   activeMediaType: 'sticker' | 'gif';
   
   placedMedia: PlacedMediaItem[];
   uploadedMedia: UploadedMediaItem[];
-  
+  presetMedia: MediaItem[];
+  loadPresets: () => Promise<void>;
+
   searchMedia: (query: string, type: 'sticker' | 'gif') => Promise<void>;
   loadMoreResults: () => Promise<void>;
   loadTrending: (type: 'sticker' | 'gif') => Promise<void>;
@@ -65,6 +69,20 @@ export const useMediaStore = create<MediaStore>()(
     activeMediaType: 'sticker',
     placedMedia: [],
     uploadedMedia: [],
+    presetMedia: [],
+    loadPresets: async () => {
+      try {
+        // 检查 electronAPI 是否已通过 preload.cjs 暴露
+        if ((window as any).electronAPI?.getPresetMedia) {
+          const items = await (window as any).electronAPI.getPresetMedia();
+          set((state) => {
+            state.presetMedia = items;
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load preset media:', error);
+      }
+    },
     
     searchMedia: async (query, type) => {
       if (!query.trim()) return;

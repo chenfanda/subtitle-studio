@@ -1,53 +1,34 @@
-import { useState, useEffect } from 'react';
-import { useMediaStore, useTrendingItems, useUploadedMedia } from '@/stores/useMediaStore';
-import { StickerCard } from './StickerCard';
-import type { StickerItem, UploadedStickerItem } from '@/types/media';
+import { useMediaStore } from '@/stores/useMediaStore';
 import type { SubtitleItem } from '@/types/subtitle';
 
-interface StickerLibraryProps {
-  currentSubtitle?: SubtitleItem | null;
-}
+export function StickerLibrary({ currentSubtitle }: { currentSubtitle: SubtitleItem | null }) {
+  // 从 Store 获取数据（现在 presetMedia 会在 loadPresets 执行后自动更新）
+  const { presetMedia, uploadedMedia, placeOnTimeline } = useMediaStore();
 
-export function StickerLibrary({ currentSubtitle }: StickerLibraryProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { loadTrending } = useMediaStore();
-  const trendingItems = useTrendingItems();
-  const uploadedMedia = useUploadedMedia();
-  
-  const uploadedStickers = uploadedMedia.filter((item): item is UploadedStickerItem => item.type === 'sticker');
-  const trendingStickers = trendingItems.filter((item): item is StickerItem => item.type === 'sticker');
-  const allStickers = [...uploadedStickers, ...trendingStickers];
-  const visibleStickers = isExpanded ? allStickers : allStickers.slice(0, 3);
-  const hasMore = allStickers.length > 3;
+  const stickers = [
+    ...presetMedia.filter((m) => m.type === 'sticker'),
+    ...uploadedMedia.filter((m) => m.type === 'sticker'),
+  ];
 
-  useEffect(() => {
-    loadTrending('sticker');
-  }, [loadTrending]);
+  // 如果没有素材，可以返回 null 或者一个简单的提示
+  if (stickers.length === 0) return null;
 
   return (
-    <div className="px-4 pb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-medium text-text-primary">Giphy Sticker</h4>
-        {hasMore && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-accent-purple hover:text-accent-purple/80 transition-colors"
-          >
-            查看更多
-          </button>
-        )}
-      </div>
-      
+    <div className="p-4 border-b border-white/5">
+      <h3 className="text-xs font-medium text-text-secondary mb-3 uppercase tracking-wider">贴纸库</h3>
       <div className="grid grid-cols-3 gap-2">
-        {visibleStickers.length > 0 ? (
-          visibleStickers.map((sticker) => (
-            <StickerCard key={sticker.id} sticker={sticker as StickerItem} currentSubtitle={currentSubtitle} />
-          ))
-        ) : (
-          <div className="aspect-square bg-bg-tertiary rounded border-2 border-dashed border-border-secondary flex items-center justify-center text-text-tertiary text-xl">
-            +
-          </div>
-        )}
+        {stickers.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              const start = currentSubtitle?.startTime ?? 0;
+              placeOnTimeline(item, start, start + 3000);
+            }}
+            className="aspect-square bg-bg-secondary rounded-lg hover:ring-2 hover:ring-accent-purple transition-all p-2 flex items-center justify-center group"
+          >
+            <img src={item.url} alt="" className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+          </button>
+        ))}
       </div>
     </div>
   );

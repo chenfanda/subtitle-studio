@@ -1,6 +1,7 @@
 import { useUIStore } from '@/stores/useUIStore';
 import { useTemplateStore } from '@/stores/useTemplateStore';
-import { EffectPreviewCard } from '@/components/templates/EffectPreviewCard'; // Corrected import path
+import { EffectPreviewCard } from '@/components/templates/EffectPreviewCard'; 
+import { ADVANCED_SCENE_TEMPLATES } from '@/constants/advancedTemplates'; 
 
 interface TemplateQuickAccessProps {
   targetType: 'subtitle' | 'textElement';
@@ -10,14 +11,15 @@ interface TemplateQuickAccessProps {
 export function TemplateQuickAccess({ targetType, targetId }: TemplateQuickAccessProps) {
   const setActivePanel = useUIStore((state) => state.setActivePanel);
   const setActiveTemplateCategory = useTemplateStore((state) => state.setActiveCategory);
-  const getTemplatesByCategory = useTemplateStore((state) => state.getTemplatesByCategory);
+  // const getTemplatesByCategory = useTemplateStore((state) => state.getTemplatesByCategory);
 
   // Get first 2 featured (dynamic) templates
-  const featuredTemplates = getTemplatesByCategory('featured').slice(0, 2);
+  const featuredTemplates = ADVANCED_SCENE_TEMPLATES.slice(0, 2);
+  // const featuredTemplates = getTemplatesByCategory('featured').slice(0, 2);
 
   const handleViewMore = () => {
     setActivePanel('templates');
-    setActiveTemplateCategory('featured');
+    setActiveTemplateCategory('dynamic');
   };
 
   // Only show for subtitles and if templates exist

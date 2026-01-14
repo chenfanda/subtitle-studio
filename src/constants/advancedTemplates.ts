@@ -191,7 +191,7 @@ export const ADVANCED_SCENE_TEMPLATES: AdvancedSceneTemplate[] = [
     layers: [
       {
         type: 'environment',
-        config: { type: 'snow', renderMode: 'scrolling', asset: `${DECO_PATH}/gold_particles.png`, speed: 1.5, opacity: 0.5 }
+        config: { type: 'snow', renderMode: 'particle', asset: `${DECO_PATH}/jiguang.png`, speed: 1.5, opacity: 0.5 }
       },
         {
       type: 'decoration',
@@ -199,7 +199,7 @@ export const ADVANCED_SCENE_TEMPLATES: AdvancedSceneTemplate[] = [
         id: 'phoenix',
         asset: `${DECO_PATH}/phoenix.png`,
         position: 'left-bottom', 
-        animation: 'arc-move',
+        animation: 'linear-move',
         moveX: 200,  
         moveY: -100, 
         scale: 0.7,
@@ -224,6 +224,81 @@ export const ADVANCED_SCENE_TEMPLATES: AdvancedSceneTemplate[] = [
     ]
   },
   {
+    id: 'scene-horse-02',
+    name: '马到功成',
+    preview: '',
+    category: 'scene',
+    layers: [
+       {
+      type: 'environment',
+      config: {
+        type: 'meteor', // 使用下落逻辑
+        asset: `${DECO_PATH}/gold_ingot.png`,
+        density: 10,
+        speed: 1.8,
+        opacity: 0.8,
+        scale: 1.5,
+        renderMode: 'particle'
+      }
+    },
+      {
+        type: 'decoration',
+        config: {
+          id: 'gold_ingot_rain',
+          asset: `${DECO_PATH}/gold_ingot_rain.png`,
+          position: 'left-top',
+          animation: 'floating', 
+          scale: 1.8,
+          frequency: 0.5, 
+          amplitude: 1.0, 
+          offsetX: 150,
+          offsetY: -100
+        }
+          },
+        {
+      type: 'decoration',
+      config: {
+        id: 'horse',
+        asset: `${DECO_PATH}/horse.png`,
+        position: 'left-bottom', 
+        animation: 'sine-move',
+        moveX: 200,  
+        moveY: -100, 
+        scale: 0.7,
+        offsetY: -30, 
+        flipX: true,
+      }
+    },
+      {
+        type: 'text',
+        config: {
+          glow: { color: 'rgba(255, 215, 0, 0.9)', blur: 25 }, 
+          
+          physics: { curve: 'stiff', emphasisScale: 1.4 },
+        
+          rotation: -5, 
+          
+          karaokeConfig: {
+            type: 'karaoke',
+        
+            activeStyle: { 
+              color: '#FFD700', 
+              fontWeight: 900,
+              textShadow: '2px 2px 4px rgba(0,0,0,0.5)' 
+            },
+            inactiveStyle: { 
+              color: '#8B0000', 
+              opacity: 0.8, 
+              fontWeight: 700 
+            },
+            emphasisType: 'bounce',
+            emphasisValue: 1.25
+          }
+        }
+      }
+    ]
+  },
+  {
     id: 'scene-dunhuang-01',
     name: '敦煌幻梦',
     preview: '/assets/templates/previews/dunhuang_preview.webp',
@@ -239,7 +314,7 @@ export const ADVANCED_SCENE_TEMPLATES: AdvancedSceneTemplate[] = [
         id: 'apsaras',
         asset: `${DECO_PATH}/dunhuang_apsaras.png`,
         position: 'left-bottom', 
-        animation: 'arc-move',
+        animation: 'linear-move',
         moveX: 150, 
         scale: 0.7,
         moveY: -100, 
@@ -393,6 +468,7 @@ export const ADVANCED_SCENE_TEMPLATES: AdvancedSceneTemplate[] = [
         type: 'meteor', 
         asset: `${DECO_PATH}/red_envelope.png`,
         density: 5,
+        scale: 2.5,
         speed: 1.5,
         opacity: 1.0
       }
