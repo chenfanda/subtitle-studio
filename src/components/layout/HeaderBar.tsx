@@ -6,7 +6,10 @@ import {
   Settings,
   UserCog,
   Eraser,
-  Stamp 
+  Stamp ,
+  Minus, 
+  Square, 
+  X 
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -94,8 +97,12 @@ export function HeaderBar() {
   };
 
   return (
-    <div className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-[200] relative">
-      <div className="flex items-center space-x-4">
+    <div 
+    style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} 
+    className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-[200] relative">
+      <div className="flex items-center space-x-4"
+       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {/* 只有编辑模式显示侧边栏切换 */}
         {isEditingMode && (
           <button 
@@ -143,7 +150,8 @@ export function HeaderBar() {
         {/* 只有编辑模式才显示工具按钮 */}
         {isEditingMode && (
           <>
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              
               <button 
                 onClick={handleUndo}
                 disabled={!canUndo()}
@@ -171,7 +179,9 @@ export function HeaderBar() {
               </button>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} 
+            >
                <div className="relative">
                         <button 
                           onClick={() => {
@@ -246,11 +256,10 @@ export function HeaderBar() {
                 <span>{isExporting ? '导出中' : '导出'}</span>
               </button>
               
-              <div className="w-px h-6 bg-border-secondary mx-2"></div>
             </div>
           </>
         )}
-
+        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} className="flex items-center">
         {/* 用户区域 (全阶段显示) */}
         {isLoggedIn && userInfo ? (
           <div className="relative">
@@ -308,6 +317,38 @@ export function HeaderBar() {
             登录 / 注册
           </button>
         )}
+        </div> 
+        <div 
+          className="flex items-center h-full ml-2" 
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          {/* 最小化 */}
+          <button
+            onClick={() => (window as any).electronAPI?.minimize()}
+            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
+            title="最小化"
+          >
+            <Minus size={18} />
+          </button>
+
+          {/* 最大化 */}
+          <button
+            onClick={() => (window as any).electronAPI?.maximize()}
+            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
+            title="最大化"
+          >
+            <Square size={16} />
+          </button>
+
+          {/* 关闭 (红色背景) */}
+          <button
+            onClick={() => (window as any).electronAPI?.close()}
+            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-colors rounded-lg"
+            title="关闭"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );

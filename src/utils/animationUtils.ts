@@ -47,13 +47,6 @@ export const calculatePathTransform = (progress: number, config: any) => {
     case 'swing': 
       r = Math.sin(progress * Math.PI * 2 * frequency) * (amplitude * 12);
       break;
-
-    case 'meteor': 
-      tx = interpolateValue(progress, [0, 1], [200, -200]);
-      ty = interpolateValue(progress, [0, 1], [-200, 200]);
-      r = -45;
-      break;
-
     case 'arc-move': 
       tx = progress * moveX;
       ty = (progress * moveY) - Math.sin(progress * Math.PI) * (amplitude * 100);

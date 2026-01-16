@@ -10,7 +10,11 @@ import {
   Brain,
   Type,
   Cpu,
-  Timer
+  Timer,
+  // ✨ 1. 引入窗口控制图标
+  Minus,
+  Square,
+  X
 } from 'lucide-react';
 
 const getVideoDuration = (file: File): Promise<number> => {
@@ -30,29 +34,22 @@ const preloadAudioTracks = (urls: string[]): Promise<void[]> => {
   const promises = urls.map(url => {
     return new Promise<void>((resolve, reject) => {
       const audio = new Audio();
-      
-      
       audio.addEventListener('canplaythrough', () => {
         resolve();
       }, { once: true });
-
-     
       audio.addEventListener('error', () => {
         reject(new Error(`无法预加载音频: ${url}`));
       }, { once: true });
-
       audio.src = url;
       audio.preload = 'auto';
     });
   });
-
   return Promise.all(promises);
 };
 
 export const ProcessingStage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0); // 计时器状态
-  
+  const [elapsedTime, setElapsedTime] = useState(0); 
   const processingRef = useRef(false);
 
   const pendingUploadFile = useProjectStore((state) => state.pendingUploadFile);
@@ -63,29 +60,24 @@ export const ProcessingStage: React.FC = () => {
   useEffect(() => {
     const startTime = Date.now();
     let animationFrameId: number;
-
     const updateTimer = () => {
       setElapsedTime(Date.now() - startTime);
       animationFrameId = requestAnimationFrame(updateTimer);
     };
-
-    // 立即启动计时
     updateTimer();
-
     return () => {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, []); // 空依赖数组，确保组件挂载即开始计时，不依赖其他状态
+  }, []); 
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
-    const milliseconds = Math.floor((ms % 1000) / 10); // 取前两位
+    const milliseconds = Math.floor((ms % 1000) / 10); 
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
     const msStr = milliseconds.toString().padStart(2, '0');
     return { m, s, ms: msStr };
   };
-
 
   useEffect(() => {
     if (pendingUploadFile && !processingRef.current) {
@@ -96,11 +88,8 @@ export const ProcessingStage: React.FC = () => {
   const processFile = async (file: File) => {
     processingRef.current = true;
     setError(null);
-
     try {
       const localVideoUrl = URL.createObjectURL(file);
-
-    
       const [duration, data] = await Promise.all([
         getVideoDuration(file),
         uploadAndInitializeProject({
@@ -113,12 +102,8 @@ export const ProcessingStage: React.FC = () => {
       
       const { sourceResources } = data;
       const audioUrlsToPreload: string[] = [];
-      if (sourceResources?.audioVocals) {
-        audioUrlsToPreload.push(sourceResources.audioVocals);
-      }
-      if (sourceResources?.audioBacking) {
-        audioUrlsToPreload.push(sourceResources.audioBacking);
-      }
+      if (sourceResources?.audioVocals) audioUrlsToPreload.push(sourceResources.audioVocals);
+      if (sourceResources?.audioBacking) audioUrlsToPreload.push(sourceResources.audioBacking);
       if (audioUrlsToPreload.length > 0) {
         console.log('开始预加载音频...');
         await preloadAudioTracks(audioUrlsToPreload);
@@ -135,7 +120,6 @@ export const ProcessingStage: React.FC = () => {
       setProcessedResources(data.sourceResources);
       setVideoUrl(localVideoUrl);
       useProjectStore.getState().setDuration(duration);
-      
       setAppStage('editing');
 
     } catch (err) {
@@ -147,7 +131,7 @@ export const ProcessingStage: React.FC = () => {
 
   const handleRetry = () => {
     if (pendingUploadFile) {
-      processingRef.current = false; // 重置锁
+      processingRef.current = false; 
       processFile(pendingUploadFile);
     } else {
       setAppStage('upload');
@@ -159,6 +143,40 @@ export const ProcessingStage: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-[#050505] text-white flex items-center justify-center p-8 overflow-hidden font-sans selection:bg-purple-500/30">
       
+      {/* ✨ 2. 窗口拖拽区域 (透明层，覆盖顶部) */}
+      <div 
+        className="absolute top-0 left-0 w-full h-12 z-50"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      ></div>
+
+      {/* ✨ 3. 窗口控制按钮 (绝对定位在右上角) */}
+      <div 
+        className="absolute top-4 right-4 z-[60] flex items-center space-x-2"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
+        <button
+          onClick={() => (window as any).electronAPI?.minimize()}
+          className="w-8 h-8 flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
+          title="最小化"
+        >
+          <Minus size={18} />
+        </button>
+        <button
+          onClick={() => (window as any).electronAPI?.maximize()}
+          className="w-8 h-8 flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
+          title="最大化"
+        >
+          <Square size={16} />
+        </button>
+        <button
+          onClick={() => (window as any).electronAPI?.close()}
+          className="w-8 h-8 flex items-center justify-center text-white/40 hover:bg-red-500 hover:text-white transition-colors rounded-lg"
+          title="关闭"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
       {/* 动态背景 */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[60%] h-[300px] bg-purple-900/20 blur-[120px] rounded-full mix-blend-screen"></div>
@@ -169,12 +187,10 @@ export const ProcessingStage: React.FC = () => {
         {/* 卡片容器 */}
         <div className="relative bg-[#0a0a0c]/90 border border-white/5 rounded-3xl backdrop-blur-xl shadow-2xl overflow-hidden min-h-[500px] flex flex-col">
             
-            {/* 顶部扫描线 */}
             {!error && <div className="absolute top-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-scan-line z-20"></div>}
 
             <div className="flex-1 flex flex-col items-center p-8 relative">
 
-                {/* --- 顶部区域：计时器 (TOP) --- */}
                 {!error && (
                   <div className="w-full flex flex-col items-center justify-center pt-4 mb-8 z-20">
                      <div className="flex items-center gap-2 mb-2 opacity-50">
@@ -191,9 +207,6 @@ export const ProcessingStage: React.FC = () => {
                 )}
 
                 {error ? (
-                    // -----------------------------
-                    // 错误视图
-                    // -----------------------------
                     <div className="flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-300 w-full flex-1 justify-center">
                         <div className="w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-red-500/30">
                             <AlertCircle className="w-10 h-10 text-red-500" />
@@ -211,12 +224,7 @@ export const ProcessingStage: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    // -----------------------------
-                    // 正常视图 (莫比乌斯环 + 闪动图标)
-                    // -----------------------------
                     <div className="flex-1 w-full flex flex-col justify-between items-center">
-                        
-                        {/* 中部：流动的莫比乌斯环 (Visual Anchor) */}
                         <div className="relative w-full flex items-center justify-center flex-1">
                             <div className="relative w-72 h-36">
                                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 100">
@@ -231,16 +239,12 @@ export const ProcessingStage: React.FC = () => {
                                             <feComposite in="SourceGraphic" in2="blur" operator="over" />
                                         </filter>
                                     </defs>
-
-                                    {/* 背景轨迹 */}
                                     <path 
                                         d="M110,50 C110,85 165,85 165,50 C165,15 110,15 110,50 C110,85 55,85 55,50 C55,15 110,15 110,50 Z"
                                         fill="none" 
                                         stroke="#1e1e24" 
                                         strokeWidth="6"
                                     />
-
-                                    {/* 动态流动的前景 */}
                                     <path 
                                         d="M110,50 C110,85 165,85 165,50 C165,15 110,15 110,50 C110,85 55,85 55,50 C55,15 110,15 110,50 Z"
                                         fill="none" 
@@ -251,31 +255,22 @@ export const ProcessingStage: React.FC = () => {
                                         className="animate-flow-dash" 
                                     />
                                 </svg>
-                                
-                                {/* 环中心的装饰字 */}
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <Cpu size={24} className="text-purple-500/20 animate-pulse" />
                                 </div>
                             </div>
                         </div>
-
-                        {/* 底部：AI 阵列 (闪动效果) */}
                         <div className="w-full grid grid-cols-3 gap-3 mt-4">
-                            {/* 模块1 */}
                             <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <AudioWaveform className="w-5 h-5 text-white/20 animate-flash-1" />
                                 <span className="text-[10px] uppercase text-white/30 font-medium tracking-wide">Audio</span>
                             </div>
-
-                             {/* 模块2 */}
                             <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <Brain className="w-5 h-5 text-white/20 animate-flash-2" />
                                 <span className="text-[10px] uppercase text-white/30 font-medium tracking-wide">Neural</span>
                             </div>
-
-                             {/* 模块3 */}
                             <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <Type className="w-5 h-5 text-white/20 animate-flash-3" />
@@ -289,17 +284,15 @@ export const ProcessingStage: React.FC = () => {
       </div>
 
       <style>{`
-        /* 莫比乌斯环流动动画 */
+        /* ... 保持原有样式不变 ... */
         .animate-flow-dash {
-            stroke-dasharray: 80 180; /* 线段长 间隙长 */
+            stroke-dasharray: 80 180;
             stroke-dashoffset: 260;
             animation: flow 1.5s linear infinite;
         }
         @keyframes flow {
             to { stroke-dashoffset: 0; }
         }
-
-        /* 扫描线动画 */
         @keyframes scan-line {
             0% { transform: translateX(-100%); opacity: 0; }
             15% { opacity: 1; }
@@ -309,8 +302,6 @@ export const ProcessingStage: React.FC = () => {
         .animate-scan-line {
             animation: scan-line 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
-
-        /* 呼吸闪烁动画序列 */
         @keyframes flash {
             0%, 100% { color: rgba(255,255,255,0.2); filter: drop-shadow(0 0 0 transparent); }
             50% { color: #c084fc; filter: drop-shadow(0 0 8px #a855f7); }

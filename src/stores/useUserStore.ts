@@ -20,6 +20,11 @@ interface UserState {
   // 个人资料弹窗状态
   profileModalOpen: boolean;
 }
+interface Window {
+  electronAPI?: {
+    saveAvatar: (buffer: ArrayBuffer, fileName: string) => Promise<string>;
+  };
+}
 
 interface UserActions {
   // 动作
@@ -54,8 +59,8 @@ export const useUserStore = create<UserState & UserActions>()(
         await new Promise((resolve) => setTimeout(resolve, 800));
         const mockUser: UserInfo = {
           id: 'u_123456',
-          nickname: '未命名用户',
-          avatar: 'http://localhost:3000/api/avatar?seed=Felix',
+          nickname: '用户',
+          avatar: '/default-avatar.png',
           vipLevel: 'free',
         };
         set({ isLoggedIn: true, userInfo: mockUser, authModalOpen: false });
@@ -78,10 +83,24 @@ export const useUserStore = create<UserState & UserActions>()(
         const currentUser = get().userInfo;
         if (!currentUser) return;
 
-      
-        let newAvatarUrl = currentUser.avatar || 'http://localhost:3000/api/avatar?seed=Default'; 
+        let newAvatarUrl = currentUser.avatar;
+        if (newAvatarUrl.startsWith('blob:') || newAvatarUrl.startsWith('http')) {
+             newAvatarUrl = '/default-avatar.png';
+        }
         if (avatarFile) {
-          newAvatarUrl = URL.createObjectURL(avatarFile);
+          
+            try {
+            const buffer = await avatarFile.arrayBuffer();
+            
+            if ((window as any).electronAPI) {
+              newAvatarUrl = await (window as any).electronAPI.saveAvatar(buffer, avatarFile.name);
+            } else {
+              console.warn('Electron API not found');
+              newAvatarUrl = URL.createObjectURL(avatarFile);
+            }
+          } catch (error) {
+            console.error('Avatar save failed', error);
+          }
         }
 
         set({

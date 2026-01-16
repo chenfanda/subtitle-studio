@@ -18,6 +18,12 @@ interface VideoToolbarState {
   targetId: string | null;
 }
 
+interface Window {
+  electronAPI?: {
+    saveAvatar: (buffer: ArrayBuffer, fileName: string) => Promise<string>;
+  };
+}
+
 type TemplateCategory = 'custom' | 'featured' | 'dynamic' | 'static';
 
 

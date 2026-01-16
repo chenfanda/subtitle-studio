@@ -125,6 +125,21 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
     return [];
   }, [templateConfig, karaoke]);
 
+
+  const getStyleAtPosition = (absolutePos: number) => {
+    if (!richText || richText.length === 0) return {};
+    let currentLen = 0;
+    for (const segment of richText) {
+      if (absolutePos >= currentLen && absolutePos < currentLen + segment.text.length) {
+        return segment.style || {};
+      }
+      currentLen += segment.text.length;
+    }
+    return {};
+  };
+
+  let globalCharIdx = 0;
+
   return (
     <div style={{ 
       display: 'flex', flexWrap: 'wrap', width: '100%', position: 'relative', zIndex: 10,
@@ -147,8 +162,11 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
               const charRelTime = relTimeMs - charObj.startTime;
               const charFrame = Math.max(0, (charRelTime / 1000) * 60);
               const springVal = getSpringValue(charFrame, physics.stiffness, physics.damping);
-              
-              const wordRichStyle = (richText && richText[wordIdx]) ? richText[wordIdx].style : {};
+
+              const currentAbsolutePos = globalCharIdx;
+              globalCharIdx++;
+              const wordRichStyle = getStyleAtPosition(currentAbsolutePos);
+              // const wordRichStyle = (richText && richText[wordIdx]) ? richText[wordIdx].style : {};
               
               const activeStyle = templateConfig?.active?.style || karaoke?.activeStyle || {};
               const inactiveStyle = { color: templateConfig?.inactiveColor || karaoke?.inactiveStyle?.color || 'inherit' };
@@ -166,6 +184,7 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
                 <span key={charIdx} style={{
                   ...convertStyleToCSS(finalStyle),
                   display: 'inline-block', whiteSpace: 'pre',
+                  pointerEvents: 'none',
                   transform: isKaraokeMode ? `translateY(${ty}px) scale(${s})` : 'none',
                   transformOrigin: 'center bottom',
                 }}>{charObj.char}</span>

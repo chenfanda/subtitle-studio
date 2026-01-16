@@ -8,7 +8,7 @@ import type {
   SubtitlePosition, 
   RichTextSegment, 
   SubtitleAudioData, 
-  SubtitleSoundEffectData, // <-- 新增
+  SubtitleSoundEffectData, 
   SubtitleStyle 
 } from '@/types/subtitle';
 import type { BrollVideoData } from '@/types/broll';
