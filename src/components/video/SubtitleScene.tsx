@@ -109,7 +109,7 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
   const karaoke = templateConfig?.karaokeConfig || dynamicConfig;
   const isKaraokeMode = karaoke?.type === 'karaoke';
   const physics = templateConfig?.physics || { stiffness: 220, damping: 15 };
-  
+
   const backdrops = useMemo(() => {
     if (templateConfig?.backdrops) return templateConfig.backdrops;
     if (templateConfig?.background) return [templateConfig.background];
@@ -126,6 +126,25 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
   }, [templateConfig, karaoke]);
 
 
+  const { 
+    backgroundColor, 
+    background,
+    boxShadow, 
+    borderRadius, 
+    border,
+    borderColor,
+    borderWidth,
+    borderStyle,
+    padding,
+    alignment,
+    verticalAlignment,
+    ...textBaseStyle 
+  } = baseStyle;
+
+  // 判断是否有容器样式
+  const hasContainerStyle = !!(backgroundColor || background || boxShadow || border || (borderWidth && parseInt(borderWidth) > 0));
+
+  // ... getStyleAtPosition 逻辑保持不变 ...
   const getStyleAtPosition = (absolutePos: number) => {
     if (!richText || richText.length === 0) return {};
     let currentLen = 0;
@@ -140,59 +159,112 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
 
   let globalCharIdx = 0;
 
+  // 映射对齐方式
+  const justifyContentMap: Record<string, string> = {
+    left: 'flex-start',
+    right: 'flex-end',
+    center: 'center'
+  };
+
+  // 垂直对齐映射
+  const alignItemsMap: Record<string, string> = {
+    top: 'flex-start',
+    bottom: 'flex-end',
+    center: 'center'
+  };
+
   return (
     <div style={{ 
-      display: 'flex', flexWrap: 'wrap', width: '100%', position: 'relative', zIndex: 10,
-      justifyContent: baseStyle.alignment === 'left' ? 'flex-start' : baseStyle.alignment === 'right' ? 'flex-end' : 'center'
+      display: 'flex', 
+      width: '100%', 
+      position: 'relative', 
+      zIndex: 10,
+      justifyContent: justifyContentMap[alignment] || 'center',
+      alignItems: alignItemsMap[verticalAlignment] || 'center',
+      height: '100%', 
+      pointerEvents: 'none'
     }}>
-      {words.map((word: any, wordIdx: number) => {
-        const isActive = isKaraokeMode && wordIdx === activeIndex;
-        return (
-          <span key={wordIdx} style={{ display: 'inline-flex', position: 'relative', margin: '0 0.05em' }}>
-            {isActive && backdrops.map((bg: any, bIdx: number) => (
-              <div key={bIdx} style={{
-                position: 'absolute',
-                inset: `-${bg.padding?.split(' ')?.[0] || '4px'} -${bg.padding?.split(' ')?.[1] || '12px'}`,
-                backgroundColor: bg.color, borderRadius: bg.borderRadius || '4px', zIndex: -1,
-                animation: 'capsule-pop 0.3s ease-out'
-              }} />
-            ))}
+      {/* 2. 新增 Wrapper：承载块级样式 */}
+      {/* 这样即使用户没有选高级模板，背景也是完整的；如果选了高级模板，这个背景作为底板存在 */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        // 内部文字对齐
+        justifyContent: justifyContentMap[alignment] || 'center',
+        
+        // 应用提取出的块级样式
+        backgroundColor,
+        background,
+        boxShadow,
+        borderRadius,
+        border,
+        borderColor,
+        borderWidth,
+        borderStyle,
+        padding, // padding 应用在 Wrapper 上，文字就不会贴边
 
-            {word.characters.map((charObj: any, charIdx: number) => {
-              const charRelTime = relTimeMs - charObj.startTime;
-              const charFrame = Math.max(0, (charRelTime / 1000) * 60);
-              const springVal = getSpringValue(charFrame, physics.stiffness, physics.damping);
+        // 宽度策略：如果有背景，适应内容宽度；否则占满（除非左/右对齐）
+        width: hasContainerStyle ? 'fit-content' : '100%',
+        maxWidth: '100%',
+        pointerEvents: 'auto'
+      }}>
+        {words.map((word: any, wordIdx: number) => {
+          const isActive = isKaraokeMode && wordIdx === activeIndex;
+          return (
+            <span key={wordIdx} style={{ display: 'inline-flex', position: 'relative', margin: '0 0.05em' }}>
+              {/* 3. 高级模板的 Backdrops (胶囊/气泡) 依然渲染在这里 */}
+              {/* 它们是绝对定位的，不受外层 Wrapper 背景的影响，会叠加在上面 */}
+              {isActive && backdrops.map((bg: any, bIdx: number) => (
+                <div key={bIdx} style={{
+                  position: 'absolute',
+                  inset: `-${bg.padding?.split(' ')?.[0] || '4px'} -${bg.padding?.split(' ')?.[1] || '12px'}`,
+                  backgroundColor: bg.color, borderRadius: bg.borderRadius || '4px', zIndex: -1,
+                  animation: 'capsule-pop 0.3s ease-out'
+                }} />
+              ))}
 
-              const currentAbsolutePos = globalCharIdx;
-              globalCharIdx++;
-              const wordRichStyle = getStyleAtPosition(currentAbsolutePos);
-              // const wordRichStyle = (richText && richText[wordIdx]) ? richText[wordIdx].style : {};
-              
-              const activeStyle = templateConfig?.active?.style || karaoke?.activeStyle || {};
-              const inactiveStyle = { color: templateConfig?.inactiveColor || karaoke?.inactiveStyle?.color || 'inherit' };
+              {word.characters.map((charObj: any, charIdx: number) => {
+                const charRelTime = relTimeMs - charObj.startTime;
+                const charFrame = Math.max(0, (charRelTime / 1000) * 60);
+                const springVal = getSpringValue(charFrame, physics.stiffness, physics.damping);
 
-              const finalStyle = isKaraokeMode 
-                ? (isActive 
-                    ? deepMergeStyle(deepMergeStyle(baseStyle, wordRichStyle), activeStyle)
-                    : deepMergeStyle(deepMergeStyle(baseStyle, wordRichStyle), inactiveStyle))
-                : deepMergeStyle(baseStyle, wordRichStyle);
+                const currentAbsolutePos = globalCharIdx;
+                globalCharIdx++;
+                const wordRichStyle = getStyleAtPosition(currentAbsolutePos);
+                
+                // 获取高级模板定义的动态样式
+                const activeStyle = templateConfig?.active?.style || karaoke?.activeStyle || {};
+                const inactiveStyle = { color: templateConfig?.inactiveColor || karaoke?.inactiveStyle?.color || 'inherit' };
 
-              const s = isActive ? interpolateValue(springVal, [0, 1], [0.8, templateConfig?.active?.transform?.scale || karaoke?.emphasisValue || 1.15]) : 1;
-              const ty = isActive && karaoke?.emphasisType === 'bounce' ? interpolateValue(springVal, [0, 1], [10, 0]) : 0;
+                // 4. 样式合并逻辑的关键点：
+                // 使用 textBaseStyle (不含背景) 作为基础
+                // 如果 activeStyle (来自高级模板) 里有 backgroundColor，它会被 merge 进来，应用到 span 上
+                // 结果：Wrapper 有底色，Active 字符也有自己的高亮色，完美共存
+                const finalStyle = isKaraokeMode 
+                  ? (isActive 
+                      ? deepMergeStyle(deepMergeStyle(textBaseStyle, wordRichStyle), activeStyle)
+                      : deepMergeStyle(deepMergeStyle(textBaseStyle, wordRichStyle), inactiveStyle))
+                  : deepMergeStyle(textBaseStyle, wordRichStyle);
 
-              return (
-                <span key={charIdx} style={{
-                  ...convertStyleToCSS(finalStyle),
-                  display: 'inline-block', whiteSpace: 'pre',
-                  pointerEvents: 'none',
-                  transform: isKaraokeMode ? `translateY(${ty}px) scale(${s})` : 'none',
-                  transformOrigin: 'center bottom',
-                }}>{charObj.char}</span>
-              );
-            })}
-          </span>
-        );
-      })}
+                const s = isActive ? interpolateValue(springVal, [0, 1], [0.8, templateConfig?.active?.transform?.scale || karaoke?.emphasisValue || 1.15]) : 1;
+                const ty = isActive && karaoke?.emphasisType === 'bounce' ? interpolateValue(springVal, [0, 1], [10, 0]) : 0;
+
+                return (
+                  <span key={charIdx} style={{
+                    ...convertStyleToCSS(finalStyle),
+                    display: 'inline-block', whiteSpace: 'pre',
+                    pointerEvents: 'none',
+                    transform: isKaraokeMode ? `translateY(${ty}px) scale(${s})` : 'none',
+                    transformOrigin: 'center bottom',
+                    // 确保字符本身的背景（如果有）不会覆盖文字
+                    zIndex: 1 
+                  }}>{charObj.char}</span>
+                );
+              })}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -215,7 +287,10 @@ export const SubtitleScene: React.FC<SubtitleSceneProps> = ({ subtitle, currentT
 
   return (
     <div className="subtitle-scene-root" style={{
-      position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative', width: '100%', height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column', // 确保垂直方向布局正确
+      justifyContent: 'center', // 默认居中，具体由 TextLayer 覆盖
       minWidth: isPreview ? '400px' : 'auto', 
       minHeight: isPreview ? '120px' : 'auto',
       transform: isPreview ? `scale(${scaleFactor})` : 'none', 

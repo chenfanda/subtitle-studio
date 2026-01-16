@@ -29,7 +29,8 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
   const {
     subtitles,
     applyStyleToAllSubtitles,
-    updateSubtitleRichText
+    updateSubtitleRichText,
+    updateSubtitle 
   } = useSubtitleStore();
 
   const {
@@ -118,16 +119,68 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
         endIndex: currentObject.text.length
       };
 
-    if (targetType === 'subtitle') {
-      const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
+      if (targetType === 'subtitle') {
+      // 判断是否是全选操作
+      const isFullSelection = selectionToApply.startIndex === 0 && selectionToApply.endIndex === currentObject.text.length;
+      
+      const globalUpdates: any = {};
+      const richTextUpdates: any = { ...updates };
 
-      const newSegments = applyStyleToSegments(
-        baseRichText,
-        selectionToApply.startIndex,
-        selectionToApply.endIndex,
-        updates
-      );
-      updateSubtitleRichText(targetId, newSegments);
+      // 1. 对齐属性：强制为全局样式
+      // 因为 Wrapper 需要这些属性来定位
+      if ('alignment' in updates) {
+        globalUpdates.alignment = updates.alignment;
+        delete richTextUpdates.alignment;
+      }
+      if ('verticalAlignment' in updates) {
+        globalUpdates.verticalAlignment = updates.verticalAlignment;
+        delete richTextUpdates.verticalAlignment;
+      }
+
+      // 2. 块级属性（背景、边框、阴影、内边距）：
+      // 仅当用户【全选】时，我们才将这些属性视为“容器样式”，存入全局 style
+      // 这样 SubtitleScene 就会把它们渲染到 Wrapper 上，形成完整的块
+      const blockProps = [
+        'backgroundColor', 'backgroundShape', 'padding', 
+        'borderRadius', 'boxShadow', 'border', 'shadow', 
+        'borderColor', 'borderWidth', 'borderStyle'
+      ];
+      
+      if (isFullSelection) {
+        blockProps.forEach(prop => {
+          if (prop in updates) {
+            globalUpdates[prop] = updates[prop as keyof typeof updates];
+            // 从富文本更新中移除，避免重复应用到 span 上
+            delete richTextUpdates[prop];
+          }
+        });
+      }
+      // 注意：如果用户只选中了几个字修改背景色，isFullSelection 为 false，
+      // 这些属性会保留在 richTextUpdates 中，最终应用到 span 上 -> 这是正确的（局部高亮）
+
+      // 更新全局样式
+      if (Object.keys(globalUpdates).length > 0) {
+        updateSubtitle(targetId, {
+          style: {
+            ...currentObject.style,
+            ...globalUpdates
+          }
+        });
+      }
+
+      // 更新富文本样式
+      // 即使是全选，颜色(color)、字体(fontFamily) 等非 blockProps 依然会走这里，
+      // 或者如果 blockProps 是局部选择的也走这里
+      if (Object.keys(richTextUpdates).length > 0) {
+        const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
+        const newSegments = applyStyleToSegments(
+          baseRichText,
+          selectionToApply.startIndex,
+          selectionToApply.endIndex,
+          richTextUpdates
+        );
+        updateSubtitleRichText(targetId, newSegments);
+      }
     } else {
       updateTextElement(targetId, {
         style: { ...currentStyle, ...updates }
