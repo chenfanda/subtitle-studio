@@ -179,6 +179,7 @@ export const useTemplateStore = create<TemplateStore>()(
       // 🟢 5. 基础模板与动画 (静态模板、基础动态效果、单一动画)
       let finalStyle = { ...DEFAULT_SUBTITLE_STYLE };
       let currentSegments = [...cleanState.richText];
+      let appliedTemplateId: string | undefined = undefined;
 
       if (isDynamicTemplate(template)) {
         // 动态模板：样式 + 动画
@@ -190,6 +191,7 @@ export const useTemplateStore = create<TemplateStore>()(
         // 静态模板：仅样式
         finalStyle = { ...finalStyle, ...convertTemplateToSubtitleStyle(template.style) };
         currentSegments = applyStyleToAllSegments(currentSegments, finalStyle);
+        appliedTemplateId = template.id;
       } 
       else if (isAnimationTemplate(template) && template.effects.length > 0) {
         // 基础动画：仅应用动画到选区
@@ -200,6 +202,7 @@ export const useTemplateStore = create<TemplateStore>()(
       const finalOptimizedSegments = mergeAdjacentSegments(currentSegments);
       subtitleStore.updateSubtitle(subtitleId, {
         ...cleanState,
+        templateId: appliedTemplateId, 
         style: finalStyle,
         richText: finalOptimizedSegments
       });

@@ -168,9 +168,6 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
         });
       }
 
-      // 更新富文本样式
-      // 即使是全选，颜色(color)、字体(fontFamily) 等非 blockProps 依然会走这里，
-      // 或者如果 blockProps 是局部选择的也走这里
       if (Object.keys(richTextUpdates).length > 0) {
         const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
         const newSegments = applyStyleToSegments(

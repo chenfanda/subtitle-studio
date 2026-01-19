@@ -94,16 +94,31 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     return null;
   }, [template]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (isScene) {
+      // 动态场景：只看 ID
       setHasThisEffect(selectedSubtitle?.templateId === template.id);
     } else if (selectedSubtitle?.richText && primaryEffect) {
+      // 动画效果：看动画名
       setHasThisEffect(selectedSubtitle.richText.some(seg => seg.animation?.name === primaryEffect.name));
-    } else if (isStaticTemplate(template) && selectedSubtitle?.style) {
-      const current = selectedSubtitle.style;
-      const target = convertTemplateToSubtitleStyle(template.style);
-      setHasThisEffect(Object.keys(target).every(k => current[k as keyof typeof current] === target[k as keyof typeof target]));
+    } else if (isStaticTemplate(template)) {
+      // 基本模板：
+      if (selectedSubtitle?.templateId === template.id) {
+        // 1. ID 匹配成功 -> true
+        setHasThisEffect(true);
+      } else if (selectedSubtitle?.style) {
+        // 2. ID 不匹配，尝试比对样式（作为兜底）
+        const current = selectedSubtitle.style;
+        const target = convertTemplateToSubtitleStyle(template.style);
+        // 注意：这里依然是浅比较，复杂样式仍会失败，但有 ID 匹配在前，这里失败也没关系
+        const isStyleMatch = Object.keys(target).every(k => current[k as keyof typeof current] === target[k as keyof typeof target]);
+        setHasThisEffect(isStyleMatch);
+      } else {
+        // 3. 既无 ID 也无样式 -> false (补全这个逻辑更安全)
+        setHasThisEffect(false);
+      }
     } else {
+      // 其他情况
       setHasThisEffect(false);
     }
   }, [selectedSubtitle, template, primaryEffect, isScene]);

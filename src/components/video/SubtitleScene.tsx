@@ -212,8 +212,7 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
           const isActive = isKaraokeMode && wordIdx === activeIndex;
           return (
             <span key={wordIdx} style={{ display: 'inline-flex', position: 'relative', margin: '0 0.05em' }}>
-              {/* 3. 高级模板的 Backdrops (胶囊/气泡) 依然渲染在这里 */}
-              {/* 它们是绝对定位的，不受外层 Wrapper 背景的影响，会叠加在上面 */}
+    
               {isActive && backdrops.map((bg: any, bIdx: number) => (
                 <div key={bIdx} style={{
                   position: 'absolute',
@@ -232,14 +231,11 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
                 globalCharIdx++;
                 const wordRichStyle = getStyleAtPosition(currentAbsolutePos);
                 
-                // 获取高级模板定义的动态样式
+     
                 const activeStyle = templateConfig?.active?.style || karaoke?.activeStyle || {};
                 const inactiveStyle = { color: templateConfig?.inactiveColor || karaoke?.inactiveStyle?.color || 'inherit' };
 
-                // 4. 样式合并逻辑的关键点：
-                // 使用 textBaseStyle (不含背景) 作为基础
-                // 如果 activeStyle (来自高级模板) 里有 backgroundColor，它会被 merge 进来，应用到 span 上
-                // 结果：Wrapper 有底色，Active 字符也有自己的高亮色，完美共存
+         
                 const finalStyle = isKaraokeMode 
                   ? (isActive 
                       ? deepMergeStyle(deepMergeStyle(textBaseStyle, wordRichStyle), activeStyle)
@@ -256,7 +252,7 @@ const TextLayer = ({ templateConfig, dynamicConfig, words, activeIndex, relTimeM
                     pointerEvents: 'none',
                     transform: isKaraokeMode ? `translateY(${ty}px) scale(${s})` : 'none',
                     transformOrigin: 'center bottom',
-                    // 确保字符本身的背景（如果有）不会覆盖文字
+              
                     zIndex: 1 
                   }}>{charObj.char}</span>
                 );
@@ -290,7 +286,6 @@ export const SubtitleScene: React.FC<SubtitleSceneProps> = ({ subtitle, currentT
       position: 'relative', width: '100%', height: '100%', 
       display: 'flex', 
       flexDirection: 'column', // 确保垂直方向布局正确
-      justifyContent: 'center', // 默认居中，具体由 TextLayer 覆盖
       minWidth: isPreview ? '400px' : 'auto', 
       minHeight: isPreview ? '120px' : 'auto',
       transform: isPreview ? `scale(${scaleFactor})` : 'none', 

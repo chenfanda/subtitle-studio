@@ -511,7 +511,7 @@ export const buildTextTrack = (
   
   (content.subtitles || []).forEach((sub: SubtitleItem, i) => {
     
-    if (sub.templateId) return;
+    // if (sub.templateId) return;
     const newStartTimeS = msToS(getNewTime(sub.startTime));
     const newEndTimeS = msToS(getNewTime(sub.endTime));
     if (newEndTimeS <= newStartTimeS) return;

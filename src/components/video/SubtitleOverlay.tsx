@@ -27,7 +27,17 @@ export function SubtitleOverlay() {
 
   const isSelected = videoToolbar.targetType === 'subtitle' && videoToolbar.targetId === currentSubtitle?.id;
   const subtitlePosition = currentSubtitle ? getSubtitlePosition(currentSubtitle.id) : { x: 50, y: 85, scale: 1.0, width: undefined };
+  
+  const verticalAlign = currentSubtitle?.style?.verticalAlignment || 'center';
 
+
+  const getVerticalAlignClass = (align: string) => {
+    switch (align) {
+      case 'top': return 'justify-start';
+      case 'bottom': return 'justify-end';
+      default: return 'justify-center';
+    }
+  };
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.detail === 2 || !subtitleRef.current || !currentSubtitle) return;
     e.preventDefault();
@@ -69,10 +79,11 @@ export function SubtitleOverlay() {
           onDoubleClick={() => useUIStore.getState().setEditingSubtitle(currentSubtitle.id)}
         >
           <TransformBorder isSelected={isSelected} position={{ ...subtitlePosition, scale: subtitlePosition.scale || 1.0 }} width={subtitlePosition.width} mode="subtitle" onScaleChange={(s) => updateSubtitleScale(currentSubtitle.id, s)} onWidthChange={(w) => updateSubtitleWidth(currentSubtitle.id, w)}>
-            <div className={`inline-block transition-all rounded flex flex-col justify-center items-center ${isSelected ? 'border-2 border-accent-purple shadow-lg' : 'border-2 border-transparent'}`}
+            <div className={`inline-block transition-all rounded flex flex-col ${isSelected ? 'border-2 border-accent-purple shadow-lg' : 'border-2 border-transparent'}`}
               style={{ width: subtitlePosition.width ? `${subtitlePosition.width}px` : 'auto', minWidth: '330px', minHeight: '100px', overflow: 'visible' }}>
-              {/* 🟢 关键：SubtitleScene 现在被包裹在居中容器内，且不再自作主张缩放 */}
+              <div className="absolute inset-0 w-full h-full">
               <SubtitleScene subtitle={currentSubtitle} currentTime={currentTime} />
+              </div>
             </div>
           </TransformBorder>
         </div>
