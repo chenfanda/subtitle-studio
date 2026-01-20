@@ -16,8 +16,8 @@ const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boole
 
   if (!keepOverlays) {
     cleanProject.content.subtitles = []; 
-    cleanProject.content.textElements = [];
-    cleanProject.content.placedMedia = []; 
+    // cleanProject.content.textElements = [];
+    // cleanProject.content.placedMedia = []; 
   }
 
   // if (cleanProject.settings?.watermark && !keepOverlays) {
@@ -88,6 +88,11 @@ export const processWithGpu = async (
     }
 
     const stage1Project = sanitizeForGpuStage(project, isFastPath);
+
+    if (!isFastPath) {
+      project.content.textElements = [];
+      project.content.placedMedia = []; 
+    }
 
     const { command, mapper } = buildFfmpegCommand(
       stage1Project,

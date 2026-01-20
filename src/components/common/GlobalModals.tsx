@@ -408,7 +408,7 @@ const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => (
         云端完美渲染
       </h4>
       <p className="text-xs text-text-secondary mb-3 leading-relaxed">
-        服务器后台渲染，完美复刻所有特效。<br/>支持 4K 画质和复杂动画。
+        服务器后台渲染，完美复刻所有特效。<br/>支持 高清画质和复杂动画。
       </p>
       <div className="mt-auto pt-3 w-full border-t border-border-primary/50">
         <span className="text-xs text-accent-green flex items-center">
