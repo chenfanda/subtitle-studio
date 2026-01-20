@@ -234,3 +234,70 @@ export const mergeFramesWithGpu = async (
     });
   });
 };
+
+
+export const convertFormatWithGpu = async (
+  inputPath: string, // 必须是 mp4
+  outputPath: string,
+  targetFormat: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const absoluteInputDir = path.dirname(inputPath);
+    const inputFileName = path.basename(inputPath);
+    const outputFileName = path.basename(outputPath);
+    const dockerWorkDir = '/workdir';
+
+    // 默认参数：直接拷贝流（速度最快）
+    let filterArgs: string[] = ['-c', 'copy'];
+
+    // 针对不同格式的特殊处理
+    switch (targetFormat.toLowerCase()) {
+      case 'gif':
+        // GIF 需要重新编码，生成调色板以保证质量，并降低帧率减小体积
+        filterArgs = [
+            '-vf', 'fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', 
+            '-loop', '0'
+        ];
+        break;
+      case 'mp3':
+        // 提取音频
+        filterArgs = ['-vn', '-acodec', 'libmp3lame', '-q:a', '2'];
+        break;
+      case 'mov':
+        // MP4 转 MOV 通常可以直接拷贝流，或者转为 ProRes (如果需要编辑)
+        // 这里为了通用性，使用流拷贝
+        filterArgs = ['-c', 'copy']; 
+        break;
+      case 'avi':
+        filterArgs = ['-c:v', 'libx264', '-c:a', 'aac'];
+        break;
+      // 可以在这里扩展更多格式
+    }
+
+    const args = [
+      'run', '--rm',
+      '-v', `${absoluteInputDir}:${dockerWorkDir}`,
+      'ffmpeg-cuda:6.1',
+      '-y',
+      '-i', `${dockerWorkDir}/${inputFileName}`,
+      ...filterArgs,
+      `${dockerWorkDir}/${outputFileName}`
+    ];
+
+    console.log(`🐳 [Step 4] 开始格式转换: MP4 -> ${targetFormat.toUpperCase()}`);
+    
+    const process = spawn('docker', args);
+
+    process.on('close', (code) => {
+      if (code === 0) {
+        console.log(`✅ [Step 4] 转换成功: ${outputPath}`);
+        resolve();
+      } else {
+        console.error(`❌ [Step 4] 转换失败 Code: ${code}`);
+        reject(new Error(`Format conversion failed: ${code}`));
+      }
+    });
+
+    process.on('error', reject);
+  });
+};

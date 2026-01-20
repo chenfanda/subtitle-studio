@@ -321,6 +321,14 @@ function ExportModal() {
   );
 }
 
+const FORMAT_OPTIONS = [
+  { value: 'mp4', label: 'MP4 (推荐)', premium: false },
+  { value: 'gif', label: 'GIF 动图', premium: true }, // 需要会员
+  { value: 'mov', label: 'MOV 视频', premium: true },
+  { value: 'avi', label: 'AVI 视频', premium: true },
+  { value: 'mp3', label: 'MP3 音频', premium: true },
+];
+
 const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
   <div className="space-y-5 mb-6 border-b border-border-primary pb-6">
     <div className="grid grid-cols-2 gap-6">
@@ -342,23 +350,35 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
           ))}
         </div>
       </div>
-      <div>
-        <label className="text-sm font-medium text-text-primary block mb-2">格式</label>
-        <div className="flex space-x-2">
-          {['mp4', 'gif'].map(fmt => (
-            <button
-              key={fmt}
-              className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center uppercase ${
-                settings.format === fmt
-                  ? 'bg-accent-purple text-white'
-                  : 'bg-bg-tertiary hover:bg-border-primary text-text-secondary'
-              } ${fmt === 'gif' && !isPremium ? 'opacity-60' : ''}`}
-              onClick={() => onUpdate({ format: fmt })}
-            >
-              {fmt} {fmt === 'gif' && !isPremium && <Lock className="w-3 h-3 ml-1.5 opacity-70" />}
-            </button>
-          ))}
+        <div>
+        <label className="text-sm font-medium text-text-primary block mb-2">导出格式</label>
+        <div className="relative">
+          <select
+            className="w-full bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-2 appearance-none focus:outline-none focus:border-accent-purple"
+            value={settings.format}
+            onChange={(e) => onUpdate({ format: e.target.value })}
+          >
+            {FORMAT_OPTIONS.map(opt => (
+              <option 
+                key={opt.value} 
+                value={opt.value}
+                disabled={opt.premium && !isPremium} // 非会员禁用高级格式
+              >
+                {opt.label} {opt.premium && !isPremium ? '(Pro)' : ''}
+              </option>
+            ))}
+          </select>
+          {/* 下拉箭头图标 */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
         </div>
+        {!isPremium && (
+          <p className="text-xs text-text-disabled mt-1">
+            <Lock className="w-3 h-3 inline mr-1"/>
+            多种格式转换仅限 Pro 会员
+          </p>
+        )}
       </div>
     </div>
   </div>

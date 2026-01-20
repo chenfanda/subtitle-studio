@@ -163,7 +163,7 @@ export const buildFfmpegCommand = (
   if (!isPremium && finalResolution > 720) {
     finalResolution = 720;
   }
-  const isGif = settings.format === 'gif';
+
   const targetH = finalResolution;
   const refHeight = project.settings.referenceHeight || PREVIEW_REFERENCE_HEIGHT;
   const scaleFactor = targetH / refHeight;
@@ -280,44 +280,33 @@ export const buildFfmpegCommand = (
   const filterComplex = [...allVideoFilters, ...allAudioFilters].join(';');
   const command = ['-filter_complex', filterComplex];
 
-  
 
-  
-  if (isGif) {
-    const gifFilters = `${filterComplex};${finalVideoStream}split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse[v_gif_out]`;
-    command[1] = gifFilters;
+  command.push(
+    '-map', finalVideoStream,
+    '-map', finalAudioStream
+  );
+
+  if (target === 'backend' && enableHardwareAcceleration) {
     command.push(
-      '-map', '[v_gif_out]', '-an', '-f', 'gif', 'output.gif'
+      '-c:v', 'h264_nvenc',
+      '-preset', 'p4',
+      '-cq', '20',
+      '-pix_fmt', 'yuv420p',
+      '-r', '30'
     );
   } else {
     command.push(
-      '-map', finalVideoStream,
-      '-map', finalAudioStream
-    );
-
-    if (target === 'backend' && enableHardwareAcceleration) {
-      command.push(
-        '-c:v', 'h264_nvenc',
-        '-preset', 'p4',
-        '-cq', '20',
-        '-pix_fmt', 'yuv420p',
-        '-r', '30'
-      );
-    } else {
-      command.push(
-        '-c:v', 'libx264',
-        '-preset', 'ultrafast',
-        '-r', '30'
-      );
-    }
-
-    command.push(
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-shortest',
-      '-f', 'mp4', 'output.mp4'
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-r', '30'
     );
   }
 
-  return { command: command.filter(Boolean), mapper };
-};
+  command.push(
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    '-shortest',
+    '-f', 'mp4', 'output.mp4'
+  );
+
+  return { command: command.filter(Boolean), mapper }};

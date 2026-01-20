@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { bundle, WebpackOverrideFn } from '@remotion/bundler';
 import { renderFrames, selectComposition } from '@remotion/renderer';
-import { mergeFramesWithGpu } from '../src/utils/backend-gpu-processor';
+import { mergeFramesWithGpu , convertFormatWithGpu} from '../src/utils/backend-gpu-processor';
 import type { ProjectExport } from '../src/types/project';
 import os from 'os';
 
@@ -186,6 +186,24 @@ export const renderVideo = async (
 
     const finalVideoPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
     await mergeFramesWithGpu(tempDir, framesDir, fps, finalVideoPath);
+
+    const targetFormat = exportSettings?.format || 'mp4';
+     if (targetFormat !== 'mp4') {
+       console.log(`🔄 [Step 4] Remotion渲染完成，开始转换格式: ${targetFormat}`);
+       if (onProgress) onProgress(98);
+
+       const finalOutputPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.${targetFormat}`);
+       
+       try {
+         await convertFormatWithGpu(finalVideoPath, finalOutputPath, targetFormat);
+         
+         if (onProgress) onProgress(100);
+         return `/downloads/${jobId}.${targetFormat}`;
+       } catch (e) {
+         console.error(`[Step 4] 转换失败，降级返回 MP4:`, e);
+         return `/downloads/${jobId}.mp4`;
+       }
+    }
 
     if (onProgress) onProgress(100);
 

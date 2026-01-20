@@ -8,7 +8,7 @@ import treeKill from 'tree-kill';
 import { connection, type RenderJobData, redisConfig } from './queue';
 import { hasGpu } from './gpu-utils';
 
-import { processWithGpu } from '../src/utils/backend-gpu-processor';
+import { processWithGpu , convertFormatWithGpu } from '../src/utils/backend-gpu-processor';
 import { SERVER_CONFIG } from './config/server-config';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,8 +71,23 @@ export const worker = new Worker<RenderJobData>(
 
           if (gpuResult.isFinished) {
             console.log(`✅ [Worker] 快车道渲染完成，跳过 Remotion。URL: ${generatedUrl}`);
+            const targetFormat = safeSettings.format || 'mp4';
+            let finalUrl = `http://localhost:${port}/temp/${jobId}/base_video.mp4`;
+
+            if (targetFormat !== 'mp4') {
+               console.log(`🔄 [Step 4] 进入格式转换流程: ${targetFormat}`);
+               await job.updateProgress(95);
+
+               const mp4Path = gpuResult.outputPath; 
+               const finalFileName = `final_output.${targetFormat}`;
+               const finalPath = path.join(jobTempDir, finalFileName);
+
+               await convertFormatWithGpu(mp4Path, finalPath, targetFormat);
+               
+               finalUrl = `http://localhost:${port}/temp/${jobId}/${finalFileName}`;
+            }
             await job.updateProgress(100);
-            resolve({ url: generatedUrl });
+            resolve({ url: finalUrl });
             return;
           }
 
