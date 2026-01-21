@@ -97,7 +97,10 @@ const drawTextElement = (
   config: WatermarkConfig,
   isOverlay: boolean = false
 ) => {
-  const fontSize = config.fontSize || 16;
+  let fontSize = config.fontSize || 16;
+  if (isOverlay) {
+    fontSize = fontSize * 0.5;
+  }
   const fontWeight = config.fontWeight || 400;
   const fontStyle = config.fontStyle || 'normal';
   const fontFamily = config.fontFamily || 'Arial, sans-serif';
@@ -236,6 +239,8 @@ export const captureWatermarkSnapshot = async (_referenceHeight?: number): Promi
     }
     
     const fontSize = config.fontSize || 16;
+    const layout = config.layout || 'row';
+    const isOverlay = layout === 'overlay';
     const imageHeight = fontSize * 1.5;
     
     // 2. 加载图片
@@ -264,13 +269,14 @@ export const captureWatermarkSnapshot = async (_referenceHeight?: number): Promi
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) throw new Error('无法创建临时Canvas');
     
-    tempCtx.font = `${config.fontStyle || 'normal'} ${config.fontWeight || 400} ${fontSize}px ${config.fontFamily || 'Arial'}`;
+    const measureFontSize = isOverlay ? fontSize * 0.5 : fontSize;
+    tempCtx.font = `${config.fontStyle || 'normal'} ${config.fontWeight || 400} ${measureFontSize}px ${config.fontFamily || 'Arial'}`;
     const textWidth = config.text ? tempCtx.measureText(config.text).width : 0;
     
     // 4. 计算Canvas尺寸
     const padding = 12;
     const gap = 8;
-    const layout = config.layout || 'row';
+    // const layout = config.layout || 'row';
     
     let canvasWidth = padding * 2;
     let canvasHeight = padding * 2;
@@ -332,7 +338,7 @@ export const captureWatermarkSnapshot = async (_referenceHeight?: number): Promi
       config
     );
     
-    const isOverlay = config.layout === 'overlay';
+    // const isOverlay = config.layout === 'overlay';
     
     if (img) {
       drawImageElement(

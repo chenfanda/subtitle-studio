@@ -14,7 +14,7 @@ let currentBundlePath: string | null = null;
 
 interface ExportSettings {
   resolution: number;
-  format: 'mp4' | 'gif';
+  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3'; 
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -113,6 +113,7 @@ export const renderVideo = async (
   let bundleLocation: string | null = null;
 
   try {
+    if (onProgress) onProgress(1); 
     const project = normalizeProjectUrls(rawProject);
     const entryPoint = path.join(process.cwd(), 'src', 'remotion', 'index.ts');
 
@@ -128,12 +129,15 @@ export const renderVideo = async (
         },
       };
     };
-
+    
+    if (onProgress) onProgress(5); 
     bundleLocation = await bundle({ 
       entryPoint, 
       webpackOverride, 
       publicDir: path.join(process.cwd(), 'public') 
     });
+
+    if (onProgress) onProgress(10);
     currentBundlePath = bundleLocation;
     
     if (process.send && bundleLocation) {
@@ -146,13 +150,39 @@ export const renderVideo = async (
       inputProps: { project }, 
       chromiumOptions: { headless: true }
     });
+    
+    if (onProgress) onProgress(15);
 
     const fps = composition.fps || 30;
     const durationInFrames = calculateDurationInFrames(project, fps);
     if (durationInFrames > 0) {
       composition.durationInFrames = durationInFrames;
     }
+    
+    console.log(`🎬 [Child] 开始进入截图循环... 目标总帧数: ${composition.durationInFrames}`);
+    const totalFrames = composition.durationInFrames;
+    let monitorLastPercent = 15; 
 
+    const progressMonitor = setInterval(() => {  
+      try {  
+        const files = fs.readdirSync(framesDir);  
+        const currentCount = files.filter(f => f.endsWith('.png')).length;  
+          
+        if (currentCount > 0) {  
+          const rawRatio = currentCount / totalFrames;
+          const percent = 15 + Math.round(rawRatio * 80);  
+
+          if (percent > monitorLastPercent) {  
+            monitorLastPercent = percent;  
+            // console.log(`📡 [Monitor] 已生成 ${currentCount}/${totalFrames} 帧 (Internal: ${percent}%)`);  
+              
+            if (onProgress) onProgress(percent);  
+          }  
+        }  
+      } catch (e) {  
+      }  
+    }, 1000);
+    
     await renderFrames({
       composition,
       serveUrl: bundleLocation,
@@ -173,20 +203,19 @@ export const renderVideo = async (
           '--disable-dev-shm-usage' 
         ]
       } as any,
-      onFrameRendered: ({ frame }: { frame: number }) => {
-        if (onProgress) {
-          const progress = Math.round((frame / composition.durationInFrames) * 90);
-          onProgress(progress);
-        }
-      },
+      
+     onFrameRendered: () => {},
     } as any);
+
+    clearInterval(progressMonitor);
 
     const sampleFiles = fs.readdirSync(framesDir);
     console.log(`📂 [Debug] 截图完成，首个文件: ${sampleFiles[0]}, 总数: ${sampleFiles.length}`);
 
     const finalVideoPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
     await mergeFramesWithGpu(tempDir, framesDir, fps, finalVideoPath);
-
+    if (onProgress) onProgress(98);
+    
     const targetFormat = exportSettings?.format || 'mp4';
      if (targetFormat !== 'mp4') {
        console.log(`🔄 [Step 4] Remotion渲染完成，开始转换格式: ${targetFormat}`);

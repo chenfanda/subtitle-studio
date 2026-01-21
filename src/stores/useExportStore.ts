@@ -14,7 +14,7 @@ export type ExportStatus =
 
 export interface ExportSettings {
   resolution: number;
-  format: 'mp4' | 'gif';
+  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3';  
   forceBackend: boolean;
 }
 

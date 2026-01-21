@@ -125,7 +125,8 @@ export const worker = new Worker<RenderJobData>(
           remotion_user_data_dir: jobTempDir, 
         },
         execArgv: process.execArgv, 
-        detached: true 
+        detached: false,
+        stdio: 'inherit' 
       });
 
       let childBundlePath: string | null = null;
@@ -209,7 +210,7 @@ export const worker = new Worker<RenderJobData>(
           const adjustedProgress = preRenderedUrl 
           ? 15 + (msg.value * 0.85) 
           : msg.value;
-          job.updateProgress(msg.value).catch(() => {});
+          job.updateProgress(Math.min(98, Math.round(adjustedProgress))).catch(() => {});
         }
       });
 

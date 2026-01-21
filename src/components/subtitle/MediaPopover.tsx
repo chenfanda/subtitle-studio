@@ -23,6 +23,8 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
     searchResults, 
     trendingItems, 
     uploadedMedia, 
+    presetMedia, 
+    loadPresets,
     searchState 
   } = useMediaStore();
 
@@ -33,7 +35,7 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
         loadTrending(activeTab);
       }
     }
-  }, [isOpen, activeTab, loadTrending, searchQuery]);
+  }, [isOpen, activeTab, loadTrending, searchQuery, loadPresets]);
 
   // 处理搜索
   const handleSearch = (e: React.FormEvent) => {
@@ -64,29 +66,25 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
     // 表情通常支持连续点击，这里不关闭弹窗
   };
 
-  // 混合数据源逻辑：网络结果 + 本地上传
-  // 注意：搜索状态下通常只显示搜索结果，非搜索状态下显示 热门 + 上传
+
   const displayItems = useMemo(() => {
     if (activeTab === 'emoji') return [];
 
-    const targetType = activeTab; // 'sticker' or 'gif'
+    const targetType = activeTab; 
     
-    // 1. 筛选本地上传的对应类型
+    const presetItems = presetMedia.filter(item => item.type === targetType);
     const localItems = uploadedMedia.filter(item => item.type === targetType);
     
-    // 2. 获取网络数据
     const networkItems = searchQuery ? searchResults : trendingItems;
-    // 确保网络数据也是对应类型的（虽然 API 通常已经过滤了，但双重保险）
+
     const filteredNetworkItems = networkItems.filter(item => item.type === targetType);
 
-    // 3. 合并：本地在前，网络在后
-    // 如果正在搜索，通常只显示搜索结果（除非我们也实现了本地搜索，这里暂只显示网络搜索结果）
     if (searchQuery) {
       return filteredNetworkItems;
     } else {
-      return [...localItems, ...filteredNetworkItems];
+      return [...presetItems, ...localItems, ...filteredNetworkItems];
     }
-  }, [activeTab, searchQuery, uploadedMedia, searchResults, trendingItems]);
+  }, [activeTab, searchQuery, uploadedMedia, presetMedia, searchResults, trendingItems]);
 
   // 渲染内容列表
   const renderContent = () => {
@@ -100,9 +98,8 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
             theme={Theme.DARK} 
             lazyLoadEmojis={true}
             searchDisabled={false}
-            // 关键：强制使用图片模式渲染，而非原生字符
             emojiStyle={EmojiStyle.APPLE} 
-            previewConfig={{ showPreview: false }} // 节省空间，隐藏预览栏
+            previewConfig={{ showPreview: false }} 
           />
         </div>
       );

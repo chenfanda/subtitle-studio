@@ -214,38 +214,43 @@ function ExportModal() {
 
   
   const handleDownload = async () => {
-    if (store.resultBlob) {
-      const ext = store.exportSettings.format === 'gif' ? 'gif' : 'mp4';
-      downloadBlob(store.resultBlob, `export.${ext}`);
-      handleResetAndClose();
-    } else if (store.jobId) {
-      try {
-      let finalUrl = store.downloadUrl;
-         if (!finalUrl) {
-        const apiBase = API_CLIENT.BASE_URL; 
-        const serverRoot = apiBase.replace(/\/api\/?$/, ''); 
-        finalUrl = `${serverRoot}/downloads/${store.jobId}.mp4`;
+      const { format } = store.exportSettings; 
+      const extension = format.toLowerCase(); 
+      if (store.resultBlob) {
+        downloadBlob(store.resultBlob, `export.${extension}`);
+        handleResetAndClose();
+        return;
+      } 
+      
+      if (store.jobId) {
+        try {
+          let finalUrl = store.downloadUrl;
+          if (!finalUrl) {
+            const apiBase = API_CLIENT.BASE_URL;
+            const serverRoot = apiBase.replace(/\/api\/?$/, '');
+            finalUrl = `${serverRoot}/downloads/${store.jobId}.${extension}`;
+          }
+
+          store.setStatusMessage('正在下载文件...');
+
+          const response = await fetch(finalUrl);
+          if (!response.ok) {
+            throw new Error(`下载请求失败 (${response.status}): ${response.statusText}`);
+          }
+
+          const blob = await response.blob();
+          
+          const filename = `video-${store.jobId.slice(0, 8)}.${extension}`;
+          downloadBlob(blob, filename);
+
+          handleResetAndClose();
+
+        } catch (error) {
+          console.error("Download failed:", error);
+          store.setExportError("下载文件失败，请检查网络或文件是否已过期");
+        }
       }
-
-      store.setStatusMessage('正在下载文件...');
-      
-      const response = await fetch(finalUrl);
-      if (!response.ok) throw new Error(`下载失败: ${response.statusText}`);
-      
-      const blob = await response.blob();
-      
-      downloadBlob(blob, `video-${store.jobId.slice(0, 8)}.mp4`);
-      
-      handleResetAndClose();
-      
-    } catch (error) {
-      console.error("Download failed:", error);
-      store.setExportError("下载文件失败，请检查网络或服务器状态");
-      
-    }
-
-    }
-  };
+    };
 
   const renderContent = () => {
     if (isExporting) {
@@ -362,7 +367,7 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
               <option 
                 key={opt.value} 
                 value={opt.value}
-                disabled={opt.premium && !isPremium} // 非会员禁用高级格式
+                disabled={opt.premium && !isPremium} 
               >
                 {opt.label} {opt.premium && !isPremium ? '(Pro)' : ''}
               </option>

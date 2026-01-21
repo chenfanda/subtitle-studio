@@ -197,7 +197,8 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
           <span 
             className={`font-medium leading-none select-none ${isOverlay ? 'col-start-1 row-start-1 z-10 drop-shadow-md' : ''}`}
             style={isOverlay ? { 
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)' 
+              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+              fontSize: '0.5em' 
             } : {}}
           >
             {config.text}
