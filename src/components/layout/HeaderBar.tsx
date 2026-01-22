@@ -6,37 +6,39 @@ import {
   Settings,
   UserCog,
   Eraser,
-  Stamp ,
-  Minus, 
-  Square, 
-  X 
+  Stamp,
+  Minus,
+  Square,
+  X
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
-import { useExportStore } from '@/stores/useExportStore'; 
+import { useExportStore } from '@/stores/useExportStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { MaskControlPanel } from '../video/MaskControlPanel';
-import { WatermarkControlPanel } from '../video/WatermarkControlPanel'; 
+import { WatermarkControlPanel } from '../video/WatermarkControlPanel';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function HeaderBar() {
+  const { t } = useTranslation();
   const { exportStatus } = useExportStore();
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(exportStatus);
-  
 
-  const { title, updateProjectTitle, appStage } = useProjectStore(); 
-  
+
+  const { title, updateProjectTitle, appStage } = useProjectStore();
+
   const { toggleLeftPanel } = useUIStore();
   const { undo, redo, canUndo, canRedo } = useHistoryStore();
-  
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(title);
   const [showWatermarkPanel, setShowWatermarkPanel] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const { isLoggedIn, userInfo, logout, openAuthModal, _temp_togglePremium, openProfileModal } = useUserStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
-   const [showMaskPanel, setShowMaskPanel] = useState(false);
+  const [showMaskPanel, setShowMaskPanel] = useState(false);
 
   const isEditingMode = appStage === 'editing';
 
@@ -53,12 +55,12 @@ export function HeaderBar() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditingTitle) return;
-      
+
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
       }
-      
+
       if ((e.ctrlKey && e.shiftKey && e.key === 'Z') || (e.ctrlKey && e.key === 'y')) {
         e.preventDefault();
         handleRedo();
@@ -67,7 +69,7 @@ export function HeaderBar() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isEditingTitle, isEditingMode]); 
+  }, [isEditingTitle, isEditingMode]);
 
   const handleTitleSubmit = () => {
     const trimmedTitle = editingTitle.trim();
@@ -97,15 +99,15 @@ export function HeaderBar() {
   };
 
   return (
-    <div 
-    style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} 
-    className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-[200] relative">
+    <div
+      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      className="h-12 bg-bg-primary flex items-center px-4 border-b border-border-primary select-none shrink-0 z-[200] relative">
       <div className="flex items-center space-x-4"
-       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         {/* 只有编辑模式显示侧边栏切换 */}
         {isEditingMode && (
-          <button 
+          <button
             onClick={toggleLeftPanel}
             className="w-6 h-6 flex flex-col justify-center items-center hover:bg-bg-tertiary rounded transition-colors group"
             title="切换左侧面板 (Ctrl+B)"
@@ -115,7 +117,7 @@ export function HeaderBar() {
             <div className="w-4 h-0.5 bg-text-primary transition-colors group-hover:bg-white"></div>
           </button>
         )}
-        
+
         <div className="flex items-center min-w-0">
           {/* 编辑模式下允许改名，上传模式下只显示静态标题 */}
           {isEditingMode && isEditingTitle ? (
@@ -128,15 +130,15 @@ export function HeaderBar() {
               onKeyDown={handleTitleKeyDown}
               className="bg-transparent text-text-primary text-lg font-medium outline-none min-w-0 max-w-xs border-b border-accent-purple"
               maxLength={50}
-              placeholder="项目标题"
+              placeholder={t('项目标题')}
             />
           ) : (
-            <h1 
+            <h1
               onClick={() => isEditingMode && setIsEditingTitle(true)}
               className={`text-text-primary text-lg font-medium truncate max-w-xs ${isEditingMode ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
               title={isEditingMode ? `点击编辑项目标题: ${title}` : 'Magic Cut'}
             >
-              {isEditingMode ? title : 'Magic Cut'}
+              {isEditingMode ? (title || t('项目标题')) : 'Magic Cut'}
             </h1>
           )}
         </div>
@@ -146,33 +148,31 @@ export function HeaderBar() {
       </div>
 
       <div className="flex items-center space-x-4">
-        
+
         {/* 只有编辑模式才显示工具按钮 */}
         {isEditingMode && (
           <>
             <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-              
-              <button 
+
+              <button
                 onClick={handleUndo}
                 disabled={!canUndo()}
-                className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                  canUndo() 
-                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary' 
+                className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${canUndo()
+                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                     : 'text-text-disabled cursor-not-allowed'
-                }`}
+                  }`}
                 title="撤销 (Ctrl+Z)"
               >
                 <ArrowUturnLeftIcon className="w-5 h-5" />
               </button>
-              
-              <button 
+
+              <button
                 onClick={handleRedo}
                 disabled={!canRedo()}
-                className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                  canRedo() 
-                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary' 
+                className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${canRedo()
+                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                     : 'text-text-disabled cursor-not-allowed'
-                }`}
+                  }`}
                 title="重做 (Ctrl+Y)"
               >
                 <ArrowUturnRightIcon className="w-5 h-5" />
@@ -180,55 +180,53 @@ export function HeaderBar() {
             </div>
 
             <div className="flex items-center space-x-2"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} 
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
-               <div className="relative">
-                        <button 
-                          onClick={() => {
-                            setShowWatermarkPanel(!showWatermarkPanel);
-                            setShowMaskPanel(false); // 互斥：打开水印时关闭遮罩
-                          }}
-                          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                            showWatermarkPanel 
-                              ? 'bg-accent-purple text-white' 
-                              : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-                          }`}
-                          title="水印设置"
-                        >
-                          <Stamp className="w-5 h-5" />
-                        </button>
-
-                        {showWatermarkPanel && (
-                          <>
-
-                            <div 
-                              className="fixed inset-0 z-40" 
-                              onClick={() => setShowWatermarkPanel(false)} 
-                            />
-                            <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                              <WatermarkControlPanel />
-                            </div>
-                          </>
-                        )}
-                      </div>
-               <div className="relative">
-                <button 
-                  onClick={() => setShowMaskPanel(!showMaskPanel)}
-                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                    showMaskPanel 
-                      ? 'bg-accent-purple text-white' 
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowWatermarkPanel(!showWatermarkPanel);
+                    setShowMaskPanel(false); // 互斥：打开水印时关闭遮罩
+                  }}
+                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${showWatermarkPanel
+                      ? 'bg-accent-purple text-white'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-                  }`}
-                  title="去除原始字幕 / 遮挡工具"
+                    }`}
+                  title={t('水印设置')}
+                >
+                  <Stamp className="w-5 h-5" />
+                </button>
+
+                {showWatermarkPanel && (
+                  <>
+
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowWatermarkPanel(false)}
+                    />
+                    <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <WatermarkControlPanel />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMaskPanel(!showMaskPanel)}
+                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${showMaskPanel
+                      ? 'bg-accent-purple text-white'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                    }`}
+                  title={t('去除原始字幕 / 遮挡工具')}
                 >
                   <Eraser className="w-5 h-5" />
                 </button>
 
                 {showMaskPanel && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowMaskPanel(false)} 
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowMaskPanel(false)}
                     />
                     <div className="absolute top-full mt-2 right-0 bg-[#1e1e24] border border-border-secondary rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                       <MaskControlPanel />
@@ -236,97 +234,96 @@ export function HeaderBar() {
                   </>
                 )}
               </div>
-              <button 
+              <button
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
-                title="设置"
+                title={t('设置')}
                 onClick={() => useUIStore.getState().setShowSettingsModal(true)}
               >
                 <Settings className="w-5 h-5" />
               </button>
 
-              <button 
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center justify-center min-w-[60px] ${
-                  isExporting 
-                    ? 'bg-accent-purple/80 text-white animate-pulse ring-1 ring-accent-purple/50' 
+              <button
+                className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center justify-center min-w-[60px] ${isExporting
+                    ? 'bg-accent-purple/80 text-white animate-pulse ring-1 ring-accent-purple/50'
                     : 'bg-accent-purple hover:bg-purple-600 text-white'
-                }`}
-                title={isExporting ? "导出任务运行中 (点击查看详情)" : "导出项目"}
+                  }`}
+                title={isExporting ? t("导出任务运行中 (点击查看详情)") : t("导出项目")}
                 onClick={() => useExportStore.getState().setShowExportModal(true)}
               >
-                <span>{isExporting ? '导出中' : '导出'}</span>
+                <span>{isExporting ? t('导出中') : t('导出')}</span>
               </button>
-              
+
             </div>
           </>
         )}
         <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} className="flex items-center">
-        {/* 用户区域 (全阶段显示) */}
-        {isLoggedIn && userInfo ? (
-          <div className="relative">
-            <button 
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 hover:bg-bg-tertiary p-1 pr-2 rounded-full transition-colors"
-            >
-              <img src={userInfo.avatar} alt="Avatar" className="w-7 h-7 rounded-full bg-gray-700 object-cover" />
-              {userInfo.vipLevel === 'pro' && (
-                <Crown size={14} className="text-yellow-400 fill-yellow-400" />
-              )}
-            </button>
+          {/* 用户区域 (全阶段显示) */}
+          {isLoggedIn && userInfo ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 hover:bg-bg-tertiary p-1 pr-2 rounded-full transition-colors"
+              >
+                <img src={userInfo.avatar} alt="Avatar" className="w-7 h-7 rounded-full bg-gray-700 object-cover" />
+                {userInfo.vipLevel === 'pro' && (
+                  <Crown size={14} className="text-yellow-400 fill-yellow-400" />
+                )}
+              </button>
 
-            {/* 用户下拉菜单 */}
-            {showUserMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)}></div>
-                <div className="absolute right-0 top-10 w-48 bg-[#1e1e24] border border-white/10 rounded-xl shadow-xl z-50 py-1 flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-4 py-3 border-b border-white/5">
-                    <p className="text-sm font-medium text-white truncate">{userInfo.nickname}</p>
-                    <p className="text-xs text-white/50 mt-0.5">
-                      {userInfo.vipLevel === 'pro' ? '尊贵会员' : '免费用户'}
-                    </p>
+              {/* 用户下拉菜单 */}
+              {showUserMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)}></div>
+                  <div className="absolute right-0 top-10 w-48 bg-[#1e1e24] border border-white/10 rounded-xl shadow-xl z-50 py-1 flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <p className="text-sm font-medium text-white truncate">{userInfo.nickname}</p>
+                      <p className="text-xs text-white/50 mt-0.5">
+                        {userInfo.vipLevel === 'pro' ? t('尊贵会员') : t('免费用户')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { openProfileModal(); setShowUserMenu(false); }}
+                      className="px-4 py-2 text-left text-sm text-white/80 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <UserCog size={14} />
+                      {t('个人设置')}
+                    </button>
+                    <button
+                      onClick={() => { _temp_togglePremium(); setShowUserMenu(false); }}
+                      className="px-4 py-2 text-left text-sm text-yellow-500 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <Crown size={14} />
+                      {userInfo.vipLevel === 'pro' ? t('切换为免费版') : t('模拟升级会员')}
+                    </button>
+
+                    <button
+                      onClick={() => { logout(); setShowUserMenu(false); }}
+                      className="px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <LogOut size={14} /> {t('退出登录')}
+                    </button>
                   </div>
-                    <button 
-                    onClick={() => { openProfileModal(); setShowUserMenu(false); }}
-                    className="px-4 py-2 text-left text-sm text-white/80 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <UserCog size={14} />
-                    个人设置
-                  </button>
-                  <button 
-                     onClick={() => { _temp_togglePremium(); setShowUserMenu(false); }}
-                     className="px-4 py-2 text-left text-sm text-yellow-500 hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <Crown size={14} />
-                    {userInfo.vipLevel === 'pro' ? '切换为免费版' : '模拟升级会员'}
-                  </button>
-
-                  <button 
-                    onClick={() => { logout(); setShowUserMenu(false); }}
-                    className="px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <LogOut size={14} /> 退出登录
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => openAuthModal('login')}
-            className="text-sm font-medium text-text-primary hover:text-white bg-white/5 hover:bg-white/10 px-4 py-1.5 rounded-full transition-all"
-          >
-            登录 / 注册
-          </button>
-        )}
-        </div> 
-        <div 
-          className="flex items-center h-full ml-2" 
+                </>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => openAuthModal('login')}
+              className="text-sm font-medium text-text-primary hover:text-white bg-white/5 hover:bg-white/10 px-4 py-1.5 rounded-full transition-all"
+            >
+              {t('登录 / 注册')}
+            </button>
+          )}
+        </div>
+        <div
+          className="flex items-center h-full ml-2"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {/* 最小化 */}
           <button
             onClick={() => (window as any).electronAPI?.minimize()}
             className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
-            title="最小化"
+            title={t('最小化')}
           >
             <Minus size={18} />
           </button>
@@ -335,7 +332,7 @@ export function HeaderBar() {
           <button
             onClick={() => (window as any).electronAPI?.maximize()}
             className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
-            title="最大化"
+            title={t('最大化')}
           >
             <Square size={16} />
           </button>
@@ -344,7 +341,7 @@ export function HeaderBar() {
           <button
             onClick={() => (window as any).electronAPI?.close()}
             className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-colors rounded-lg"
-            title="关闭"
+            title={t('关闭')}
           >
             <X size={18} />
           </button>

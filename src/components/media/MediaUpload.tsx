@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { validateMediaFile, createMediaItem } from '@/utils/mediaUtils';
-import { Loader2, CloudUpload } from 'lucide-react'; // <-- 1. 导入图标
+import { Loader2, CloudUpload } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function MediaUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addUploadedMedia } = useMediaStore();
+  const { t } = useTranslation();
 
   const handleFileSelect = async (files: FileList) => {
     setIsUploading(true);
@@ -47,13 +49,13 @@ export function MediaUpload() {
           // <-- 2. 替换为 Lucide 加载图标
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            上传中...
+            {t('上传中...')}
           </>
         ) : (
           // <-- 3. 替换为 Lucide 上传图标
           <>
             <CloudUpload className="h-4 w-4" />
-            上传
+            {t('上传')}
           </>
         )}
       </button>

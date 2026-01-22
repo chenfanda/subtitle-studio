@@ -4,10 +4,9 @@ import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { VoiceoverUploadPanel } from './VoiceoverUploadPanel';
 import { useUserStore } from '@/stores/useUserStore';
 import { Loader2, Mic } from 'lucide-react';
-// 引入拆分出去的 TTSPanel 组件
+
 import { TTSPanel } from './TTSPanel';
 
-// --- 子组件：原声提取面板 ---
 function ExtractionPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
   const { extractAudioFromSubtitle, isGenerating } = useVoiceoverStore();
   const subtitle = useSubtitleStore(state => state.subtitles.find(s => s.id === targetSubtitleId));
@@ -80,7 +79,6 @@ interface VoiceoverSourceViewProps {
   targetSubtitleId: string;
 }
 
-// --- 主视图 ---
 export function VoiceoverSourceView({ targetSubtitleId }: VoiceoverSourceViewProps) {
   const { sourceView, setSourceView } = useVoiceoverStore();
 

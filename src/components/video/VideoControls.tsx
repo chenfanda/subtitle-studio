@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { 
-  PlayIcon, 
-  PauseIcon, 
-  SpeakerWaveIcon, 
+import {
+  PlayIcon,
+  PauseIcon,
+  SpeakerWaveIcon,
   SpeakerXMarkIcon,
   ForwardIcon,
   BackwardIcon,
@@ -13,26 +13,28 @@ import {
   ChevronUpIcon,
   TrashIcon,
   ClockIcon
-} from '@heroicons/react/24/outline'; 
+} from '@heroicons/react/24/outline';
 
-import { throttle } from 'lodash'; 
+import { throttle } from 'lodash';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { useSubtitleStore } from '../../stores/useSubtitleStore';
 import { useTextElementStore } from '../../stores/useTextElementStore';
 import { useAudioStore } from '../../stores/useAudioStore';
-import { useVideoSequenceStore } from '../../stores/useVideoSequenceStore'; 
-import { 
-  useUIStore, 
-  useSelectedAttachment, 
-  useTimelineCollapsed 
+import { useVideoSequenceStore } from '../../stores/useVideoSequenceStore';
+import {
+  useUIStore,
+  useSelectedAttachment,
+  useTimelineCollapsed
 } from '../../stores/useUIStore';
 import { formatTime } from '../../utils/videoUtils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
   onSkip: (seconds: number) => void;
   onSetRate: (rate: number) => void;
   playbackRate: number;
 }) {
+  const { t } = useTranslation();
   const [isPlaybackRateOpen, setIsPlaybackRateOpen] = useState(false);
   const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -42,14 +44,14 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
   };
 
   return (
-    <div 
+    <div
       // 【关键修复 1】添加 z-[100]：这是之前代码缺少的，确保它一定在视频图层上面
       // 【关键修复 2】移除 overflow-hidden：确保内部弹窗不被切断
       className="absolute bottom-12 right-0 w-48 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 z-[100] mb-2"
-      onClick={(e) => e.stopPropagation()} 
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between p-2 border-b border-white/10">
-        <span className="text-xs text-white/70">跳过</span>
+        <span className="text-xs text-white/70">{t('跳过')}</span>
         <div className="flex items-center space-x-1">
           <button
             onClick={() => onSkip(-10)}
@@ -65,15 +67,15 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
           </button>
         </div>
       </div>
-      
+
       <div className="relative">
-        <button 
+        <button
           onClick={() => setIsPlaybackRateOpen(prev => !prev)}
           className="flex items-center justify-between w-full p-2 text-left text-white/80 hover:text-white hover:bg-white/10 transition-colors rounded-b-lg"
         >
           <div className="flex items-center space-x-2">
             <ClockIcon className="w-5 h-5" />
-            <span className="text-xs">播放速度</span>
+            <span className="text-xs">{t('播放速度')}</span>
           </div>
           <div className="flex items-center space-x-1">
             <span className="text-xs text-white">{playbackRate}x</span>
@@ -82,7 +84,7 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
         </button>
 
         {isPlaybackRateOpen && (
-          <div 
+          <div
             // 【关键修复 3】添加 z-[100]：确保子菜单也在最上层
             className="absolute bottom-full left-0 right-0 bg-gray-900 border border-white/10 rounded-lg p-1 mb-1 max-h-40 overflow-y-auto z-[100]"
           >
@@ -90,11 +92,10 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
               <button
                 key={rate}
                 onClick={() => handleSetRate(rate)}
-                className={`w-full text-left text-xs p-1.5 rounded ${
-                  playbackRate === rate 
-                    ? 'bg-purple-600 text-white' 
-                    : 'text-white/80 hover:bg-white/10'
-                }`}
+                className={`w-full text-left text-xs p-1.5 rounded ${playbackRate === rate
+                  ? 'bg-purple-600 text-white'
+                  : 'text-white/80 hover:bg-white/10'
+                  }`}
               >
                 {rate}x
               </button>
@@ -107,43 +108,44 @@ function SettingsMenu({ onSkip, onSetRate, playbackRate }: {
 }
 
 export function VideoControls() {
-  const { 
-    isPlaying, 
-    volume, 
-    togglePlayback, 
-    setVolume, 
+  const {
+    isPlaying,
+    volume,
+    togglePlayback,
+    setVolume,
     globalTime,
     globalDuration,
     setGlobalTime,
     playbackRate,
-    setPlaybackRate 
+    setPlaybackRate
   } = useProjectStore();
-  
-  const { 
-    removeSubtitleAudio, 
-    removeSubtitleSoundEffect, 
+
+  const {
+    removeSubtitleAudio,
+    removeSubtitleSoundEffect,
     removeSubtitleBroll,
     updateSubtitle // [新增] 引入更新方法，用于重置混音参数
   } = useSubtitleStore();
-  
+
   const { deleteTextElement } = useTextElementStore();
   const { removeBackgroundMusic } = useAudioStore();
   const { removeSegment } = useVideoSequenceStore();
-  
-  const { 
-    toggleTimelineCollapsed, 
+
+  const {
+    toggleTimelineCollapsed,
     videoToolbar,
     setSelectedAttachment,
     clearSelectedTextElements,
     clearVideoToolbar
   } = useUIStore();
   const selectedAttachment = useSelectedAttachment();
-  const timelineCollapsed = useTimelineCollapsed(); 
+  const timelineCollapsed = useTimelineCollapsed();
+  const { t } = useTranslation();
 
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
   const currentTimeFormatted = formatTime(globalTime || 0);
@@ -158,46 +160,46 @@ export function VideoControls() {
     const newTime = percentage * globalDuration;
     setGlobalTime(Math.max(0, Math.min(globalDuration, newTime)));
   };
-  
+
   const wasPlayingRef = useRef(false);
   const handleProgressMouseDown = (e: React.MouseEvent) => {
-  e.preventDefault();
-  setIsDragging(true);
-  
-  // 缓存 rect，避免在 move 中重复计算
-  const rect = progressRef.current?.getBoundingClientRect();
-  if (!rect || !globalDuration) return;
+    e.preventDefault();
+    setIsDragging(true);
 
-  wasPlayingRef.current = useProjectStore.getState().isPlaying;
-  if (wasPlayingRef.current) {
-    useProjectStore.getState().setIsPlaying(false);
-  }
-  
-  // 立即处理点击的那一下
-  handleProgressClick(e);
+    // 缓存 rect，避免在 move 中重复计算
+    const rect = progressRef.current?.getBoundingClientRect();
+    if (!rect || !globalDuration) return;
 
-  // 定义节流后的处理函数 (例如每 50ms 更新一次，即 20fps，足够流畅且对音频友好)
-  const handleMouseMove = throttle((moveEvent: MouseEvent) => {
-    const moveX = moveEvent.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, moveX / rect.width));
-    const newTime = percentage * globalDuration;
-    setGlobalTime(newTime);
-  }, 50); // 50ms 间隔
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    // 取消节流函数的挂起调用
-    handleMouseMove.cancel(); 
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    wasPlayingRef.current = useProjectStore.getState().isPlaying;
     if (wasPlayingRef.current) {
-      useProjectStore.getState().setIsPlaying(true);
+      useProjectStore.getState().setIsPlaying(false);
     }
+
+    // 立即处理点击的那一下
+    handleProgressClick(e);
+
+    // 定义节流后的处理函数 (例如每 50ms 更新一次，即 20fps，足够流畅且对音频友好)
+    const handleMouseMove = throttle((moveEvent: MouseEvent) => {
+      const moveX = moveEvent.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, moveX / rect.width));
+      const newTime = percentage * globalDuration;
+      setGlobalTime(newTime);
+    }, 50); // 50ms 间隔
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      // 取消节流函数的挂起调用
+      handleMouseMove.cancel();
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      if (wasPlayingRef.current) {
+        useProjectStore.getState().setIsPlaying(true);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
-  
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-};
 
   const handleProgressClickWhenNotDragging = (e: React.MouseEvent) => {
     if (!isDragging) handleProgressClick(e);
@@ -214,7 +216,7 @@ export function VideoControls() {
   };
 
   const toggleMute = () => {
-    setVolume(volume > 0 ? 0 : 80); 
+    setVolume(volume > 0 ? 0 : 80);
   };
 
   const toggleFullscreen = async () => {
@@ -263,7 +265,7 @@ export function VideoControls() {
           break;
       }
       setSelectedAttachment(null);
-    } 
+    }
     else if (videoToolbar.visible && videoToolbar.targetId && videoToolbar.targetType === 'textElement') {
       deleteTextElement(videoToolbar.targetId);
       clearSelectedTextElements();
@@ -278,45 +280,45 @@ export function VideoControls() {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    
+
     const handleClickOutside = (_event: MouseEvent) => {
       if (isSettingsOpen) {
         setIsSettingsOpen(false);
       }
     };
     document.addEventListener('click', handleClickOutside);
-    
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('click', handleClickOutside); 
+      document.removeEventListener('click', handleClickOutside);
     };
-  }, [isSettingsOpen]); 
-  
+  }, [isSettingsOpen]);
+
   return (
     <div className="w-full bg-transparent">
-      <div 
+      <div
         ref={progressRef}
-        className="w-full h-2 bg-white/20 cursor-pointer relative" 
+        className="w-full h-2 bg-white/20 cursor-pointer relative"
         onClick={handleProgressClickWhenNotDragging}
         onMouseDown={handleProgressMouseDown}
       >
-        <div 
+        <div
           className="h-full bg-purple-500"
           style={{ width: `${progressPercentage}%` }}
         />
-        <div 
-          className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity" 
+        <div
+          className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity"
           style={{ left: `${progressPercentage}%`, marginLeft: '-6px' }}
         />
       </div>
 
       <div className="flex items-center p-2 bg-gradient-to-t from-black/80 to-transparent relative">
-        
+
         <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleTimeline}
             className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center transition-colors text-white"
-            title={timelineCollapsed ? "展开时间轴" : "折叠时间轴"}
+            title={timelineCollapsed ? t("展开时间轴") : t("折叠时间轴")}
           >
             {timelineCollapsed ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
           </button>
@@ -324,12 +326,11 @@ export function VideoControls() {
           <button
             onClick={handleDeleteSelected}
             disabled={!canDelete}
-            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
-              canDelete
-                ? 'bg-white/10 hover:bg-white/20 text-white'
-                : 'bg-white/5 text-white/30 cursor-not-allowed'
-            }`}
-            title={canDelete ? "删除选中元素" : "未选中任何可删除元素"}
+            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${canDelete
+              ? 'bg-white/10 hover:bg-white/20 text-white'
+              : 'bg-white/5 text-white/30 cursor-not-allowed'
+              }`}
+            title={canDelete ? t("删除选中元素") : t("未选中任何可删除元素")}
           >
             <TrashIcon className="w-5 h-5" />
           </button>
@@ -337,7 +338,7 @@ export function VideoControls() {
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center space-x-4">
           <span className="text-white text-sm font-mono w-16 text-right">{currentTimeFormatted}</span>
-          
+
           <button
             onClick={togglePlayback}
             className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
@@ -345,15 +346,15 @@ export function VideoControls() {
             {isPlaying ? (
               <PauseIcon className="w-5 h-5 text-white" />
             ) : (
-              <PlayIcon className="w-5 h-5 text-white ml-0.5" /> 
+              <PlayIcon className="w-5 h-5 text-white ml-0.5" />
             )}
           </button>
-          
+
           <span className="text-white/80 text-sm font-mono w-16 text-left">{durationFormatted}</span>
         </div>
 
         <div className="flex items-center space-x-2 ml-auto">
-          <div 
+          <div
             className="flex items-center space-x-2"
             onMouseEnter={() => setIsVolumeHovered(true)}
             onMouseLeave={() => setIsVolumeHovered(false)}
@@ -365,9 +366,8 @@ export function VideoControls() {
                 <SpeakerXMarkIcon className="w-5 h-5" />
               )}
             </button>
-            <div className={`overflow-hidden transition-all duration-200 ${
-              isVolumeHovered ? 'w-20 opacity-100' : 'w-0 opacity-0'
-            }`}>
+            <div className={`overflow-hidden transition-all duration-200 ${isVolumeHovered ? 'w-20 opacity-100' : 'w-0 opacity-0'
+              }`}>
               <input
                 type="range"
                 min="0"
@@ -381,26 +381,26 @@ export function VideoControls() {
           </div>
 
           <div className="relative">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(prev => !prev); }}
               className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
             >
               <Cog6ToothIcon className="w-5 h-5" />
             </button>
-            
+
             {isSettingsOpen && (
-              <SettingsMenu 
-                onSkip={handleSkip} 
-                onSetRate={setPlaybackRate} 
-                playbackRate={playbackRate} 
+              <SettingsMenu
+                onSkip={handleSkip}
+                onSetRate={setPlaybackRate}
+                playbackRate={playbackRate}
               />
             )}
           </div>
 
-          <button 
+          <button
             onClick={toggleFullscreen}
             className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors"
-            title={isFullscreen ? "退出全屏" : "进入全屏"}
+            title={isFullscreen ? t("退出全屏") : t("进入全屏")}
           >
             {isFullscreen ? (
               <ArrowsPointingInIcon className="w-5 h-5" />

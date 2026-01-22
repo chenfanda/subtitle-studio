@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import { 
-  useAudioStore, 
+import {
+  useAudioStore,
   useActiveAudioTask,
   useActiveCategory,
   AudioTaskType
@@ -11,7 +11,10 @@ import { SoundEffectCategoryTabs } from './SoundEffectCategoryTabs';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 
+import { useTranslation } from '@/hooks/useTranslation';
+
 function BgmCategoryTabs() {
+  const { t } = useTranslation();
   const [isHovering, setIsHovering] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeCategory = useActiveCategory();
@@ -37,7 +40,7 @@ function BgmCategoryTabs() {
   };
 
   return (
-    <div 
+    <div
       className="relative py-3 px-4 border-b border-border-secondary"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -51,7 +54,7 @@ function BgmCategoryTabs() {
         </button>
       )}
 
-      <div 
+      <div
         ref={scrollContainerRef}
         className="flex gap-2 overflow-x-auto scrollbar-hide"
       >
@@ -68,7 +71,7 @@ function BgmCategoryTabs() {
               }
             `}
           >
-            {category.name}
+            {t(category.name)}
           </button>
         ))}
       </div>
@@ -89,6 +92,7 @@ function BgmCategoryTabs() {
 function AudioTaskToggle() {
   const activeAudioTask = useActiveAudioTask();
   const setActiveAudioTask = useAudioStore(state => state.setActiveAudioTask);
+  const { t } = useTranslation();
 
   const tasks: { id: AudioTaskType; name: string }[] = [
     { id: 'voiceover', name: '字幕配音' },
@@ -111,7 +115,7 @@ function AudioTaskToggle() {
               }
             `}
           >
-            {task.name}
+            {t(task.name)}
           </button>
         ))}
       </div>

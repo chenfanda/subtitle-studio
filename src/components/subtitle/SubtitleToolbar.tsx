@@ -13,11 +13,13 @@ import {
   Trash2,       // 删除
   XCircle,      // 取消选择
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function SubtitleToolbar() {
+  const { t } = useTranslation();
   const { currentTime } = useProjectStore();
-  
-  const { 
+
+  const {
     subtitles,
     deleteSubtitles,
     duplicateSubtitle,
@@ -25,8 +27,8 @@ export function SubtitleToolbar() {
     splitSubtitle,
     mergeSubtitles
   } = useSubtitleStore();
-  
-  const { 
+
+  const {
     selectedSubtitleIds,
     clearSelectedSubtitles,
     setEditingSubtitle
@@ -41,11 +43,11 @@ export function SubtitleToolbar() {
 
     const subtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
     if (!subtitle) return false;
-    
+
     const currentTimeMs = currentTime * 1000;
-    
+
     return currentTimeMs > subtitle.startTime && currentTimeMs < subtitle.endTime;
-    
+
   }, [selectedSubtitleIds, singleSelection, subtitles, currentTime]);
 
   // --- 所有 handle 函数保持不变 ---
@@ -100,22 +102,22 @@ export function SubtitleToolbar() {
     <div className="p-3 border-b border-border-secondary bg-bg-primary">
       {/* 3. 使用新的图标按钮布局 */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        
+
         {/* 主要操作: 编辑 (保留文本) */}
         <button
           onClick={handleEdit}
           disabled={!singleSelection}
-          title="编辑"
+          title={t("编辑")}
           className="px-3 py-1.5 text-xs bg-accent-purple hover:bg-accent-purple/80 disabled:bg-bg-tertiary disabled:text-text-disabled text-white rounded transition-colors"
         >
-          编辑
+          {t("编辑")}
         </button>
-        
+
         {/* 次要操作组 1: 创编 */}
         <button
           onClick={handleDuplicate}
           disabled={!singleSelection}
-          title="复制"
+          title={t("复制")}
           className={iconButtonClass}
         >
           <Copy size={iconSize} />
@@ -124,12 +126,12 @@ export function SubtitleToolbar() {
         <button
           onClick={handleInsertBlank}
           disabled={!singleSelection}
-          title="插入片段"
+          title={t("插入片段")}
           className={iconButtonClass}
         >
           <PlusSquare size={iconSize} />
         </button>
-        
+
         {/* 分隔线 */}
         <div className="w-px h-4 bg-border-secondary mx-1" />
 
@@ -137,44 +139,44 @@ export function SubtitleToolbar() {
         <button
           onClick={handleSplit}
           disabled={!canSplit}
-          title="分割"
+          title={t("分割")}
           className={iconButtonClass}
         >
           <Scissors size={iconSize} />
         </button>
-        
+
         <button
           onClick={handleMerge}
           disabled={!multipleSelection}
-          title="合并"
+          title={t("合并")}
           className={iconButtonClass}
         >
           <Combine size={iconSize} />
         </button>
-        
+
         {/* 分隔线 */}
         <div className="w-px h-4 bg-border-secondary mx-1" />
-        
+
         {/* 破坏性操作: 删除 */}
         <button
           onClick={handleDelete}
           disabled={!hasSelection}
-          title="删除"
+          title={t("删除")}
           className="p-1.5 rounded text-accent-red hover:bg-accent-red/10 disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
         >
           <Trash2 size={iconSize} />
         </button>
-        
+
         {/* 三级操作: 取消 */}
         <button
           onClick={clearSelectedSubtitles}
           disabled={!hasSelection}
-          title="取消选择"
+          title={t("取消选择")}
           className="p-1.5 rounded text-text-tertiary hover:bg-bg-tertiary disabled:text-text-disabled disabled:hover:bg-transparent transition-colors"
         >
           <XCircle size={iconSize} />
         </button>
-        
+
       </div>
     </div>
   );

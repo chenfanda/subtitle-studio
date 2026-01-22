@@ -13,12 +13,14 @@ import { checkFrontendCompatibility, sanitizeProjectForFrontend } from '@/utils/
 import { AuthModal } from '../auth/AuthModal';
 import { api } from '@/utils/api';
 import { API_CLIENT } from '@/config/api-client'
-import { 
+import {
   Zap, Cloud, Crown, AlertTriangle, CheckCircle2, ArrowRight,
   Loader2, Lock, Square, Maximize2, X
 } from 'lucide-react';
 import { captureWatermarkSnapshot } from '@/utils/watermarkUtils';
 import { fileUploader } from '@/utils/cloudUploader';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function GlobalModals() {
   return (
@@ -36,9 +38,9 @@ function ExportModal() {
   const store = useExportStore();
   const isPremium = useIsPremium();
   const getProjectData = useProjectStore(state => state.exportProject);
-  
+
   const [localWarning, setLocalWarning] = useState<{ show: boolean; issues: string[] }>({ show: false, issues: [] });
-  
+
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(store.exportStatus);
   const isSuccess = store.exportStatus === 'success';
 
@@ -53,34 +55,34 @@ function ExportModal() {
 
     store.setStatusMessage('正在生成文字贴纸...');
     const state = useProjectStore.getState();
-    const videoWidth = state.videoMeta?.width || 1920; 
+    const videoWidth = state.videoMeta?.width || 1920;
     const tasks = projectData.content.textElements.map(async (element: any) => {
-      const snapshotBlob = await captureTextElementSnapshot(element ,2, videoWidth);
-      
-          if (snapshotBlob) {
-            if (isCloud) {
-              const tempUrl = URL.createObjectURL(snapshotBlob);
-              const uploadedUrl = await fileUploader.uploadBlob(
-                tempUrl, 
-                'image', 
-                undefined, 
-                controller.signal
-              );
-              element.snapshotUrl = uploadedUrl;
-              URL.revokeObjectURL(tempUrl);
-            } else {
-              const blobUrl = URL.createObjectURL(snapshotBlob);
-              element.snapshotUrl = blobUrl; 
-            }
-          }
-        });
+      const snapshotBlob = await captureTextElementSnapshot(element, 2, videoWidth);
 
-        await Promise.all(tasks);
-      };
+      if (snapshotBlob) {
+        if (isCloud) {
+          const tempUrl = URL.createObjectURL(snapshotBlob);
+          const uploadedUrl = await fileUploader.uploadBlob(
+            tempUrl,
+            'image',
+            undefined,
+            controller.signal
+          );
+          element.snapshotUrl = uploadedUrl;
+          URL.revokeObjectURL(tempUrl);
+        } else {
+          const blobUrl = URL.createObjectURL(snapshotBlob);
+          element.snapshotUrl = blobUrl;
+        }
+      }
+    });
+
+    await Promise.all(tasks);
+  };
 
   const handleResetAndClose = () => {
     store.setShowExportModal(false);
-    store.resetExport(); 
+    store.resetExport();
   };
 
   const handleCancelTask = () => {
@@ -93,7 +95,7 @@ function ExportModal() {
 
   const executeLocalExport = async (projectData: any) => {
     setLocalWarning({ show: false, issues: [] });
-    
+
     const needsPremiumRes = store.exportSettings.resolution > 720 || store.exportSettings.format === 'gif';
     if (needsPremiumRes && !isPremium) {
       store.setExportError('导出 1080p 或 GIF 格式是 Pro 会员功能。');
@@ -104,7 +106,7 @@ function ExportModal() {
     try {
       store.setResultBlob(null);
 
-     if (projectData.settings?.watermark?.enabled) {
+      if (projectData.settings?.watermark?.enabled) {
         store.setStatusMessage('正在生成水印...');
         const snapshotBlob = await captureWatermarkSnapshot(
           projectData.settings.referenceHeight
@@ -157,8 +159,8 @@ function ExportModal() {
     store.setStatusMessage('正在分析工程...');
     store.setExportError(null);
     store.setJobId('');
-    
-  
+
+
     requestAnimationFrame(() => {
       setTimeout(async () => {
         try {
@@ -166,18 +168,18 @@ function ExportModal() {
           const project = JSON.parse(JSON.stringify(rawProject));
 
           if (project.settings?.watermark?.enabled) {
-              store.setStatusMessage('正在处理水印...');
-              const snapshotBlob = await captureWatermarkSnapshot(
-                project.settings.referenceHeight
-              );  
-            
+            store.setStatusMessage('正在处理水印...');
+            const snapshotBlob = await captureWatermarkSnapshot(
+              project.settings.referenceHeight
+            );
+
             if (snapshotBlob) {
               store.setStatusMessage('正在上传水印...');
               const tempUrl = URL.createObjectURL(snapshotBlob);
               const uploadedUrl = await fileUploader.uploadBlob(
-                tempUrl, 
-                'image', 
-                undefined, 
+                tempUrl,
+                'image',
+                undefined,
                 controller.signal
               );
               project.settings.watermark.snapshotUrl = uploadedUrl;
@@ -187,7 +189,7 @@ function ExportModal() {
           await processTextElements(project, controller, true);
           store.setStatusMessage('正在打包上传...');
           store.setExportStatus('uploading');
-          
+
           const res = await runBackendExport(
             project,
             store.exportSettings,
@@ -197,7 +199,7 @@ function ExportModal() {
             },
             controller.signal
           );
-          
+
           const newJobId = typeof res === 'object' && res !== null && 'jobId' in res ? (res as any).jobId : res;
           if (!newJobId) throw new Error('未能获取任务ID');
 
@@ -212,50 +214,50 @@ function ExportModal() {
     });
   };
 
-  
+
   const handleDownload = async () => {
-      const { format } = store.exportSettings; 
-      const extension = format.toLowerCase(); 
-      if (store.resultBlob) {
-        downloadBlob(store.resultBlob, `export.${extension}`);
-        handleResetAndClose();
-        return;
-      } 
-      
-      if (store.jobId) {
-        try {
-          let finalUrl = store.downloadUrl;
-          if (!finalUrl) {
-            const apiBase = API_CLIENT.BASE_URL;
-            const serverRoot = apiBase.replace(/\/api\/?$/, '');
-            finalUrl = `${serverRoot}/downloads/${store.jobId}.${extension}`;
-          }
+    const { format } = store.exportSettings;
+    const extension = format.toLowerCase();
+    if (store.resultBlob) {
+      downloadBlob(store.resultBlob, `export.${extension}`);
+      handleResetAndClose();
+      return;
+    }
 
-          store.setStatusMessage('正在下载文件...');
-
-          const response = await fetch(finalUrl);
-          if (!response.ok) {
-            throw new Error(`下载请求失败 (${response.status}): ${response.statusText}`);
-          }
-
-          const blob = await response.blob();
-          
-          const filename = `video-${store.jobId.slice(0, 8)}.${extension}`;
-          downloadBlob(blob, filename);
-
-          handleResetAndClose();
-
-        } catch (error) {
-          console.error("Download failed:", error);
-          store.setExportError("下载文件失败，请检查网络或文件是否已过期");
+    if (store.jobId) {
+      try {
+        let finalUrl = store.downloadUrl;
+        if (!finalUrl) {
+          const apiBase = API_CLIENT.BASE_URL;
+          const serverRoot = apiBase.replace(/\/api\/?$/, '');
+          finalUrl = `${serverRoot}/downloads/${store.jobId}.${extension}`;
         }
+
+        store.setStatusMessage('正在下载文件...');
+
+        const response = await fetch(finalUrl);
+        if (!response.ok) {
+          throw new Error(`下载请求失败 (${response.status}): ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+
+        const filename = `video-${store.jobId.slice(0, 8)}.${extension}`;
+        downloadBlob(blob, filename);
+
+        handleResetAndClose();
+
+      } catch (error) {
+        console.error("Download failed:", error);
+        store.setExportError("下载文件失败，请检查网络或文件是否已过期");
       }
-    };
+    }
+  };
 
   const renderContent = () => {
     if (isExporting) {
       return (
-        <ProgressView 
+        <ProgressView
           status={store.exportStatus}
           progress={store.exportProgress}
           message={store.statusMessage}
@@ -265,17 +267,17 @@ function ExportModal() {
         />
       );
     }
-    
+
     if (isSuccess) {
-      return <ResultView 
-      onDownload={handleDownload}
-      onClose={handleResetAndClose}  />;
+      return <ResultView
+        onDownload={handleDownload}
+        onClose={handleResetAndClose} />;
     }
 
     if (localWarning.show) {
       return (
-        <WarningView 
-          issues={localWarning.issues} 
+        <WarningView
+          issues={localWarning.issues}
           onBack={() => setLocalWarning({ show: false, issues: [] })}
           onContinue={() => {
             const rawProject = getProjectData();
@@ -287,7 +289,7 @@ function ExportModal() {
     }
 
     return (
-      <SelectionView 
+      <SelectionView
         settings={store.exportSettings}
         isPremium={isPremium}
         onUpdateSettings={store.updateExportSettings}
@@ -297,16 +299,18 @@ function ExportModal() {
     );
   };
 
+  const { t } = useTranslation();
+
   return (
     <Modal
       isOpen={store.showExportModal}
       onClose={handleClose}
-      title="导出视频"
+      title={t('导出视频')}
       className="max-w-2xl"
     >
       <div className="p-6">
         {!isExporting && !isSuccess && !localWarning.show && (
-          <SettingsPanel 
+          <SettingsPanel
             settings={store.exportSettings}
             isPremium={isPremium}
             onUpdate={store.updateExportSettings}
@@ -334,118 +338,125 @@ const FORMAT_OPTIONS = [
   { value: 'mp3', label: 'MP3 音频', premium: true },
 ];
 
-const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => (
-  <div className="space-y-5 mb-6 border-b border-border-primary pb-6">
-    <div className="grid grid-cols-2 gap-6">
-      <div>
-        <label className="text-sm font-medium text-text-primary block mb-2">分辨率</label>
-        <div className="flex space-x-2">
-          {[720, 1080].map(res => (
-            <button
-              key={res}
-              className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center ${
-                settings.resolution === res
+const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-5 mb-6 border-b border-border-primary pb-6">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <label className="text-sm font-medium text-text-primary block mb-2">{t('分辨率')}</label>
+          <div className="flex space-x-2">
+            {[720, 1080].map(res => (
+              <button
+                key={res}
+                className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center ${settings.resolution === res
                   ? 'bg-accent-purple text-white'
                   : 'bg-bg-tertiary hover:bg-border-primary text-text-secondary'
-              } ${res === 1080 && !isPremium ? 'opacity-60' : ''}`}
-              onClick={() => onUpdate({ resolution: res })}
-            >
-              {res}p {res === 1080 && !isPremium && <Lock className="w-3 h-3 ml-1.5 opacity-70" />}
-            </button>
-          ))}
-        </div>
-      </div>
-        <div>
-        <label className="text-sm font-medium text-text-primary block mb-2">导出格式</label>
-        <div className="relative">
-          <select
-            className="w-full bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-2 appearance-none focus:outline-none focus:border-accent-purple"
-            value={settings.format}
-            onChange={(e) => onUpdate({ format: e.target.value })}
-          >
-            {FORMAT_OPTIONS.map(opt => (
-              <option 
-                key={opt.value} 
-                value={opt.value}
-                disabled={opt.premium && !isPremium} 
+                  } ${res === 1080 && !isPremium ? 'opacity-60' : ''}`}
+                onClick={() => onUpdate({ resolution: res })}
               >
-                {opt.label} {opt.premium && !isPremium ? '(Pro)' : ''}
-              </option>
+                {res}p {res === 1080 && !isPremium && <Lock className="w-3 h-3 ml-1.5 opacity-70" />}
+              </button>
             ))}
-          </select>
-          {/* 下拉箭头图标 */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
           </div>
         </div>
-        {!isPremium && (
-          <p className="text-xs text-text-disabled mt-1">
-            <Lock className="w-3 h-3 inline mr-1"/>
-            多种格式转换仅限 Pro 会员
-          </p>
-        )}
+        <div>
+          <label className="text-sm font-medium text-text-primary block mb-2">导出格式</label>
+          <div className="relative">
+            <select
+              className="w-full bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-2 appearance-none focus:outline-none focus:border-accent-purple"
+              value={settings.format}
+              onChange={(e) => onUpdate({ format: e.target.value })}
+            >
+              {FORMAT_OPTIONS.map(opt => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={opt.premium && !isPremium}
+                >
+                  {opt.label} {opt.premium && !isPremium ? '(Pro)' : ''}
+                </option>
+              ))}
+            </select>
+            {/* 下拉箭头图标 */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+            </div>
+          </div>
+          {!isPremium && (
+            <p className="text-xs text-text-disabled mt-1">
+              <Lock className="w-3 h-3 inline mr-1" />
+              多种格式转换仅限 Pro 会员
+            </p>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <button
-      className="relative flex flex-col items-start p-5 border-2 border-border-primary bg-bg-tertiary/30 hover:border-accent-purple/50 hover:bg-bg-tertiary rounded-xl transition-all group text-left"
-      onClick={onLocalClick}
-    >
-      <div className="mb-3 p-2 bg-bg-tertiary rounded-lg group-hover:text-accent-purple transition-colors">
-        <Zap className="w-6 h-6" />
-      </div>
-      <h4 className="text-base font-bold text-text-primary mb-1 group-hover:text-accent-purple transition-colors">
-        本地极速导出
-      </h4>
-      <p className="text-xs text-text-secondary mb-3 leading-relaxed">
-        使用浏览器算力，速度快，无需上传。<br/>适合快速预览和简单剪辑。
-      </p>
-      <div className="mt-auto pt-3 w-full border-t border-border-primary/50">
-        <span className="text-xs text-text-disabled flex items-center">
-          不支持高级光晕/复杂动画
-        </span>
-      </div>
-    </button>
 
-    <button
-      className={`relative flex flex-col items-start p-5 border-2 rounded-xl transition-all text-left group ${
-        !isPremium 
-          ? 'border-border-primary bg-bg-tertiary/10 opacity-80 hover:opacity-100' 
-          : 'border-accent-purple/30 bg-accent-purple/5 hover:border-accent-purple hover:bg-accent-purple/10'
-      }`}
-      onClick={onCloudClick}
-    >
-      <div className="absolute top-3 right-3">
-        {!isPremium ? (
-          <span className="bg-bg-tertiary text-text-secondary text-xs px-2 py-1 rounded-full border border-border-primary">Pro</span>
-        ) : (
-          <span className="bg-accent-purple text-white text-xs px-2 py-1 rounded-full flex items-center"><Crown className="w-3 h-3 mr-1 fill-current" /> Pro</span>
-        )}
-      </div>
-      <div className="mb-3 p-2 bg-bg-tertiary rounded-lg group-hover:text-accent-purple transition-colors">
-        <Cloud className="w-6 h-6" />
-      </div>
-      <h4 className="text-base font-bold text-text-primary mb-1 group-hover:text-accent-purple transition-colors">
-        云端完美渲染
-      </h4>
-      <p className="text-xs text-text-secondary mb-3 leading-relaxed">
-        服务器后台渲染，完美复刻所有特效。<br/>支持 高清画质和复杂动画。
-      </p>
-      <div className="mt-auto pt-3 w-full border-t border-border-primary/50">
-        <span className="text-xs text-accent-green flex items-center">
-          <CheckCircle2 className="w-3 h-3 mr-1" /> 100% 还原编辑器效果
-        </span>
-      </div>
-    </button>
-  </div>
-);
+const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => {
+  const { t } = useTranslation();
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <button
+        className="relative flex flex-col items-start p-5 border-2 border-border-primary bg-bg-tertiary/30 hover:border-accent-purple/50 hover:bg-bg-tertiary rounded-xl transition-all group text-left"
+        onClick={onLocalClick}
+      >
+        <div className="mb-3 p-2 bg-bg-tertiary rounded-lg group-hover:text-accent-purple transition-colors">
+          <Zap className="w-6 h-6" />
+        </div>
+        <h4 className="text-base font-bold text-text-primary mb-1 group-hover:text-accent-purple transition-colors">
+          {t('本地极速导出')}
+        </h4>
+        <p className="text-xs text-text-secondary mb-3 leading-relaxed">
+          {t('使用浏览器算力，速度快，无需上传。')}<br />{t('适合快速预览和简单剪辑。')}
+        </p>
+        <div className="mt-auto pt-3 w-full border-t border-border-primary/50">
+          <span className="text-xs text-text-disabled flex items-center">
+            {t('不支持高级光晕/复杂动画')}
+          </span>
+        </div>
+      </button>
+
+      <button
+        className={`relative flex flex-col items-start p-5 border-2 rounded-xl transition-all text-left group ${!isPremium
+            ? 'border-border-primary bg-bg-tertiary/10 opacity-80 hover:opacity-100'
+            : 'border-accent-purple/30 bg-accent-purple/5 hover:border-accent-purple hover:bg-accent-purple/10'
+          }`}
+        onClick={onCloudClick}
+      >
+        <div className="absolute top-3 right-3">
+          {!isPremium ? (
+            <span className="bg-bg-tertiary text-text-secondary text-xs px-2 py-1 rounded-full border border-border-primary">Pro</span>
+          ) : (
+            <span className="bg-accent-purple text-white text-xs px-2 py-1 rounded-full flex items-center"><Crown className="w-3 h-3 mr-1 fill-current" /> Pro</span>
+          )}
+        </div>
+        <div className="mb-3 p-2 bg-bg-tertiary rounded-lg group-hover:text-accent-purple transition-colors">
+          <Cloud className="w-6 h-6" />
+        </div>
+        <h4 className="text-base font-bold text-text-primary mb-1 group-hover:text-accent-purple transition-colors">
+          {t('云端完美渲染')}
+        </h4>
+        <p className="text-xs text-text-secondary mb-3 leading-relaxed">
+          {t('服务器后台渲染，完美复刻所有特效。')}<br />{t('支持 高清画质和复杂动画。')}
+        </p>
+        <div className="mt-auto pt-3 w-full border-t border-border-primary/50">
+          <span className="text-xs text-accent-green flex items-center">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> {t('100% 还原编辑器效果')}
+          </span>
+        </div>
+      </button>
+    </div>
+  );
+};
+
 
 const ProgressView = ({ status, progress, message, startTime, onCancel, onBackground }: any) => {
   const [elapsed, setElapsed] = useState('00:00');
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!startTime) return;
@@ -460,10 +471,10 @@ const ProgressView = ({ status, progress, message, startTime, onCancel, onBackgr
 
   const getStatusText = () => {
     if (message) return message;
-    if (status === 'preparing') return '正在分析工程...';
-    if (status === 'uploading') return '正在上传资源...';
-    if (['processing_backend', 'polling'].includes(status)) return '云端渲染中...';
-    return '处理中...';
+    if (status === 'preparing') return t('正在分析工程...');
+    if (status === 'uploading') return t('正在上传资源...');
+    if (['processing_backend', 'polling'].includes(status)) return t('云端渲染中...');
+    return t('处理中...');
   };
 
   return (
@@ -475,104 +486,112 @@ const ProgressView = ({ status, progress, message, startTime, onCancel, onBackgr
         {elapsed}
       </div>
       <div className="w-64 mx-auto bg-bg-tertiary rounded-full h-1.5 mb-8 overflow-hidden relative">
-        <div 
+        <div
           className="bg-accent-purple h-full transition-all duration-300 ease-out"
           style={{ width: `${Math.min(progress, 1) * 100}%` }}
         />
-        <div className="absolute inset-0 bg-white/10 animate-[shimmer_2s_infinite] w-full h-full"/>
+        <div className="absolute inset-0 bg-white/10 animate-[shimmer_2s_infinite] w-full h-full" />
       </div>
       <div className="flex items-center space-x-4">
-        <button 
+        <button
           onClick={onCancel}
           className="px-6 py-2.5 rounded border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm font-medium flex items-center space-x-2"
         >
           <Square className="w-4 h-4 fill-current" />
-          <span>停止任务</span>
+          <span>{t('停止任务')}</span>
         </button>
-        <button 
+        <button
           onClick={onBackground}
           className="px-6 py-2.5 rounded border border-border-primary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-all text-sm font-medium flex items-center space-x-2"
         >
           <X className="w-4 h-4" />
-          <span>后台运行</span>
+          <span>{t('后台运行')}</span>
         </button>
       </div>
       <p className="text-text-disabled text-xs mt-4 opacity-70">
-         {status === 'processing_frontend' 
-          ? '正在使用浏览器算力，请勿关闭标签页' 
-          : ['processing_backend', 'polling'].includes(status) 
-            ? '服务器正在进行云端渲染，您可以关闭此窗口' 
+        {status === 'processing_frontend'
+          ? '正在使用浏览器算力，请勿关闭标签页'
+          : ['processing_backend', 'polling'].includes(status)
+            ? '服务器正在进行云端渲染，您可以关闭此窗口'
             : '正在准备资源，请保持网络连接'
-          }
+        }
       </p>
     </div>
   );
 };
 
-const ResultView = ({ onDownload, onClose }: any) => (
-  <div className="py-6 text-center">
-    <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in duration-300">
-      <CheckCircle2 className="w-6 h-6 text-green-500" />
-    </div>
-    <h3 className="text-lg font-medium text-text-primary mb-2">导出完成！</h3>
-    <p className="text-text-secondary text-sm mb-6">您的视频已准备就绪。</p>
-    
-    <div className="flex items-center justify-center gap-4 w-full max-w-xs mx-auto">
-      <button
-        className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-border-primary text-text-primary font-medium rounded transition-colors border border-transparent"
-        onClick={onClose}
-      >
-        关闭
-      </button>
-
-      <button
-        className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors shadow-lg shadow-green-900/20"
-        onClick={onDownload}
-      >
-        下载文件
-      </button>
-    </div>
-  </div>
-);
-
-const WarningView = ({ issues, onBack, onContinue }: any) => (
-  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-5">
-    <div className="flex items-start space-x-4">
-      <div className="p-2 bg-yellow-500/10 rounded-lg shrink-0">
-        <AlertTriangle className="w-6 h-6 text-yellow-500" />
+const ResultView = ({ onDownload, onClose }: any) => {
+  const { t } = useTranslation();
+  return (
+    <div className="py-6 text-center">
+      <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in duration-300">
+        <CheckCircle2 className="w-6 h-6 text-green-500" />
       </div>
-      <div className="flex-1">
-        <h4 className="text-base font-bold text-text-primary mb-2">检测到高级特效</h4>
-        <p className="text-sm text-text-secondary mb-3 leading-relaxed">
-          您选择了本地导出，但项目中包含以下 <span className="text-yellow-500 font-medium">FFmpeg 不支持</span> 的功能：
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {issues.map((issue: string) => (
-            <span key={issue} className="px-2 py-1 bg-bg-tertiary border border-border-primary rounded text-xs text-text-secondary">
-              {issue}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-text-secondary mb-4">
-          如果继续，这些特效将被<b className="text-text-primary">自动移除</b>。如需保留完美效果，请使用云端导出。
-        </p>
-        <div className="flex space-x-3">
-          <button onClick={onBack} className="px-4 py-2 bg-bg-tertiary hover:bg-border-primary text-text-primary text-sm rounded font-medium transition-colors">
-            返回
-          </button>
-          <button onClick={onContinue} className="flex-1 px-4 py-2 bg-yellow-600/90 hover:bg-yellow-600 text-white text-sm rounded font-medium transition-colors flex items-center justify-center">
-            移除特效并继续 <ArrowRight className="w-4 h-4 ml-1.5" />
-          </button>
-        </div>
+      <h3 className="text-lg font-medium text-text-primary mb-2">{t('导出完成！')}</h3>
+      <p className="text-text-secondary text-sm mb-6">{t('您的视频已准备就绪。')}</p>
+
+      <div className="flex items-center justify-center gap-4 w-full max-w-xs mx-auto">
+        <button
+          className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-border-primary text-text-primary font-medium rounded transition-colors border border-transparent"
+          onClick={onClose}
+        >
+          {t('关闭')}
+        </button>
+
+        <button
+          className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors shadow-lg shadow-green-900/20"
+          onClick={onDownload}
+        >
+          {t('下载文件')}
+        </button>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
+
+const WarningView = ({ issues, onBack, onContinue }: any) => {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-5">
+      <div className="flex items-start space-x-4">
+        <div className="p-2 bg-yellow-500/10 rounded-lg shrink-0">
+          <AlertTriangle className="w-6 h-6 text-yellow-500" />
+        </div>
+        <div className="flex-1">
+          <h4 className="text-base font-bold text-text-primary mb-2">{t('检测到高级特效')}</h4>
+          <p className="text-sm text-text-secondary mb-3 leading-relaxed">
+            您选择了本地导出，但项目中包含以下 <span className="text-yellow-500 font-medium">{t('FFmpeg 不支持')}</span> 的功能：
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {issues.map((issue: string) => (
+              <span key={issue} className="px-2 py-1 bg-bg-tertiary border border-border-primary rounded text-xs text-text-secondary">
+                {issue}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-text-secondary mb-4">
+            如果继续，这些特效将被<b className="text-text-primary">{t('自动移除')}</b>。如需保留完美效果，请使用云端导出。
+          </p>
+          <div className="flex space-x-3">
+            <button onClick={onBack} className="px-4 py-2 bg-bg-tertiary hover:bg-border-primary text-text-primary text-sm rounded font-medium transition-colors">
+              {t('返回')}
+            </button>
+            <button onClick={onContinue} className="flex-1 px-4 py-2 bg-yellow-600/90 hover:bg-yellow-600 text-white text-sm rounded font-medium transition-colors flex items-center justify-center">
+              {t('移除特效并继续')} <ArrowRight className="w-4 h-4 ml-1.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function ExportToast() {
   const { showExportModal, setShowExportModal, exportStatus, exportProgress } = useExportStore();
   const isExporting = ['preparing', 'uploading', 'processing_frontend', 'processing_backend', 'polling'].includes(exportStatus);
   const isSuccess = exportStatus === 'success';
+  const { t } = useTranslation();
 
   if (showExportModal || (!isExporting && !isSuccess)) return null;
 
@@ -587,8 +606,8 @@ function ExportToast() {
             <Loader2 className="w-5 h-5 text-accent-purple animate-spin" />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-medium text-text-primary">导出中... {Math.round(exportProgress * 100)}%</span>
-            <span className="text-xs text-text-secondary">点击查看详情</span>
+            <span className="text-sm font-medium text-text-primary">{t('导出中')}... {Math.round(exportProgress * 100)}%</span>
+            <span className="text-xs text-text-secondary">{t('导出任务运行中 (点击查看详情)')}</span>
           </div>
         </>
       ) : (
@@ -597,8 +616,8 @@ function ExportToast() {
             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-sm font-medium text-text-primary">导出完成</span>
-            <span className="text-xs text-text-secondary">点击下载文件</span>
+            <span className="text-sm font-medium text-text-primary">{t('导出完成')}</span>
+            <span className="text-xs text-text-secondary">{t('点击下载文件')}</span>
           </div>
         </>
       )}
@@ -607,19 +626,35 @@ function ExportToast() {
   );
 }
 
-function SettingsModal() {
+const SettingsModal = () => {
   const { showSettingsModal, setShowSettingsModal } = useUIStore();
+  const { language, updateSetting } = useSettingsStore();
+  const { t } = useTranslation();
 
   return (
     <Modal
       isOpen={showSettingsModal}
       onClose={() => setShowSettingsModal(false)}
-      title="设置"
+      title={t('设置')}
       className="max-w-lg"
     >
       <div className="p-6">
-        <div className="space-y-4">
-           <p className="text-text-secondary text-sm">更多通用设置即将推出...</p>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <label className="text-text-primary font-medium">Language / 语言</label>
+            <select
+              value={language}
+              onChange={(e) => updateSetting('language', e.target.value as 'zh-CN' | 'en-US')}
+              className="bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-1.5 focus:outline-none focus:border-accent-purple"
+            >
+              <option value="zh-CN">简体中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </div>
+
+          <div className="pt-4 border-t border-border-primary">
+            <p className="text-text-secondary text-sm">{t('更多通用设置即将推出...')}</p>
+          </div>
         </div>
       </div>
     </Modal>

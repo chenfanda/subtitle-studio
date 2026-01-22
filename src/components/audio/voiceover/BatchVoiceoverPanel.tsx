@@ -113,14 +113,10 @@ export function BatchVoiceoverPanel() {
     setExpandedSpeakers(prev => new Set(prev).add(speaker));
   };
 
-  // --- 编辑器逻辑 (核心修改) ---
-
-  // [修改] 将 SubtitleItem 转回带 Speaker 标签的 SRT 格式文本
   const subtitlesToSRT = (subs: SubtitleItem[]) => {
     return subs.map((s, index) => {
       const start = msToSRTTime(s.startTime);
       const end = msToSRTTime(s.endTime);
-      // 如果有 speaker，加上 [Speaker X] 前缀
       const content = s.speaker ? `[${s.speaker}] ${s.text}` : s.text;
       return `${index + 1}\n${start} --> ${end}\n${content}\n`;
     }).join('\n');
@@ -129,7 +125,6 @@ export function BatchVoiceoverPanel() {
   const openEditor = (mode: 'original' | 'script') => {
     setEditorMode(mode);
     if (mode === 'original') {
-      // 优先使用已加载的原声字幕，如果没有则用当前字幕填充
       const source = originalSubtitlesRef.current.length > 0 ? originalSubtitlesRef.current : subtitles;
       setEditorContent(subtitlesToSRT(source));
     } else {
@@ -139,7 +134,6 @@ export function BatchVoiceoverPanel() {
 
   const saveEditorContent = () => {
     try {
-      // parseSRT 内部已经支持解析 [Speaker X] 格式
       const parsed = parseSRT(editorContent);
       
       if (parsed.length === 0) {
@@ -148,7 +142,6 @@ export function BatchVoiceoverPanel() {
       }
 
       if (editorMode === 'original') {
-        // 保存原声：更新 Ref 和 Map
         originalSubtitlesRef.current = parsed;
         const map = new Map<string, string>();
         parsed.forEach(ps => {
@@ -179,8 +172,6 @@ export function BatchVoiceoverPanel() {
       alert("解析失败，请检查 SRT 格式是否正确 (序号、时间轴、[Speaker]标签)");
     }
   };
-
-  // --- 生成逻辑 ---
 
   const handleGenerate = async () => {
     const idsToProcess = Array.from(checkedIds);

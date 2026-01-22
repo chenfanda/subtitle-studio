@@ -1,5 +1,6 @@
 import { useUIStore, useActivePanel } from '@/stores/useUIStore';
 import type { PanelType } from '@/types/ui';
+import { useTranslation } from '@/hooks/useTranslation';
 // 导入 lucide-react 图标库
 import {
   Scissors,
@@ -32,6 +33,7 @@ const TOOLS: ToolItem[] = [
 export function VerticalToolbar() {
   const activePanel = useActivePanel();
   const { setActivePanel } = useUIStore();
+  const { t } = useTranslation();
 
   return (
     // (移除了 border-r，因为 LeftSidebar.tsx 父组件已经有了)
@@ -39,7 +41,7 @@ export function VerticalToolbar() {
       {TOOLS.map((tool) => {
         const isActive = activePanel === tool.id;
         const Icon = tool.icon; // 将图标组件赋值给大写变量
-        
+
         return (
           <button
             key={tool.id}
@@ -47,25 +49,25 @@ export function VerticalToolbar() {
             className={`
               relative w-12 h-12 rounded-lg flex items-center justify-center 
               transition-all duration-normal hover:scale-105 group
-              ${isActive 
-                ? 'bg-accent-purple text-white shadow-lg shadow-accent-purple/20' 
+              ${isActive
+                ? 'bg-accent-purple text-white shadow-lg shadow-accent-purple/20'
                 : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary'
               }
             `}
-            title={`${tool.label} ${tool.shortcut ? `(${tool.shortcut})` : ''}`}
-            aria-label={tool.label}
+            title={`${t(tool.label)} ${tool.shortcut ? `(${tool.shortcut})` : ''}`}
+            aria-label={t(tool.label)}
             aria-pressed={isActive}
           >
             {/* (渲染图标组件) */}
             <Icon className="w-6 h-6" strokeWidth={1.5} />
-            
+
             {!isActive && (
               <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-10 bg-white transition-opacity duration-normal" />
             )}
           </button>
         );
       })}
-      
+
       {/* (已删除) 
         <div className="flex-1" />  // <-- 导致布局 bug 的元素
         <div className="w-full h-px bg-border-secondary mx-2" />

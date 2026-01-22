@@ -1,17 +1,20 @@
 import React from 'react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
+import { useTranslation } from '@/hooks/useTranslation';
+
 export function MaskControlPanel() {
   const { mask, updateMask } = useSettingsStore();
+  const { t } = useTranslation();
 
   return (
     <div className="w-64 p-4 space-y-4 select-none">
       {/* 标题和开关 */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-white">去除原始字幕</h3>
+        <h3 className="text-sm font-medium text-white">{t('去除原始字幕')}</h3>
         <label className="relative inline-flex items-center cursor-pointer">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             className="sr-only peer"
             checked={mask.enabled}
             onChange={(e) => updateMask({ enabled: e.target.checked })}
@@ -27,30 +30,28 @@ export function MaskControlPanel() {
           <div className="grid grid-cols-2 gap-2 bg-black/20 p-1 rounded-lg">
             <button
               onClick={() => updateMask({ mode: 'blur' })}
-              className={`text-xs py-1.5 rounded transition-all ${
-                mask.mode === 'blur' 
-                  ? 'bg-accent-purple text-white shadow-sm' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`text-xs py-1.5 rounded transition-all ${mask.mode === 'blur'
+                ? 'bg-accent-purple text-white shadow-sm'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
             >
-              高斯模糊
+              {t('高斯模糊')}
             </button>
             <button
               onClick={() => updateMask({ mode: 'mosaic' })}
-              className={`text-xs py-1.5 rounded transition-all ${
-                mask.mode === 'mosaic' 
-                  ? 'bg-accent-purple text-white shadow-sm' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`text-xs py-1.5 rounded transition-all ${mask.mode === 'mosaic'
+                ? 'bg-accent-purple text-white shadow-sm'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
             >
-              马赛克
+              {t('马赛克')}
             </button>
           </div>
 
           {/* 强度滑块 */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-400">
-              <span>强度</span>
+              <span>{t('强度')}</span>
               <span>{mask.intensity}</span>
             </div>
             <input
@@ -63,9 +64,9 @@ export function MaskControlPanel() {
               className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-accent-purple hover:bg-gray-500 focus:outline-none"
             />
           </div>
-          
+
           <div className="text-[10px] text-gray-500 leading-relaxed">
-            提示：开启后，可直接在视频画面上拖拽方框调整遮挡范围。
+            {t('提示：开启后，可直接在视频画面上拖拽方框调整遮挡范围。')}
           </div>
         </div>
       )}

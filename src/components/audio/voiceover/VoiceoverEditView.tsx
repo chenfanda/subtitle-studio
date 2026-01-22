@@ -44,7 +44,7 @@ export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditVi
           <button
             onClick={handleDelete}
             className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors"
-            title="删除配on"
+            title="删除配音"
           >
             <Trash2 size={18} />
           </button>

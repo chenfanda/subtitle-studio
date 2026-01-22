@@ -3,10 +3,12 @@ import { FeaturedEffectsTab } from './FeaturedEffectsTab';
 import { AdvancedEffectsTab } from './AdvancedEffectsTab';
 import { BasicEffectsTab } from './BasicEffectsTab';
 import { useTemplateStore, useActiveCategory } from '@/stores/useTemplateStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function TemplatePanel() {
   const activeCategory = useActiveCategory();
   const { setActiveCategory } = useTemplateStore();
+  const { t } = useTranslation();
 
   const categories = [
     { id: 'custom', name: '自定义' },
@@ -31,12 +33,12 @@ export function TemplatePanel() {
                   : 'text-text-secondary border-transparent hover:text-text-primary'
                 }\n              `}
             >
-              {category.name}
+              {t(category.name)}
             </button>
           ))}
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-4">
         {activeCategory === 'custom' && <CustomEffectsTab />}
         {activeCategory === 'featured' && <FeaturedEffectsTab />}
