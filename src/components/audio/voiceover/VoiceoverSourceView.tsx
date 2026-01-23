@@ -4,10 +4,12 @@ import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { VoiceoverUploadPanel } from './VoiceoverUploadPanel';
 import { useUserStore } from '@/stores/useUserStore';
 import { Loader2, Mic } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 import { TTSPanel } from './TTSPanel';
 
 function ExtractionPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
+  const { t } = useTranslation();
   const { extractAudioFromSubtitle, isGenerating } = useVoiceoverStore();
   const subtitle = useSubtitleStore(state => state.subtitles.find(s => s.id === targetSubtitleId));
   const [voiceName, setVoiceName] = useState('');
@@ -25,27 +27,27 @@ function ExtractionPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
       <div className="w-24 h-24 rounded-full bg-accent-purple/5 border border-accent-purple/20 flex items-center justify-center text-accent-purple mb-2 animate-pulse">
         <Mic size={48} />
       </div>
-      
+
       <div className="space-y-2 max-w-xs">
-        <h3 className="text-lg font-semibold text-text-primary">提取当前片段原声</h3>
+        <h3 className="text-lg font-semibold text-text-primary">{t('提取当前片段原声')}</h3>
         <p className="text-sm text-text-secondary">
-          系统将截取 <strong>{formatTime(subtitle.startTime)} - {formatTime(subtitle.endTime)}</strong> 的人声片段，并保存为您的专属音色。
+          {t('系统将截取')} <strong>{formatTime(subtitle.startTime)} - {formatTime(subtitle.endTime)}</strong> {t('的人声片段，并保存为您的专属音色。')}
         </p>
       </div>
 
       <div className="w-full max-w-sm bg-bg-tertiary p-4 rounded-xl border border-border-secondary text-left space-y-4 shadow-sm">
         <div>
-          <label className="text-xs font-medium text-text-secondary mb-1.5 block">音色名称</label>
+          <label className="text-xs font-medium text-text-secondary mb-1.5 block">{t('音色名称')}</label>
           <input
             type="text"
             value={voiceName}
             onChange={(e) => setVoiceName(e.target.value)}
-            placeholder={subtitle.speaker ? `建议命名: ${subtitle.speaker}` : "给这个声音起个名字..."}
+            placeholder={subtitle.speaker ? `${t('建议命名:')} ${subtitle.speaker}` : t('给这个声音起个名字...')}
             className="w-full p-2.5 bg-bg-primary border border-border-secondary rounded-lg text-sm focus:border-accent-purple outline-none transition-all"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-text-secondary mb-1.5 block">参考文本</label>
+          <label className="text-xs font-medium text-text-secondary mb-1.5 block">{t('参考文本')}</label>
           <div className="p-2.5 bg-bg-primary border border-border-secondary rounded-lg text-sm text-text-primary italic opacity-80">
             "{subtitle.text}"
           </div>
@@ -58,7 +60,7 @@ function ExtractionPanel({ targetSubtitleId }: { targetSubtitleId: string }) {
         className="w-full max-w-sm py-3 rounded-lg bg-accent-purple hover:bg-accent-purple/90 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isGenerating ? <Loader2 className="animate-spin" /> : <Mic />}
-        {isLoggedIn ? "确认提取并保存" : "请先登录"}
+        {isLoggedIn ? t('确认提取并保存') : t('请先登录')}
       </button>
     </div>
   );
@@ -72,7 +74,8 @@ function formatTime(ms: number) {
 }
 
 function LibraryPanel() {
-  return <div className="h-full flex items-center justify-center text-text-secondary">音频库功能开发中...</div>;
+  const { t } = useTranslation();
+  return <div className="h-full flex items-center justify-center text-text-secondary">{t('音频库功能开发中...')}</div>;
 }
 
 interface VoiceoverSourceViewProps {
@@ -80,13 +83,14 @@ interface VoiceoverSourceViewProps {
 }
 
 export function VoiceoverSourceView({ targetSubtitleId }: VoiceoverSourceViewProps) {
+  const { t } = useTranslation();
   const { sourceView, setSourceView } = useVoiceoverStore();
 
   const tabs = [
-    { id: 'tts', name: 'TTS 生成' },
-    { id: 'extraction', name: '原声提取' },
-    { id: 'library', name: '音频库' },
-    { id: 'upload', name: '上传' },
+    { id: 'tts', name: t('TTS 生成') },
+    { id: 'extraction', name: t('原声提取') },
+    { id: 'library', name: t('音频库') },
+    { id: 'upload', name: t('上传') },
   ] as const;
 
   return (

@@ -15,7 +15,6 @@ import { useProjectStore } from '@/stores/useProjectStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
-import { useHistoryStore } from '@/stores/useHistoryStore';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
 import { findGlobalTimeFromMainTime } from '@/utils/timelineUtils';
 import { useVideoSourceSwitcher } from '@/hooks/useVideoSourceSwitcher';

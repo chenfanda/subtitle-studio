@@ -1,16 +1,18 @@
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { Trash2, Clock, Link2, ListVideo, Film } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function formatTime(ms: number): string {
   const seconds = ms / 1000;
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = (seconds % 60);
-  
+
   return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toFixed(3).padStart(6, '0')}`;
 }
 
 export function VideoSequenceList() {
+  const { t } = useTranslation();
   const { segments, removeSegment } = useVideoSequenceStore();
   const { setCurrentTime } = useProjectStore();
 
@@ -27,9 +29,9 @@ export function VideoSequenceList() {
     return (
       <div className="flex flex-col items-center justify-center p-6 text-center text-text-secondary">
         <ListVideo size={32} className="mb-2" />
-        <p className="text-sm">尚未添加视频片段</p>
+        <p className="text-sm">{t('尚未添加视频片段')}</p>
         <p className="text-xs mt-1">
-          请在主视频加载后开始操作
+          {t('请在主视频加载后开始操作')}
         </p>
       </div>
     );
@@ -49,7 +51,7 @@ export function VideoSequenceList() {
         >
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-semibold text-text-primary">
-              片段 #{index + 1}
+              {t('片段')} #{index + 1}
             </span>
             {segment.type === 'insert' && (
               <button
@@ -73,18 +75,18 @@ export function VideoSequenceList() {
               <Link2 size={12} />
             )}
             <span className="truncate" title={segment.sourceUrl}>
-              {segment.type === 'main' ? "主视频片段" : segment.sourceUrl}
+              {segment.type === 'main' ? t('主视频片段') : segment.sourceUrl}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-1.5 text-text-secondary text-xs">
             <Clock size={12} />
             <span>
-              开始于 {formatTime(segment.globalStartTime)}
+              {t('开始于')} {formatTime(segment.globalStartTime)}
             </span>
             <span className="text-text-tertiary">|</span>
             <span>
-              时长 {formatTime(segment.duration)}
+              {t('时长')} {formatTime(segment.duration)}
             </span>
           </div>
         </div>

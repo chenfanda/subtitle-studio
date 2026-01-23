@@ -36,10 +36,10 @@ export function BrollLocalView() {
 
     try {
       const videoUrl = URL.createObjectURL(file);
-      
+
       // 获取视频时长
       const duration = await getBrollDuration(videoUrl);
-      
+
       // 验证时长（最多180秒）
       if (duration > 180) {
         setUploadError('视频时长不能超过 180 秒');
@@ -48,22 +48,21 @@ export function BrollLocalView() {
         return;
       }
 
-      // 生成缩略图
+
       const thumbnail = await generateBrollThumbnail(videoUrl, 1);
 
-      // 创建 BrollVideo 对象
       const newVideo: BrollVideo = {
         id: `local_${Date.now()}`,
         name: file.name.replace(/\.[^/.]+$/, ''),
         url: videoUrl,
-        thumbnail, // ✅ 修复：使用生成的缩略图
+        thumbnail,
         duration: Math.floor(duration),
         tags: ['本地上传'],
       };
 
       setUploadedVideos(prev => [...prev, newVideo]);
       setIsUploading(false);
-      
+
       // 清空input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -82,7 +81,7 @@ export function BrollLocalView() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const file = e.dataTransfer.files[0];
     if (file && fileInputRef.current) {
       const dataTransfer = new DataTransfer();
@@ -114,7 +113,7 @@ export function BrollLocalView() {
           onChange={handleFileChange}
           className="hidden"
         />
-        
+
         {isUploading ? (
           <>
             {/* 2. 替换加载动画 */}
@@ -131,11 +130,11 @@ export function BrollLocalView() {
             </div>
           </>
         )}
-        
+
         {uploadError && (
           <div className="mt-3 text-sm text-red-500 flex items-center justify-center gap-1">
             {/* 4. 替换警告图标 */}
-            <AlertTriangle size={16} /> 
+            <AlertTriangle size={16} />
             {uploadError}
           </div>
         )}

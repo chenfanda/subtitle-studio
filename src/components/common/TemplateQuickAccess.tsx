@@ -1,7 +1,8 @@
 import { useUIStore } from '@/stores/useUIStore';
 import { useTemplateStore } from '@/stores/useTemplateStore';
-import { EffectPreviewCard } from '@/components/templates/EffectPreviewCard'; 
-import { ADVANCED_SCENE_TEMPLATES } from '@/constants/advancedTemplates'; 
+import { EffectPreviewCard } from '@/components/templates/EffectPreviewCard';
+import { ADVANCED_SCENE_TEMPLATES } from '@/constants/advancedTemplates';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface TemplateQuickAccessProps {
   targetType: 'subtitle' | 'textElement';
@@ -9,6 +10,7 @@ interface TemplateQuickAccessProps {
 }
 
 export function TemplateQuickAccess({ targetType, targetId }: TemplateQuickAccessProps) {
+  const { t } = useTranslation();
   const setActivePanel = useUIStore((state) => state.setActivePanel);
   const setActiveTemplateCategory = useTemplateStore((state) => state.setActiveCategory);
   // const getTemplatesByCategory = useTemplateStore((state) => state.getTemplatesByCategory);
@@ -30,12 +32,12 @@ export function TemplateQuickAccess({ targetType, targetId }: TemplateQuickAcces
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-text-primary">精选模板</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('精选模板')}</h3>
         <button
           onClick={handleViewMore}
           className="text-xs font-medium text-accent-purple hover:text-accent-purple/80 transition-colors"
         >
-          查看更多
+          {t('查看更多')}
         </button>
       </div>
 
@@ -44,7 +46,7 @@ export function TemplateQuickAccess({ targetType, targetId }: TemplateQuickAcces
           <EffectPreviewCard
             key={template.id}
             template={template}
-            targetSubtitleId={targetId} // Pass targetId here
+            targetSubtitleId={targetId}
           />
         ))}
       </div>

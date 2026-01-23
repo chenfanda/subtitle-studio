@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/common/Modal';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface SaveTemplateModalProps {
   onClose: () => void;
@@ -12,7 +13,8 @@ export function SaveTemplateModal({
   onSave,
   initialName = '自定义模板'
 }: SaveTemplateModalProps) {
-  const [name, setName] = useState(initialName);
+  const { t } = useTranslation();
+  const [name, setName] = useState(t(initialName));
 
   const handleSave = () => {
     if (name.trim()) {
@@ -27,14 +29,14 @@ export function SaveTemplateModal({
   };
 
   return (
-    <Modal title="保存预设" isOpen={true} onClose={onClose}>
+    <Modal title={t('保存预设')} isOpen={true} onClose={onClose}>
       <div className="p-4 space-y-4">
         <div>
           <label
             htmlFor="templateName"
             className="block text-sm font-medium text-text-secondary mb-2"
           >
-            模板名称
+            {t('模板名称')}
           </label>
           <input
             id="templateName"
@@ -52,7 +54,7 @@ export function SaveTemplateModal({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-bg-tertiary text-text-primary hover:bg-border-secondary transition-colors"
           >
-            取消
+            {t('取消')}
           </button>
           <button
             type="button"
@@ -60,7 +62,7 @@ export function SaveTemplateModal({
             disabled={!name.trim()}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-accent-purple text-white hover:bg-accent-purple/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            保存
+            {t('保存')}
           </button>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
-import { Loader2, Mic, Play, RefreshCw, AlertCircle, User, CheckCircle2,X } from 'lucide-react';
+import { Loader2, Mic, Play, RefreshCw, AlertCircle, User, CheckCircle2, X } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // 定义组件 Props
 interface TTSPanelProps {
@@ -9,24 +10,25 @@ interface TTSPanelProps {
 }
 
 export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
-  const { 
-    generateTTS, 
-    isGenerating, 
-    systemCharacters, 
-    userVoices, 
-    currentConfig, 
+  const { t } = useTranslation();
+  const {
+    generateTTS,
+    isGenerating,
+    systemCharacters,
+    userVoices,
+    currentConfig,
     updateConfig,
-    loadVoices ,
-    error,       
-    clearError 
+    loadVoices,
+    error,
+    clearError
   } = useVoiceoverStore();
-  
-  const subtitle = useSubtitleStore(state => 
+
+  const subtitle = useSubtitleStore(state =>
     state.subtitles.find(s => s.id === targetSubtitleId)
   );
 
   const [text, setText] = useState(subtitle?.text || '');
-  
+
   // activeTab 控制显示哪个列表，同时与 currentConfig.type 保持同步
   const [activeTab, setActiveTab] = useState<'system' | 'custom'>('system');
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
@@ -39,7 +41,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
       try {
         await loadVoices();
       } catch (err) {
-        setLoadError('加载失败');
+        setLoadError(t('加载失败'));
       } finally {
         setIsLoadingVoices(false);
       }
@@ -57,7 +59,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
   // 处理 Tab 切换：切换时自动选中该列表的第一个选项
   const handleTabChange = (type: 'system' | 'custom') => {
     setActiveTab(type);
-    
+
     if (type === 'system') {
       if (systemCharacters.length > 0) {
         // [修复] 兼容后端可能返回 character_id 或 id 的情况
@@ -75,9 +77,9 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
   };
 
   const handleVoiceSelect = (id: string, type: 'system' | 'custom') => {
-    updateConfig({ 
-      voiceId: id, 
-      type: type 
+    updateConfig({
+      voiceId: id,
+      type: type
     });
   };
 
@@ -93,49 +95,47 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
       <div className="flex bg-bg-tertiary rounded-lg p-1 border border-border-secondary">
         <button
           onClick={() => handleTabChange('system')}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'system' 
-              ? 'bg-bg-primary shadow-sm text-accent-purple font-semibold' 
+          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'system'
+              ? 'bg-bg-primary shadow-sm text-accent-purple font-semibold'
               : 'text-text-secondary hover:text-text-primary'
-          }`}
+            }`}
         >
           <User size={14} />
-          系统角色
+          {t('系统角色')}
         </button>
         <button
           onClick={() => handleTabChange('custom')}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'custom' 
-              ? 'bg-bg-primary shadow-sm text-accent-purple font-semibold' 
+          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'custom'
+              ? 'bg-bg-primary shadow-sm text-accent-purple font-semibold'
               : 'text-text-secondary hover:text-text-primary'
-          }`}
+            }`}
         >
           <Mic size={14} />
-          我的音色
+          {t('我的音色')}
         </button>
 
         {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
-          <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={clearError} className="text-red-400 hover:text-red-600">
-            <X size={16} />
-          </button>
-        </div>
-      )}
+          <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+            <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={clearError} className="text-red-400 hover:text-red-600">
+              <X size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. 角色选择列表 */}
       <div className="flex-1 min-h-[200px] flex flex-col">
         <div className="flex justify-between items-center mb-2 px-1">
           <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-            {activeTab === 'system' ? '选择预设模型' : '选择克隆音色'}
+            {activeTab === 'system' ? t('选择预设模型') : t('选择克隆音色')}
           </label>
-          <button 
-            onClick={() => loadVoices()} 
+          <button
+            onClick={() => loadVoices()}
             className="text-xs text-text-tertiary hover:text-accent-purple flex items-center gap-1 transition-colors"
           >
-            <RefreshCw size={10} /> 刷新
+            <RefreshCw size={10} /> {t('刷新')}
           </button>
         </div>
 
@@ -143,17 +143,17 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
           {isLoadingVoices ? (
             <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-3">
               <Loader2 className="animate-spin text-accent-purple" size={32} />
-              <span className="text-sm font-medium">加载角色库中...</span>
+              <span className="text-sm font-medium">{t('加载角色库中...')}</span>
             </div>
           ) : loadError ? (
             <div className="h-full flex flex-col items-center justify-center text-red-500 gap-2 p-4 text-center">
               <AlertCircle size={24} />
               <span className="text-sm">{loadError}</span>
-              <button 
-                onClick={() => loadVoices()} 
+              <button
+                onClick={() => loadVoices()}
                 className="mt-2 px-4 py-1.5 bg-white border border-red-200 rounded-full text-xs hover:bg-red-50 transition-colors"
               >
-                重试连接
+                {t('重试连接')}
               </button>
             </div>
           ) : (
@@ -164,10 +164,10 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
                   systemCharacters.map((char, index) => {
                     // [修复] 获取真实的 ID，处理字段名可能不一致的问题 (id vs character_id)
                     const charId = char.id || (char as any).character_id;
-                    
+
                     // [修复] 增加 !!charId 判断，防止 undefined === undefined 导致全选
                     const isSelected = !!charId && currentConfig.voiceId === charId && currentConfig.type === 'system';
-                    
+
                     return (
                       <button
                         key={charId || index}
@@ -200,7 +200,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
                             {char.name}
                           </div>
                           <div className="text-xs text-text-secondary flex items-center gap-1">
-                            <span>{char.gender === 'female' ? '女声' : char.gender === 'male' ? '男声' : '通用'}</span>
+                            <span>{char.gender === 'female' ? t('女声') : char.gender === 'male' ? t('男声') : t('通用')}</span>
                           </div>
                         </div>
                       </button>
@@ -208,7 +208,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
                   })
                 ) : (
                   <div className="col-span-2 py-10 text-center text-text-tertiary text-sm">
-                    暂无系统角色
+                    {t('暂无系统角色')}
                   </div>
                 )
               ) : (
@@ -244,7 +244,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
                             {voice.voice_name}
                           </div>
                           <div className="text-xs text-text-secondary opacity-80">
-                            自定义克隆
+                            {t('自定义克隆')}
                           </div>
                         </div>
                       </button>
@@ -255,9 +255,9 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
                     <div className="w-12 h-12 rounded-full bg-bg-primary flex items-center justify-center">
                       <Mic size={24} className="opacity-20" />
                     </div>
-                    <div className="text-sm">暂无自定义音色</div>
+                    <div className="text-sm">{t('暂无自定义音色')}</div>
                     <p className="text-xs max-w-[200px] text-center opacity-70">
-                      请使用"原声提取"或"上传"功能添加您的第一个克隆音色
+                      {t('请使用"原声提取"或"上传"功能添加您的第一个克隆音色')}
                     </p>
                   </div>
                 )
@@ -271,7 +271,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
       <div className="grid grid-cols-2 gap-4 bg-bg-tertiary p-4 rounded-xl border border-border-secondary">
         <div>
           <label className="text-xs font-medium text-text-secondary mb-2 flex justify-between">
-            <span>语速 (Speed)</span>
+            <span>{t('语速 (Speed)')}</span>
             <span className="text-accent-purple font-mono bg-accent-purple/10 px-1.5 rounded">{currentConfig.speed}x</span>
           </label>
           <input
@@ -286,7 +286,7 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
         </div>
         <div>
           <label className="text-xs font-medium text-text-secondary mb-2 flex justify-between">
-            <span>音调 (Pitch)</span>
+            <span>{t('音调 (Pitch)')}</span>
             <span className="text-accent-purple font-mono bg-accent-purple/10 px-1.5 rounded">{currentConfig.pitch}</span>
           </label>
           <input
@@ -303,13 +303,13 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
 
       {/* 4. 文本编辑 */}
       <div className="flex-shrink-0">
-        <label className="text-xs font-medium text-text-secondary mb-1.5 block">配音文本 (Prompt)</label>
+        <label className="text-xs font-medium text-text-secondary mb-1.5 block">{t('配音文本 (Prompt)')}</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
           className="w-full p-3 bg-bg-tertiary border border-border-secondary rounded-xl text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-all resize-none text-sm leading-relaxed"
-          placeholder="输入要生成的文本..."
+          placeholder={t('输入要生成的文本...')}
         />
       </div>
 
@@ -327,12 +327,12 @@ export function TTSPanel({ targetSubtitleId }: TTSPanelProps) {
         {isGenerating ? (
           <>
             <Loader2 size={20} className="animate-spin" />
-            <span>AI 正在合成音频...</span>
+            <span>{t('AI 正在合成音频...')}</span>
           </>
         ) : (
           <>
             <Play size={20} fill="currentColor" />
-            <span>立即生成配音</span>
+            <span>{t('立即生成配音')}</span>
           </>
         )}
       </button>

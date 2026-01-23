@@ -1,10 +1,8 @@
 import React from 'react';
-// 1. (已遵照要求) 导入 lucide-react 图标
 import { List, ListVideo } from 'lucide-react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useTranslation } from '@/hooks/useTranslation';
 
-// 2. (新增) 从 useUIStore 导入我们约定的类型
 type ClipTask = ReturnType<typeof useUIStore.getState>['activeClipTask'];
 
 interface ClipsTaskSwitcherProps {

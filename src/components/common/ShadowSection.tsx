@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { ColorPicker } from './ColorPicker';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { SubtitleShadow } from '@/types/subtitle';
 
 interface ShadowSectionProps {
@@ -9,7 +10,7 @@ interface ShadowSectionProps {
 
 const SHADOW_PRESETS = {
   S: { offsetX: 1, offsetY: 1, blur: 2 },
-  M: { offsetX: 1, offsetY: 1, blur: 4 }, 
+  M: { offsetX: 1, offsetY: 1, blur: 4 },
   L: { offsetX: 1, offsetY: 1, blur: 8 },
 };
 
@@ -22,34 +23,35 @@ const getActivePreset = (shadow: SubtitleShadow) => {
 };
 
 export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
+  const { t } = useTranslation();
   const enabled = shadow?.enabled || false;
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const color = shadow?.color || '#000000';
   const offsetX = shadow?.offsetX || SHADOW_PRESETS.M.offsetX;
   const offsetY = shadow?.offsetY || SHADOW_PRESETS.M.offsetY;
   const blur = shadow?.blur || SHADOW_PRESETS.M.blur;
 
-  const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const handleToggle = (checked: boolean) => {
     const preset = SHADOW_PRESETS.M;
-    onChange({ 
-      enabled: checked, 
-      color, 
-      offsetX: preset.offsetX, 
-      offsetY: preset.offsetY, 
-      blur: preset.blur 
+    onChange({
+      enabled: checked,
+      color,
+      offsetX: preset.offsetX,
+      offsetY: preset.offsetY,
+      blur: preset.blur
     });
-    
+
     if (!checked) {
-      setShowPicker(false);
+      setShowColorPicker(false);
     }
   };
-  
+
   const handleColorChange = (newColor: string) => {
     if (newColor === 'transparent') {
       onChange({ enabled: false, color, offsetX, offsetY, blur });
-      setShowPicker(false);
+      setShowColorPicker(false);
     } else {
       onChange({ enabled, color: newColor, offsetX, offsetY, blur });
     }
@@ -80,13 +82,13 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
   const btnBaseStyle = "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors";
   const btnActiveStyle = "bg-accent-purple text-white";
   const btnInactiveStyle = "bg-bg-tertiary text-text-secondary hover:bg-bg-primary";
-  
+
   const activePreset = getActivePreset({ enabled, color, offsetX, offsetY, blur });
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">阴影</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('阴影')}</h3>
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -97,31 +99,31 @@ export function ShadowSection({ shadow, onChange }: ShadowSectionProps) {
           <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
-      
+
       {enabled && (
         <>
           <div className="flex items-center gap-2">
             <button
               ref={colorButtonRef}
-              onClick={() => setShowPicker(!showPicker)}
+              onClick={() => setShowColorPicker(!showColorPicker)}
               // --- 修改：w-10 h-10 改为 w-8 h-8，使按钮更小 ---
               className="w-8 h-8 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
               style={{ backgroundColor: color }}
             />
           </div>
 
-          {showPicker && (
+          {showColorPicker && (
             <ColorPicker
               value={color}
               onChange={handleColorChange}
-              onClose={() => setShowPicker(false)}
+              onClose={() => setShowColorPicker(false)}
               position={getPickerPosition()}
               allowTransparent={true}
             />
           )}
-          
+
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">模糊</label>
+            <label className="text-xs text-text-secondary mb-2 block">{t('模糊')}</label>
             <div className="flex items-center gap-2">
               <button
                 className={`${btnBaseStyle} ${activePreset === 'S' ? btnActiveStyle : btnInactiveStyle}`}

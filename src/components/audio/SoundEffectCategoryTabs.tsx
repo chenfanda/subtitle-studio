@@ -1,7 +1,9 @@
 import { useAudioStore, useActiveSfxCategory } from '@/stores/useAudioStore';
 import { SFX_CATEGORIES } from '@/constants/sfxCategories';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function SoundEffectCategoryTabs() {
+  const { t } = useTranslation();
   const activeSfxCategory = useActiveSfxCategory();
   const setActiveSfxCategory = useAudioStore((state) => state.setActiveSfxCategory);
 
@@ -23,7 +25,7 @@ export function SoundEffectCategoryTabs() {
                 }
               `}
             >
-              {category.name}
+              {t(category.name)}
             </button>
           );
         })}

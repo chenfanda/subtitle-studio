@@ -3,6 +3,7 @@ import { getBrollDuration, generateBrollThumbnail } from '@/utils/brollUtils';
 import type { BrollVideo } from '@/types/broll';
 import { Loader2, UploadCloud, AlertTriangle } from 'lucide-react';
 import { InsertVideoCard } from './InsertVideoCard';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface InsertVideoLocalViewProps {
   onVideoSelect: (video: BrollVideo) => void;
@@ -10,6 +11,7 @@ interface InsertVideoLocalViewProps {
 }
 
 export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVideoLocalViewProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedVideos, setUploadedVideos] = useState<BrollVideo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -24,13 +26,13 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
     if (!file) return;
 
     if (!file.type.startsWith('video/mp4')) {
-      setUploadError('仅支持 MP4 格式');
+      setUploadError(t('仅支持 MP4 格式'));
       return;
     }
 
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-      setUploadError('文件大小不能超过 50MB');
+      setUploadError(t('文件大小不能超过 50MB'));
       return;
     }
 
@@ -42,7 +44,7 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
       const duration = await getBrollDuration(videoUrl);
 
       if (duration > 300) {
-        setUploadError('视频时长不能超过 300 秒');
+        setUploadError(t('视频时长不能超过 300 秒'));
         URL.revokeObjectURL(videoUrl);
         setIsUploading(false);
         return;
@@ -56,18 +58,18 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
         url: videoUrl,
         thumbnail,
         duration: Math.floor(duration),
-        tags: ['本地上传'],
+        tags: [t('本地上传')],
       };
 
       setUploadedVideos(prev => [newVideo, ...prev]);
       setIsUploading(false);
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (error) {
       setIsUploading(false);
-      setUploadError(error instanceof Error ? error.message : '上传失败');
+      setUploadError(error instanceof Error ? error.message : t('上传失败'));
     }
   };
 
@@ -79,7 +81,7 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const file = e.dataTransfer.files[0];
     if (file && fileInputRef.current) {
       const dataTransfer = new DataTransfer();
@@ -110,25 +112,25 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
           onChange={handleFileChange}
           className="hidden"
         />
-        
+
         {isUploading ? (
           <>
             <Loader2 size={48} className="animate-spin text-accent-purple mb-3" />
-            <div className="text-text-secondary">上传中...</div>
+            <div className="text-text-secondary">{t('上传中...')}</div>
           </>
         ) : (
           <>
             <UploadCloud size={64} className="mb-3 text-text-tertiary" />
-            <div className="text-text-primary font-medium mb-1">点击选择或拖拽上传</div>
+            <div className="text-text-primary font-medium mb-1">{t('点击选择或拖拽上传')}</div>
             <div className="text-sm text-text-secondary">
-              支持 MP4（最多 300 秒，50 MB）
+              {t('支持 MP4（最多 300 秒，50 MB）')}
             </div>
           </>
         )}
-        
+
         {uploadError && (
           <div className="mt-3 text-sm text-red-500 flex items-center justify-center gap-1">
-            <AlertTriangle size={16} /> 
+            <AlertTriangle size={16} />
             {uploadError}
           </div>
         )}
@@ -137,13 +139,13 @@ export function InsertVideoLocalView({ onVideoSelect, selectedVideo }: InsertVid
       {uploadedVideos.length > 0 && (
         <>
           <div className="text-sm font-medium text-text-primary">
-            已上传 ({uploadedVideos.length})
+            {t('已上传')} ({uploadedVideos.length})
           </div>
           <div className="grid grid-cols-2 gap-4">
             {uploadedVideos.map((video) => (
-              <InsertVideoCard 
-                key={video.id} 
-                video={video} 
+              <InsertVideoCard
+                key={video.id}
+                video={video}
                 isSelected={selectedVideo?.id === video.id}
                 onClick={() => onVideoSelect(video)}
               />

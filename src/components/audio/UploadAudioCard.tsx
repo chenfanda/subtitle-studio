@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { validateAudioFile } from '@/utils/audioUtils';
 import { UploadCloud, Loader2 } from 'lucide-react'; // 1. 导入图标
 
 export function UploadAudioCard() {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isHovering, setIsHovering] = useState(false);
-  
+
   const { uploadAudio } = useAudioStore();
 
   const handleClick = () => {
@@ -20,18 +22,18 @@ export function UploadAudioCard() {
     if (!file) return;
 
     setUploadError(null);
-    
+
     if (!validateAudioFile(file)) {
-      setUploadError('音频格式不支持或文件过大');
+      setUploadError(t('音频格式不支持或文件过大'));
       return;
     }
 
     setIsUploading(true);
-    
+
     try {
       await uploadAudio(file);
     } catch (error) {
-      setUploadError('上传失败，请重试');
+      setUploadError(t('上传失败，请重试'));
       console.error('Audio upload failed:', error);
     } finally {
       setIsUploading(false);
@@ -62,22 +64,22 @@ export function UploadAudioCard() {
           <UploadCloud size={24} />
         )}
       </div>
-      
+
       <div className="flex-1 text-left min-w-0">
         <div className="text-sm font-medium text-text-primary truncate">
-          {isUploading ? '上传中...' : '上传音频'}
+          {isUploading ? t('上传中...') : t('上传音频')}
         </div>
         <div className="text-xs text-text-secondary mt-0.5">
-          添加自定义音频
+          {t('添加自定义音频')}
         </div>
       </div>
-      
+
       {uploadError && (
         <div className="absolute inset-0 bg-red-500/90 flex items-center justify-center rounded-lg p-2">
           <span className="text-xs text-white text-center">{uploadError}</span>
         </div>
       )}
-      
+
       <input
         ref={fileInputRef}
         type="file"

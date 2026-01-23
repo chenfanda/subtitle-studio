@@ -1,7 +1,10 @@
 import { AudioCard } from './AudioCard';
 import { AUDIO_LIBRARY } from '@/constants/mediaCategories';
 
+import { useTranslation } from '@/hooks/useTranslation';
+
 export function ElectronicAudioTab() {
+  const { t } = useTranslation();
   const tracks = AUDIO_LIBRARY.electronic;
 
   return (
@@ -9,10 +12,10 @@ export function ElectronicAudioTab() {
       {tracks.map((track) => (
         <AudioCard key={track.id} track={track} />
       ))}
-      
+
       {tracks.length === 0 && (
         <div className="col-span-2 text-center text-text-secondary py-8">
-          暂无Electronic分类音频
+          {t('暂无Electronic分类音频')}
         </div>
       )}
     </div>

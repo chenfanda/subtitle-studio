@@ -4,10 +4,11 @@ import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 import { ColorPicker } from '@/components/common/ColorPicker';
-import { 
-  applyStyleToSegments, 
-  createRichTextFromPlainText 
+import {
+  applyStyleToSegments,
+  createRichTextFromPlainText
 } from '@/utils/textStyleUtils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface QuickToolbarProps {
   targetType: 'subtitle' | 'textElement';
@@ -36,59 +37,60 @@ const FONT_SIZE_OPTIONS = [
 ];
 
 export function QuickToolbar({ targetType, targetId, position, onClose }: QuickToolbarProps) {
+  const { t } = useTranslation();
   const { subtitles, updateSubtitleRichText } = useSubtitleStore();
   const { textElements, updateTextElement } = useTextElementStore();
-  const { 
-    setShowRichTextEditor, 
+  const {
+    setShowRichTextEditor,
     setRichTextEditorTarget,
     clearRichTextSelection
   } = useUIStore();
-  
+
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBrightness, setShowBrightness] = useState(false);
   const brightnessButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const currentObject = targetType === 'subtitle'
     ? subtitles.find(s => s.id === targetId)
     : textElements.find(e => e.id === targetId);
-  
+
   if (!currentObject) return null;
-  
+
   const currentStyle = (
-    targetType === 'subtitle' && 
-    currentObject.richText && 
+    targetType === 'subtitle' &&
+    currentObject.richText &&
     currentObject.richText.length > 0
-  ) 
+  )
     ? (currentObject.richText[0].style || DEFAULT_SUBTITLE_STYLE)
     : (currentObject.style || DEFAULT_SUBTITLE_STYLE);
-  
+
   const currentGlowColor = currentStyle.highlightColor;
   const currentBrightness = currentStyle.highlightIntensity || 15;
-  
-  const handleStyleUpdate = (updates: Partial<typeof currentStyle>) => {
-      if (targetType === 'subtitle') {
-        const selection = useUIStore.getState().richTextSelection;
-        
-        if (!selection || selection.subtitleId !== targetId) {
-          console.warn('QuickToolbar: Stale selection state. Aborting style update.');
-          return;
-        }
-        
-        const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
-        
-        const newSegments = applyStyleToSegments(
-          baseRichText,
-          selection.startIndex,
-          selection.endIndex,
-          updates
-        );
-        updateSubtitleRichText(targetId, newSegments);
 
-      } else {
-        updateTextElement(targetId, { style: { ...currentStyle, ...updates } });
+  const handleStyleUpdate = (updates: Partial<typeof currentStyle>) => {
+    if (targetType === 'subtitle') {
+      const selection = useUIStore.getState().richTextSelection;
+
+      if (!selection || selection.subtitleId !== targetId) {
+        console.warn('QuickToolbar: Stale selection state. Aborting style update.');
+        return;
       }
-    };
-  
+
+      const baseRichText = currentObject.richText || createRichTextFromPlainText(currentObject.text, currentStyle);
+
+      const newSegments = applyStyleToSegments(
+        baseRichText,
+        selection.startIndex,
+        selection.endIndex,
+        updates
+      );
+      updateSubtitleRichText(targetId, newSegments);
+
+    } else {
+      updateTextElement(targetId, { style: { ...currentStyle, ...updates } });
+    }
+  };
+
   const handleColorSelect = (color: string) => {
     if (color === 'transparent') {
       handleStyleUpdate({
@@ -103,7 +105,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
     }
     setShowColorPicker(false);
   };
-  
+
   const handleBrightnessChange = (brightness: number) => {
     if (currentGlowColor) {
       handleStyleUpdate({
@@ -112,26 +114,26 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
       });
     }
   };
-  
+
   const handleFontChange = (fontFamily: string) => {
     handleStyleUpdate({ fontFamily });
   };
-  
+
   const handleFontSizeChange = (fontSize: number) => {
     handleStyleUpdate({ fontSize });
   };
-  
+
   const handleStyleClick = () => {
     clearRichTextSelection();
     setRichTextEditorTarget({ type: targetType, id: targetId });
     setShowRichTextEditor(true);
     onClose();
   };
-  
 
-  
+
+
   return (
-    <div 
+    <div
       className="absolute z-40 bg-gray-900 border border-gray-700 rounded shadow-lg flex items-center divide-x divide-gray-700"
       style={{
         left: `${position.x}%`,
@@ -146,9 +148,9 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
           onClick={() => setShowColorPicker(!showColorPicker)}
           className="w-6 h-6 rounded-full border-2 border-gray-600 hover:border-gray-400 transition-colors"
           style={{ backgroundColor: currentGlowColor || '#666666' }}
-          title="发光颜色"
+          title={t('发光颜色')}
         />
-        
+
         {showColorPicker && (
           <div className="absolute bottom-full mb-2 left-0 z-50">
             <ColorPicker
@@ -160,18 +162,18 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
           </div>
         )}
       </div>
-      
+
       <div className="relative">
         <button
           ref={brightnessButtonRef}
           onClick={() => setShowBrightness(!showBrightness)}
           className="px-3 py-1 text-xs hover:bg-gray-700 text-white transition-colors"
-          title="亮度"
+          title={t('亮度')}
           disabled={!currentGlowColor}
         >
-          高亮
+          {t('高亮')}
         </button>
-        
+
         {showBrightness && currentGlowColor && (
           <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-600 rounded p-1 w-32 z-50">
             <div className="flex items-center gap-1.5">
@@ -188,8 +190,8 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
           </div>
         )}
       </div>
-      
-    <select
+
+      <select
         value={currentStyle.fontFamily}
         onChange={(e) => handleFontChange(e.target.value)}
         className="pl-3 pr-2 py-1 text-xs bg-gray-900 hover:bg-gray-700 border-none rounded-none text-white min-w-20 focus:outline-none"
@@ -200,7 +202,7 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
           </option>
         ))}
       </select>
-      
+
       <select
         value={currentStyle.fontSize}
         onChange={(e) => handleFontSizeChange(Number(e.target.value))}
@@ -210,19 +212,19 @@ export function QuickToolbar({ targetType, targetId, position, onClose }: QuickT
           <option key={size} value={size}>{size}</option>
         ))}
       </select>
-      
+
       <button
         onClick={handleStyleClick}
         className="px-3 py-1 text-xs hover:bg-gray-700 text-white whitespace-nowrap min-w-[52px] flex items-center justify-center transition-colors"
-        title="样式"
+        title={t('样式')}
       >
-        样式
+        {t('样式')}
       </button>
-        
+
       <button
         onClick={onClose}
         className="px-2 py-1 text-gray-400 hover:text-white text-xs transition-colors"
-        title="关闭"
+        title={t('关闭')}
       >
         ✕
       </button>

@@ -1,13 +1,15 @@
-import { 
-  useTracksForActiveTask, 
-  useActiveAudioTask, 
-  useActiveCategory, 
-  useActiveSfxCategory 
+import {
+  useTracksForActiveTask,
+  useActiveAudioTask,
+  useActiveCategory,
+  useActiveSfxCategory
 } from '@/stores/useAudioStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { AudioCard } from './AudioCard';
 import { UploadAudioCard } from './UploadAudioCard';
 
 export function AudioLibrary() {
+  const { t } = useTranslation();
   const tracks = useTracksForActiveTask();
 
   const activeAudioTask = useActiveAudioTask();
@@ -21,7 +23,7 @@ export function AudioLibrary() {
   return (
     <div className="p-4 space-y-3 overflow-y-auto">
 
-      {showUploadCard && <UploadAudioCard />} 
+      {showUploadCard && <UploadAudioCard />}
 
       {tracks.map((track) => (
         <AudioCard key={track.id} track={track} />
@@ -29,7 +31,7 @@ export function AudioLibrary() {
 
       {showUploadCard && tracks.length === 0 && (
         <div className="text-center text-text-secondary py-8">
-          还没有上传的音频，点击上方卡片开始上传
+          {t('还没有上传的音频，点击上方卡片开始上传')}
         </div>
       )}
 
@@ -37,7 +39,7 @@ export function AudioLibrary() {
         <div className="flex items-center justify-center h-40 text-text-tertiary">
           <div className="text-center">
             <div className="text-3xl mb-2">🎧</div>
-            <div className="text-sm">此分类下暂无音频</div>
+            <div className="text-sm">{t('此分类下暂无音频')}</div>
           </div>
         </div>
       )}

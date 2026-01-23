@@ -7,11 +7,12 @@ import {
   isStaticTemplate,
   isAnimationTemplate,
   isRichTextStyleTemplate,
-  isSceneTemplate 
+  isSceneTemplate
 } from '@/stores/useTemplateStore';
 import { useSelectedSubtitles, useRichTextSelection } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { convertToWebAnimation } from '@/utils/animationUtils';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   convertRichTextToPlainText,
   convertStyleToCSS,
@@ -31,6 +32,7 @@ interface EffectPreviewCardProps {
 }
 
 export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewCardProps) {
+  const { t } = useTranslation();
   const selectedTemplate = useSelectedTemplate();
   const selectTemplate = useTemplateStore((state) => state.selectTemplate);
   const removeCustomTemplate = useTemplateStore((state) => state.removeCustomTemplate);
@@ -65,12 +67,12 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
   const getPreviewText = () => {
     if (isRichTextStyleTemplate(template)) return template.preview || 'Rich Text';
     if (hasRichTextSelection && selectedSubtitle) {
-      const text = selectedSubtitle.richText 
-        ? convertRichTextToPlainText(selectedSubtitle.richText) 
+      const text = selectedSubtitle.richText
+        ? convertRichTextToPlainText(selectedSubtitle.richText)
         : selectedSubtitle.text;
       return text.substring(richTextSelection.startIndex, richTextSelection.endIndex);
     }
-    return selectedSubtitle?.text || template.name;
+    return selectedSubtitle?.text || t(template.name);
   };
 
   const previewText = getPreviewText();
@@ -94,7 +96,7 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     return null;
   }, [template]);
 
- useEffect(() => {
+  useEffect(() => {
     if (isScene) {
       // 动态场景：只看 ID
       setHasThisEffect(selectedSubtitle?.templateId === template.id);
@@ -175,7 +177,7 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
     if (!isScene) return null;
     return {
       id: `prev-${template.id}`,
-      text: template.name,
+      text: t(template.name),
       startTime: 0,
       endTime: 3000,
       templateId: template.id,
@@ -205,14 +207,13 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
         onMouseLeave={() => setIsHovered(false)}
         role="button"
         tabIndex={0}
-        className={`relative w-full h-24 rounded-lg border-2 transition-all duration-200 hover:scale-105 overflow-hidden group cursor-pointer ${
-          isSelected ? 'border-accent-purple shadow-lg shadow-accent-purple/20' : 'border-border-secondary'
-        }`}
+        className={`relative w-full h-24 rounded-lg border-2 transition-all duration-200 hover:scale-105 overflow-hidden group cursor-pointer ${isSelected ? 'border-accent-purple shadow-lg shadow-accent-purple/20' : 'border-border-secondary'
+          }`}
       >
         <div className="absolute inset-0 bg-bg-secondary flex items-center justify-center p-2">
           {isScene ? (
             <div className="w-full h-full pointer-events-none scale-[0.3] origin-center flex items-center justify-center">
-               <SubtitleScene subtitle={mockSubtitle} currentTime={previewTime} scaleFactor={1} isPreview={true} />
+              <SubtitleScene subtitle={mockSubtitle} currentTime={previewTime} scaleFactor={1} isPreview={true} />
             </div>
           ) : (
             <div ref={previewRef} className="text-sm font-medium text-text-primary truncate" style={cssPreviewStyle}>
@@ -222,11 +223,11 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white px-2 py-0.5 z-10 truncate">
-          {template.name}
+          {t(template.name)}
         </div>
 
         {isSelected && <div className="absolute top-1 right-1 w-3 h-3 bg-accent-purple rounded-full z-20" />}
-        
+
         {template.category === 'custom' && (
           <button
             onClick={(e) => { e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
@@ -240,23 +241,22 @@ export function EffectPreviewCard({ template, targetSubtitleId }: EffectPreviewC
           <div className="absolute bottom-1 left-1 right-1 z-20">
             <button
               onClick={handleApply}
-              className={`w-full py-1 text-[10px] rounded ${
-                hasThisEffect ? 'bg-red-600' : isApplied ? 'bg-green-600' : 'bg-accent-purple'
-              } text-white`}
+              className={`w-full py-1 text-[10px] rounded ${hasThisEffect ? 'bg-red-600' : isApplied ? 'bg-green-600' : 'bg-accent-purple'
+                } text-white`}
             >
-              {hasThisEffect ? '移除' : isApplied ? '✓ 已应用' : '应用'}
+              {hasThisEffect ? t('移除') : isApplied ? t('✓ 已应用') : t('应用')}
             </button>
           </div>
         )}
       </div>
 
       {isDeleteConfirmOpen && (
-        <Modal title="删除预设" isOpen={true} onClose={() => setIsDeleteConfirmOpen(false)}>
+        <Modal title={t('删除预设')} isOpen={true} onClose={() => setIsDeleteConfirmOpen(false)}>
           <div className="p-4 space-y-4">
-            <p className="text-sm">确定删除 "{template.name}" 吗？</p>
+            <p className="text-sm">{t('确定删除')} "{t(template.name)}" {t('吗？')}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 bg-bg-tertiary rounded-lg text-sm">取消</button>
-              <button onClick={() => { removeCustomTemplate(template.id); setIsDeleteConfirmOpen(false); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">删除</button>
+              <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 bg-bg-tertiary rounded-lg text-sm">{t('取消')}</button>
+              <button onClick={() => { removeCustomTemplate(template.id); setIsDeleteConfirmOpen(false); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">{t('删除')}</button>
             </div>
           </div>
         </Modal>

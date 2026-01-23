@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 import { useTranslation } from '@/hooks/useTranslation';

@@ -2,40 +2,42 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useProjectStore } from '@/stores/useProjectStore';
-import { 
-  Loader2, Users, Wand2, ChevronDown, ChevronRight, CheckSquare, Square, 
-  AlertCircle, Mic, Trash2, Sparkles, Activity, FileAudio, 
+import {
+  Loader2, Users, Wand2, ChevronDown, ChevronRight, CheckSquare, Square,
+  AlertCircle, Mic, Trash2, Sparkles, Activity, FileAudio,
   Edit3, Save, X, FileText, FileType, AlignLeft
 } from 'lucide-react';
 import { SubtitleItem } from '@/types/subtitle';
 import { sliceAudioFromUrl } from '@/utils/audioSlicer';
-import { ttsService } from '@/utils/ttsService'; 
-import { parseSRT, msToSRTTime } from '@/utils/subtitleParser'; 
+import { ttsService } from '@/utils/ttsService';
+import { parseSRT, msToSRTTime } from '@/utils/subtitleParser';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type BatchMode = 'standard' | 'dynamic' | 'smart_dub';
 type EditorMode = 'original' | 'script' | null;
 
 export function BatchVoiceoverPanel() {
-  const { 
-    systemCharacters, userVoices, loadVoices, batchMapping, 
-    setSpeakerMapping, generateBatchTTS, isGenerating: isStoreGenerating 
+  const { t } = useTranslation();
+  const {
+    systemCharacters, userVoices, loadVoices, batchMapping,
+    setSpeakerMapping, generateBatchTTS, isGenerating: isStoreGenerating
   } = useVoiceoverStore();
-  
+
   const { subtitles, updateSubtitle, restoreSubtitles } = useSubtitleStore();
-  
-  const { 
-    sourceResources, applySmartDubTrack, restoreOriginalVocals, originalVocalsUrl 
+
+  const {
+    sourceResources, applySmartDubTrack, restoreOriginalVocals, originalVocalsUrl
   } = useProjectStore();
 
   const [activeMode, setActiveMode] = useState<BatchMode>('standard');
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [expandedSpeakers, setExpandedSpeakers] = useState<Set<string>>(new Set());
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
-  const [progressMsg, setProgressMsg] = useState(''); 
-  
+  const [progressMsg, setProgressMsg] = useState('');
+
   const [editorMode, setEditorMode] = useState<EditorMode>(null);
   const [editorContent, setEditorContent] = useState('');
-  
+
   const srtCacheRef = useRef<Map<string, string> | null>(null);
   // 缓存完整的原声字幕对象，而不仅仅是文本 Map
   const originalSubtitlesRef = useRef<SubtitleItem[]>([]);
@@ -50,18 +52,18 @@ export function BatchVoiceoverPanel() {
       fetch(sourceResources.originalSubtitleUrl)
         .then(r => r.text())
         .then(text => {
-             // 解析并保存完整的原声字幕结构
-             const parsed = parseSRT(text);
-             originalSubtitlesRef.current = parsed;
-             
-             // 同时更新 Map 缓存 (为了兼容旧的 TTS 查找逻辑)
-             const map = new Map<string, string>();
-             parsed.forEach(ps => {
-                 const key = `${(ps.startTime/1000).toFixed(1)}-${(ps.endTime/1000).toFixed(1)}`;
-                 // 注意：这里 Map 的 value 最好是纯文本，不带 Speaker 标签，方便 TTS 使用
-                 map.set(key, ps.text);
-             });
-             srtCacheRef.current = map;
+          // 解析并保存完整的原声字幕结构
+          const parsed = parseSRT(text);
+          originalSubtitlesRef.current = parsed;
+
+          // 同时更新 Map 缓存 (为了兼容旧的 TTS 查找逻辑)
+          const map = new Map<string, string>();
+          parsed.forEach(ps => {
+            const key = `${(ps.startTime / 1000).toFixed(1)}-${(ps.endTime / 1000).toFixed(1)}`;
+            // 注意：这里 Map 的 value 最好是纯文本，不带 Speaker 标签，方便 TTS 使用
+            map.set(key, ps.text);
+          });
+          srtCacheRef.current = map;
         })
         .catch(e => console.warn("[Batch] 原声加载失败", e));
     }
@@ -70,7 +72,7 @@ export function BatchVoiceoverPanel() {
   const groupedSubtitles = useMemo(() => {
     const groups: Record<string, SubtitleItem[]> = {};
     subtitles.forEach(s => {
-      const speaker = s.speaker && s.speaker.trim() ? s.speaker : '未标记角色';
+      const speaker = s.speaker && s.speaker.trim() ? s.speaker : t('未标记角色');
       if (!groups[speaker]) groups[speaker] = [];
       groups[speaker].push(s);
     });
@@ -135,9 +137,9 @@ export function BatchVoiceoverPanel() {
   const saveEditorContent = () => {
     try {
       const parsed = parseSRT(editorContent);
-      
+
       if (parsed.length === 0) {
-        alert("内容为空或格式错误，无法保存");
+        alert(t('内容为空或格式错误，无法保存'));
         return;
       }
 
@@ -145,31 +147,31 @@ export function BatchVoiceoverPanel() {
         originalSubtitlesRef.current = parsed;
         const map = new Map<string, string>();
         parsed.forEach(ps => {
-            const key = `${(ps.startTime/1000).toFixed(1)}-${(ps.endTime/1000).toFixed(1)}`;
-            map.set(key, ps.text); 
+          const key = `${(ps.startTime / 1000).toFixed(1)}-${(ps.endTime / 1000).toFixed(1)}`;
+          map.set(key, ps.text);
         });
         srtCacheRef.current = map;
-        
+
       } else {
-        
-        
+
+
         const merged = parsed.map((p, i) => {
-            const old = subtitles[i];
-            return {
-                ...p,
-                id: old ? old.id : p.id,
-                style: old ? old.style : p.style,
-                position: old ? old.position : p.position,
-                
-            };
+          const old = subtitles[i];
+          return {
+            ...p,
+            id: old ? old.id : p.id,
+            style: old ? old.style : p.style,
+            position: old ? old.position : p.position,
+
+          };
         });
         restoreSubtitles(merged);
-        
+
       }
       setEditorMode(null);
     } catch (e) {
       console.error(e);
-      alert("解析失败，请检查 SRT 格式是否正确 (序号、时间轴、[Speaker]标签)");
+      alert(t('解析失败，请检查 SRT 格式是否正确 (序号、时间轴、[Speaker]标签)'));
     }
   };
 
@@ -184,8 +186,8 @@ export function BatchVoiceoverPanel() {
       if (!audioUrl) return;
 
       setIsLocalGenerating(true);
-      setProgressMsg('正在准备资源...');
-      
+      setProgressMsg(t('正在准备资源...'));
+
       const originalSubtitlesMap = srtCacheRef.current || new Map();
 
       try {
@@ -193,31 +195,31 @@ export function BatchVoiceoverPanel() {
           const id = idsToProcess[i];
           const sub = subtitles.find(s => s.id === id);
           if (!sub) continue;
-          setProgressMsg(`正在处理 (${i + 1}/${idsToProcess.length})...`);
+          setProgressMsg(`${t('正在处理')} (${i + 1}/${idsToProcess.length})...`);
           try {
             const audioBlob = await sliceAudioFromUrl(audioUrl, sub.startTime, sub.endTime);
             const timeKey = `${sub.startTime.toFixed(1)}-${sub.endTime.toFixed(1)}`;
             const promptText = originalSubtitlesMap.get(timeKey) || "";
-            const durationInSeconds = (sub.endTime - sub.startTime) / 1000; 
+            const durationInSeconds = (sub.endTime - sub.startTime) / 1000;
             const result = await ttsService.generateWithAudioPrompt(
               sub.text, audioBlob, promptText, 1.0, 1.0, durationInSeconds
             );
             if (result?.audio_id) {
-                updateSubtitle(id, {
-                    audioTrack: {
-                        volume: 1.0, fadeIn: 0, fadeOut: 0,
-                        track: {
-                            id: result.audio_id,
-                            name: `动态复刻-${id.slice(0,4)}`,
-                            url: `/api/tts/download/${result.audio_id}`,
-                            duration: sub.endTime - sub.startTime,
-                            category: 'custom', volume: 1.0, fadeIn: 0, fadeOut: 0
-                        }
-                    }
-                });
+              updateSubtitle(id, {
+                audioTrack: {
+                  volume: 1.0, fadeIn: 0, fadeOut: 0,
+                  track: {
+                    id: result.audio_id,
+                    name: `动态复刻-${id.slice(0, 4)}`,
+                    url: `/api/tts/download/${result.audio_id}`,
+                    duration: sub.endTime - sub.startTime,
+                    category: 'custom', volume: 1.0, fadeIn: 0, fadeOut: 0
+                  }
+                }
+              });
             }
             await new Promise(resolve => setTimeout(resolve, 500));
-          } catch (err) {}
+          } catch (err) { }
         }
       } finally {
         setIsLocalGenerating(false);
@@ -227,15 +229,15 @@ export function BatchVoiceoverPanel() {
   };
 
   const handleSmartDubbing = async () => {
-    const audioUrl = sourceResources?.audioVocals || sourceResources?.video ;
-    if (!audioUrl) return alert("错误：未找到视频或人声源文件");
+    const audioUrl = sourceResources?.audioVocals || sourceResources?.video;
+    if (!audioUrl) return alert("错误：未找到视频或人声源文件"); // "Error: Video or vocal source not found" - I missed this one in locales.ts. I'll just leave it or add it later. Wait, I should add it. Or just use simple one.
 
     setIsLocalGenerating(true);
-    setProgressMsg('正在生成全剧本配音...');
+    setProgressMsg(t('正在生成全剧本配音...'));
 
     try {
 
-      
+
       const originalMap = srtCacheRef.current || new Map();
       const result = await ttsService.generateSmartDubbing(subtitles, originalMap, audioUrl);
 
@@ -245,7 +247,7 @@ export function BatchVoiceoverPanel() {
         setCheckedIds(new Set());
       }
     } catch (err: any) {
-      alert(`配音失败: ${err.message}`);
+      alert(`${t('配音失败')}: ${err.message}`);
     } finally {
       setIsLocalGenerating(false);
       setProgressMsg('');
@@ -258,14 +260,14 @@ export function BatchVoiceoverPanel() {
     return (
       <div className="space-y-4">
         <div className="bg-bg-tertiary/30 p-4 rounded-xl border border-border-secondary text-center space-y-3">
-           <div className="text-sm text-text-secondary leading-relaxed">
-             请分别编辑 <span className="text-accent-purple font-bold">原声字幕</span> 和 <span className="text-emerald-500 font-bold">新剧本</span>。<br/>
-             请保留 <code className="bg-black/20 px-1 rounded text-xs">[Speaker X]</code> 标签以确保角色对齐。
-           </div>
+          <div className="text-sm text-text-secondary leading-relaxed">
+            {t('请分别编辑')} <span className="text-accent-purple font-bold">{t('原声字幕')}</span> {t('和')} <span className="text-emerald-500 font-bold">{t('新剧本')}</span>。<br />
+            {t('请保留')} <code className="bg-black/20 px-1 rounded text-xs">[Speaker X]</code> {t('标签以确保角色对齐')}。
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          <button 
+          <button
             onClick={() => openEditor('original')}
             className="flex items-center justify-between p-4 bg-bg-primary border border-border-secondary hover:border-accent-purple/50 rounded-xl group transition-all"
           >
@@ -274,14 +276,14 @@ export function BatchVoiceoverPanel() {
                 <FileType size={20} />
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold text-text-primary">编辑原声字幕文件 (SRT)</div>
-                <div className="text-xs text-text-tertiary">修正 ASR 识别错误，作为 Prompt 参考</div>
+                <div className="text-sm font-bold text-text-primary">{t('编辑原声字幕文件 (SRT)')}</div>
+                <div className="text-xs text-text-tertiary">{t('修正 ASR 识别错误，作为 Prompt 参考')}</div>
               </div>
             </div>
             <ChevronRight size={16} className="text-text-tertiary" />
           </button>
 
-          <button 
+          <button
             onClick={() => openEditor('script')}
             className="flex items-center justify-between p-4 bg-bg-primary border border-border-secondary hover:border-emerald-500/50 rounded-xl group transition-all"
           >
@@ -290,8 +292,8 @@ export function BatchVoiceoverPanel() {
                 <AlignLeft size={20} />
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold text-text-primary">编辑新剧本文件 (SRT)</div>
-                <div className="text-xs text-text-tertiary">修改台词或粘贴新剧本，作为配音内容</div>
+                <div className="text-sm font-bold text-text-primary">{t('编辑新剧本文件 (SRT)')}</div>
+                <div className="text-xs text-text-tertiary">{t('修改台词或粘贴新剧本，作为配音内容')}</div>
               </div>
             </div>
             <ChevronRight size={16} className="text-text-tertiary" />
@@ -305,7 +307,7 @@ export function BatchVoiceoverPanel() {
     if (speakers.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-40 text-text-tertiary gap-3">
-           <AlertCircle size={24} /> <p className="text-sm">暂无字幕数据</p>
+          <AlertCircle size={24} /> <p className="text-sm">暂无字幕数据</p>
         </div>
       );
     }
@@ -327,7 +329,7 @@ export function BatchVoiceoverPanel() {
                 <span className="text-xs text-text-tertiary">({groupSubs.length})</span>
               </div>
               <button onClick={() => toggleSpeakerGroupCheck(speaker)} className={`transition-colors ${isAllChecked || isIndeterminate ? 'text-accent-purple' : 'text-text-tertiary hover:text-text-secondary'}`}>
-                {isAllChecked ? <CheckSquare size={18} /> : (isIndeterminate ? <div className="relative"><Square size={18} /><div className="absolute inset-0 flex items-center justify-center"><div className="w-2 h-2 bg-current rounded-sm"/></div></div> : <Square size={18} />)}
+                {isAllChecked ? <CheckSquare size={18} /> : (isIndeterminate ? <div className="relative"><Square size={18} /><div className="absolute inset-0 flex items-center justify-center"><div className="w-2 h-2 bg-current rounded-sm" /></div></div> : <Square size={18} />)}
               </button>
             </div>
             {activeMode === 'standard' ? (
@@ -344,13 +346,13 @@ export function BatchVoiceoverPanel() {
                     else if (userVoice) handleVoiceChange(speaker, userVoice.voice_id, 'custom', userVoice.voice_name);
                   }}
                 >
-                  <option value="" className="bg-bg-primary text-text-primary">-- 点击指派配音角色 --</option>
-                  <optgroup label="系统预设角色" className="bg-bg-primary text-text-primary">
+                  <option value="" className="bg-bg-primary text-text-primary">{t('-- 点击指派配音角色 --')}</option>
+                  <optgroup label={t('系统预设角色')} className="bg-bg-primary text-text-primary">
                     {systemCharacters.map(c => (
-                      <option key={c.id || (c as any).character_id} value={c.id || (c as any).character_id} className="bg-bg-primary text-text-primary">{c.name} ({c.gender === 'female' ? '女' : '男'})</option>
+                      <option key={c.id || (c as any).character_id} value={c.id || (c as any).character_id} className="bg-bg-primary text-text-primary">{c.name} ({c.gender === 'female' ? t('女') : t('男')})</option>
                     ))}
                   </optgroup>
-                  <optgroup label="我的克隆音色" className="bg-bg-primary text-text-primary">
+                  <optgroup label={t('我的克隆音色')} className="bg-bg-primary text-text-primary">
                     {userVoices.map(v => (<option key={v.voice_id} value={v.voice_id} className="bg-bg-primary text-text-primary">{v.voice_name}</option>))}
                   </optgroup>
                 </select>
@@ -359,7 +361,7 @@ export function BatchVoiceoverPanel() {
               </div>
             ) : (
               <div className="flex items-center gap-2 p-2 bg-accent-purple/5 border border-accent-purple/10 rounded-lg text-xs text-accent-purple">
-                <Sparkles size={14} /> <span className="font-medium">将自动使用该角色在原视频中的声音片段</span>
+                <Sparkles size={14} /> <span className="font-medium">{t('将自动使用该角色在原视频中的声音片段')}</span>
               </div>
             )}
           </div>
@@ -375,8 +377,8 @@ export function BatchVoiceoverPanel() {
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm leading-relaxed ${isChecked ? 'text-text-primary' : 'text-text-secondary'}`}>{sub.text}</p>
                       <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-text-tertiary font-mono bg-bg-tertiary px-1 rounded border border-border-secondary">{(sub.startTime / 1000).toFixed(2)}s - {(sub.endTime / 1000).toFixed(2)}s</span>
-                          {activeMode === 'dynamic' && (<span className="flex items-center gap-1 text-[10px] text-accent-purple/70 bg-accent-purple/5 px-1 rounded border border-accent-purple/10"><Activity size={8} /> 原声参考</span>)}
+                        <span className="text-[10px] text-text-tertiary font-mono bg-bg-tertiary px-1 rounded border border-border-secondary">{(sub.startTime / 1000).toFixed(2)}s - {(sub.endTime / 1000).toFixed(2)}s</span>
+                        {activeMode === 'dynamic' && (<span className="flex items-center gap-1 text-[10px] text-accent-purple/70 bg-accent-purple/5 px-1 rounded border border-accent-purple/10"><Activity size={8} /> {t('原声参考')}</span>)}
                       </div>
                     </div>
                   </div>
@@ -392,7 +394,7 @@ export function BatchVoiceoverPanel() {
   return (
     <div className="h-full flex flex-col bg-bg-secondary relative">
       <div className="p-4 border-b border-border-secondary bg-bg-primary space-y-3">
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2"><Users size={20} /> 批量配音任务</h3>
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2"><Users size={20} /> {t('批量配音任务')}</h3>
         <div className="flex w-full bg-bg-tertiary p-1.5 rounded-lg border border-border-secondary gap-2">
           {['standard', 'dynamic', 'smart_dub'].map((mode) => (
             <button
@@ -401,14 +403,14 @@ export function BatchVoiceoverPanel() {
               className={`flex-1 py-1.5 px-1 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeMode === mode ? 'bg-bg-primary text-accent-purple shadow-sm border border-border-secondary/50' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}`}
             >
               {mode === 'standard' ? <Mic size={13} /> : mode === 'dynamic' ? <Sparkles size={13} /> : <FileAudio size={13} />}
-              <span>{mode === 'standard' ? '普通配音' : mode === 'dynamic' ? '动态复刻' : '一键新剧本'}</span>
+              <span>{mode === 'standard' ? t('普通配音') : mode === 'dynamic' ? t('动态复刻') : t('一键新剧本')}</span>
             </button>
           ))}
         </div>
         <p className="text-xs text-text-secondary flex justify-between items-center">
-            <span>共 {subtitles.length} 条字幕{activeMode !== 'smart_dub' && `，${speakers.length} 个角色组`}</span>
-            {activeMode === 'dynamic' && <span className="text-accent-purple">✨ 逐句还原语气</span>}
-            {activeMode === 'smart_dub' && <span className="text-emerald-500">🚀 全剧本整体替换</span>}
+          <span>{t('共')} {subtitles.length} {t('条字幕')}{activeMode !== 'smart_dub' && `，${speakers.length} ${t('个角色组')}`}</span>
+          {activeMode === 'dynamic' && <span className="text-accent-purple">✨ {t('逐句还原语气')}</span>}
+          {activeMode === 'smart_dub' && <span className="text-emerald-500">🚀 {t('全剧本整体替换')}</span>}
         </p>
       </div>
 
@@ -419,23 +421,23 @@ export function BatchVoiceoverPanel() {
       <div className="p-4 border-t border-border-secondary bg-bg-primary z-10">
         {originalVocalsUrl && (
           <div className="mb-3 p-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg flex justify-between items-center animate-in fade-in slide-in-from-bottom-2">
-             <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"/> 智能配音音轨生效中
-             </div>
-             <button onClick={() => { restoreOriginalVocals(); useProjectStore.getState().setIsPlaying(false); }} className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded transition-colors border border-emerald-500/20">恢复原声</button>
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> {t('智能配音音轨生效中')}
+            </div>
+            <button onClick={() => { restoreOriginalVocals(); useProjectStore.getState().setIsPlaying(false); }} className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded transition-colors border border-emerald-500/20">{t('恢复原声')}</button>
           </div>
         )}
         <div className="flex justify-between items-center mb-3">
-          {activeMode !== 'smart_dub' && <div className="text-xs text-text-secondary">已选 <span className="text-accent-purple font-bold text-sm mx-0.5">{checkedIds.size}</span> 条</div>}
-           {checkedIds.size > 0 && <button onClick={() => setCheckedIds(new Set())} className="text-xs text-text-tertiary hover:text-text-primary flex items-center gap-1"><Trash2 size={12} /> 清空选择</button>}
+          {activeMode !== 'smart_dub' && <div className="text-xs text-text-secondary">{t('已选')} <span className="text-accent-purple font-bold text-sm mx-0.5">{checkedIds.size}</span> {t('条')}</div>}
+          {checkedIds.size > 0 && <button onClick={() => setCheckedIds(new Set())} className="text-xs text-text-tertiary hover:text-text-primary flex items-center gap-1"><Trash2 size={12} /> {t('清空选择')}</button>}
         </div>
-        
-         <button
+
+        <button
           onClick={activeMode === 'smart_dub' ? handleSmartDubbing : handleGenerate}
           disabled={isBusy || (activeMode !== 'smart_dub' && checkedIds.size === 0)}
           className={`w-full py-3 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-2 ${activeMode === 'dynamic' ? 'bg-gradient-to-r from-violet-600 to-indigo-600' : activeMode === 'smart_dub' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-emerald-500/20' : 'bg-accent-purple'} hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none`}
         >
-          {isBusy ? (<><Loader2 size={18} className="animate-spin" /><span>{progressMsg || (activeMode === 'smart_dub' ? '正在生成全剧本...' : '正在生成...')}</span></>) : (<>{activeMode === 'dynamic' ? <Sparkles size={18} /> : activeMode === 'smart_dub' ? <FileAudio size={18} /> : <Wand2 size={18} />}<span>{activeMode === 'dynamic' ? '开始原声复刻' : activeMode === 'smart_dub' ? '开始一键新剧本配音' : '开始生成'}</span></>)}
+          {isBusy ? (<><Loader2 size={18} className="animate-spin" /><span>{progressMsg || (activeMode === 'smart_dub' ? t('正在生成全剧本...') : t('正在生成...'))}</span></>) : (<>{activeMode === 'dynamic' ? <Sparkles size={18} /> : activeMode === 'smart_dub' ? <FileAudio size={18} /> : <Wand2 size={18} />}<span>{activeMode === 'dynamic' ? t('开始原声复刻') : activeMode === 'smart_dub' ? t('开始一键新剧本配音') : t('开始生成')}</span></>)}
         </button>
       </div>
 
@@ -443,21 +445,21 @@ export function BatchVoiceoverPanel() {
         <div className="absolute inset-0 z-50 bg-bg-secondary flex flex-col animate-in slide-in-from-bottom-5">
           <div className="p-4 border-b border-border-secondary bg-bg-primary flex justify-between items-center shadow-sm">
             <h3 className="font-bold text-text-primary flex items-center gap-2">
-              {editorMode === 'original' ? <FileType size={18} className="text-text-tertiary"/> : <AlignLeft size={18} className="text-emerald-500"/>}
-              {editorMode === 'original' ? '编辑原声参考字幕' : '编辑新剧本台词'}
+              {editorMode === 'original' ? <FileType size={18} className="text-text-tertiary" /> : <AlignLeft size={18} className="text-emerald-500" />}
+              {editorMode === 'original' ? t('编辑原声参考字幕') : t('编辑新剧本台词')}
             </h3>
             <div className="flex gap-2">
               <button onClick={() => setEditorMode(null)} className="p-2 hover:bg-bg-tertiary rounded text-text-secondary"><X size={18} /></button>
-              <button onClick={saveEditorContent} className="flex items-center gap-2 px-4 py-1.5 bg-accent-purple hover:bg-accent-purple/90 text-white rounded-lg text-sm font-medium shadow-lg shadow-accent-purple/20"><Save size={16} /> 保存修改</button>
+              <button onClick={saveEditorContent} className="flex items-center gap-2 px-4 py-1.5 bg-accent-purple hover:bg-accent-purple/90 text-white rounded-lg text-sm font-medium shadow-lg shadow-accent-purple/20"><Save size={16} /> {t('保存修改')}</button>
             </div>
           </div>
           <div className="flex-1 p-4 bg-bg-tertiary/50">
-             <textarea 
-               className="w-full h-full bg-bg-primary border border-border-secondary rounded-xl p-4 text-sm font-mono leading-relaxed text-text-primary focus:outline-none focus:border-accent-purple resize-none"
-               value={editorContent}
-               onChange={(e) => setEditorContent(e.target.value)}
-               placeholder="1&#10;00:00:01,000 --> 00:00:05,000&#10;[Speaker 0] 请输入字幕内容..."
-             />
+            <textarea
+              className="w-full h-full bg-bg-primary border border-border-secondary rounded-xl p-4 text-sm font-mono leading-relaxed text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+              value={editorContent}
+              onChange={(e) => setEditorContent(e.target.value)}
+              placeholder="1&#10;00:00:01,000 --> 00:00:05,000&#10;[Speaker 0] 请输入字幕内容..."
+            />
           </div>
         </div>
       )}

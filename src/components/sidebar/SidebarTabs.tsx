@@ -1,7 +1,6 @@
 import { useUIStore, useActivePanel } from '@/stores/useUIStore';
 import type { PanelType } from '@/types/ui';
 import { useTranslation } from '@/hooks/useTranslation';
-// 导入 lucide-react 图标库
 import {
   Scissors,
   MessageSquareText,
@@ -14,12 +13,11 @@ import {
 
 interface ToolItem {
   id: PanelType;
-  icon: React.ElementType; // 图标类型从 string 改为 React.ElementType
+  icon: React.ElementType; 
   label: string;
   shortcut?: string;
 }
 
-// (使用 lucide-react 替换 emoji)
 const TOOLS: ToolItem[] = [
   { id: 'clips', icon: Scissors, label: '剪辑工具', shortcut: 'C' },
   { id: 'subtitles', icon: MessageSquareText, label: '字幕编辑', shortcut: 'U' },

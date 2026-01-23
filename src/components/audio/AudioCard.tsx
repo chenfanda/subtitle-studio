@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useAudioStore, useActiveAudioTask, useBackgroundMusic } from '@/stores/useAudioStore';
 import { useSelectedSubtitles } from '@/stores/useUIStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
@@ -11,16 +12,17 @@ interface AudioCardProps {
 }
 
 export function AudioCard({ track }: AudioCardProps) {
+  const { t } = useTranslation();
   const [isHovering, setIsHovering] = useState(false);
   const [isApplied, setIsApplied] = useState(false);
   const [hasThisAudio, setHasThisAudio] = useState(false);
 
-  const { 
-    previewTrack: currentTrack,   
-    isPreviewPlaying: isPlaying, 
-    previewCurrentTime: currentTime, 
+  const {
+    previewTrack: currentTrack,
+    isPreviewPlaying: isPlaying,
+    previewCurrentTime: currentTime,
     playPreview: playAudio,
-    pausePreview: pauseAudio,    
+    pausePreview: pauseAudio,
     setBackgroundMusic,
     removeBackgroundMusic
   } = useAudioStore();
@@ -39,25 +41,25 @@ export function AudioCard({ track }: AudioCardProps) {
   const isActionDisabled = isSfxMode && !hasSelectedSubtitles;
 
   useEffect(() => {
-    let has = false; // 1. 默认值为 false
+    let has = false;
 
-    if (isBgmMode) { // 2. 检查 BGM 模式
+    if (isBgmMode) {
       has = backgroundMusic?.id === track.id;
-    } 
-    else if (isSfxMode && hasSelectedSubtitles) { // 3. 检查 SFX 模式
+    }
+    else if (isSfxMode && hasSelectedSubtitles) {
       const selectedSubtitle = subtitles.find(s => s.id === selectedSubtitleIds[0]);
       if (selectedSubtitle?.soundEffect) {
         has = selectedSubtitle.soundEffect.track.id === track.id;
       }
     }
-    
-    setHasThisAudio(has); // 4. 在所有逻辑判断后，只调用一次 set
+
+    setHasThisAudio(has);
   }, [
-    selectedSubtitleIds, 
-    hasSelectedSubtitles, 
-    subtitles, 
-    track.id, 
-    isBgmMode, 
+    selectedSubtitleIds,
+    hasSelectedSubtitles,
+    subtitles,
+    track.id,
+    isBgmMode,
     isSfxMode,
     backgroundMusic
   ]);
@@ -114,8 +116,8 @@ export function AudioCard({ track }: AudioCardProps) {
     return 'border-transparent';
   };
 
-  const progressPercentage = (isCurrentlyPlaying && track.duration > 0) 
-    ? (currentTime / (track.duration * 1000)) * 100 
+  const progressPercentage = (isCurrentlyPlaying && track.duration > 0)
+    ? (currentTime / (track.duration * 1000)) * 100
     : 0;
 
   return (
@@ -149,7 +151,7 @@ export function AudioCard({ track }: AudioCardProps) {
 
       <div className="flex-1 text-left min-w-0">
         <div className="text-sm font-medium text-text-primary truncate">
-          {track.name}
+          {t(track.name)}
         </div>
         <div className="text-xs text-text-secondary mt-0.5">
           {formatDuration(track.duration)}
@@ -167,7 +169,7 @@ export function AudioCard({ track }: AudioCardProps) {
               : 'bg-accent-purple hover:bg-accent-purple-dark text-white'
             }
           `}
-          title={hasThisAudio ? "移除" : "应用"}
+          title={hasThisAudio ? t("移除") : t("应用")}
         >
           {hasThisAudio ? (
             <MinusIcon className="w-5 h-5" />

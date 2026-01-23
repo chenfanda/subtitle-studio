@@ -1,28 +1,30 @@
 import { Plus } from 'lucide-react';
 import { useVideoSequenceStore } from '@/stores/useVideoSequenceStore';
 import { useProjectStore } from '@/stores/useProjectStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 /**
  * "视频序列" 模式的工具栏。
  * 包含 "添加视频插入" 按钮。
  */
 export function VideoSequenceToolbar() {
+  const { t } = useTranslation();
   const { addInsertSegment } = useVideoSequenceStore();
   const { currentTime } = useProjectStore();
 
   const handleAddVideoInsert = () => {
     // TODO: 替换为媒体选择对话框 (例如 BrollDialog)
-    
+
     // 这是一个临时的占位符，用于获取视频信息
-    const sourceUrl = window.prompt("请输入要插入的视频 URL:");
+    const sourceUrl = window.prompt(t("请输入要插入的视频 URL:"));
     if (!sourceUrl) {
       return; // 用户取消
     }
 
-    const durationStr = window.prompt("请输入视频时长 (秒):", "5");
+    const durationStr = window.prompt(t("请输入视频时长 (秒):"), "5");
     const durationSec = parseFloat(durationStr || "5");
     if (isNaN(durationSec) || durationSec <= 0) {
-      alert("无效的时长");
+      alert(t("无效的时长"));
       return;
     }
 
@@ -44,7 +46,7 @@ export function VideoSequenceToolbar() {
         "
       >
         <Plus size={16} />
-        <span>添加视频插入</span>
+        <span>{t('添加视频插入')}</span>
       </button>
     </div>
   );

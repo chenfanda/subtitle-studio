@@ -8,9 +8,9 @@ interface WatermarkProps {
   scaleFactor?: number;
 }
 
-export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
+export function Watermark({ config, scaleFactor = 1 }: WatermarkProps) {
   const { updateWatermark, switchToCustomPosition } = useSettingsStore();
-  
+
   const [isDragging, setIsDragging] = useState(false);
   const watermarkRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ startX: 0, startY: 0, initialLeftPct: 0, initialTopPct: 0, parentWidth: 0, parentHeight: 0 });
@@ -24,48 +24,48 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
       case 'row-reverse': return 'flex flex-row-reverse space-x-reverse space-x-2 items-center';
       case 'col': return 'flex flex-col space-y-1 items-center';
       case 'col-reverse': return 'flex flex-col-reverse space-y-reverse space-y-1 items-center';
-      case 'overlay': return 'grid place-items-center'; 
+      case 'overlay': return 'grid place-items-center';
       default: return 'flex flex-row space-x-2 items-center';
     }
   };
 
   const getPositionStyle = (): React.CSSProperties => {
-  // 统一使用绝对定位 + 固定边距
-  if (config.positionMode === 'custom') {
-    return { 
-      left: `${config.customPosition.x}%`, 
-      top: `${config.customPosition.y}%`,
-      transform: 'translate(-50%, -50%)'  // 保持中心锚点
-    };
-  } else {
-    // 使用固定的边距百分比，确保全屏和非全屏一致
-    const margin = 5; // 5% 边距
-    const presetPositions: Record<string, React.CSSProperties> = {
-      'top-left': { 
-        left: `${margin}%`, 
-        top: `${margin}%`,
-        transform: 'translate(0, 0)'  // 左上角不需要居中
-      },
-      'top-right': { 
-        left: `${100 - margin}%`, 
-        top: `${margin}%`,
-        transform: 'translate(-100%, 0)'  // 右对齐
-      },
-      'bottom-left': { 
-        left: `${margin}%`, 
-        top: `${100 - margin}%`,
-        transform: 'translate(0, -100%)'  // 底部对齐
-      },
-      'bottom-right': { 
-        left: `${100 - margin}%`, 
-        top: `${100 - margin}%`,
-        transform: 'translate(-100%, -100%)'  // 右下对齐
-      },
-    };
-    return presetPositions[config.position] || presetPositions['top-right'];
-  }
-};
-  
+    // 统一使用绝对定位 + 固定边距
+    if (config.positionMode === 'custom') {
+      return {
+        left: `${config.customPosition.x}%`,
+        top: `${config.customPosition.y}%`,
+        transform: 'translate(-50%, -50%)'  // 保持中心锚点
+      };
+    } else {
+      // 使用固定的边距百分比，确保全屏和非全屏一致
+      const margin = 5; // 5% 边距
+      const presetPositions: Record<string, React.CSSProperties> = {
+        'top-left': {
+          left: `${margin}%`,
+          top: `${margin}%`,
+          transform: 'translate(0, 0)'  // 左上角不需要居中
+        },
+        'top-right': {
+          left: `${100 - margin}%`,
+          top: `${margin}%`,
+          transform: 'translate(-100%, 0)'  // 右对齐
+        },
+        'bottom-left': {
+          left: `${margin}%`,
+          top: `${100 - margin}%`,
+          transform: 'translate(0, -100%)'  // 底部对齐
+        },
+        'bottom-right': {
+          left: `${100 - margin}%`,
+          top: `${100 - margin}%`,
+          transform: 'translate(-100%, -100%)'  // 右下对齐
+        },
+      };
+      return presetPositions[config.position] || presetPositions['top-right'];
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!watermarkRef.current) return;
@@ -79,7 +79,7 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
     setIsDragging(true);
     const parentRect = parent.getBoundingClientRect();
     const rect = watermarkRef.current.getBoundingClientRect();
-    
+
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -131,16 +131,16 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
     opacity: config.opacity / 100,
     userSelect: 'none',
     cursor: isDragging ? 'grabbing' : 'grab',
-    zIndex: 30, 
+    zIndex: 30,
     whiteSpace: 'nowrap',
     ...getPositionStyle(),
     transform: `${getPositionStyle().transform} scale(${scaleFactor})`,
     transformOrigin: getTransformOrigin(config.position, config.positionMode),
   };
-  
+
   function getTransformOrigin(position: string, mode: string) {
     if (mode === 'custom') return 'center center'; // 自定义模式锚点是中心
-    
+
     // 预设模式锚点跟随角落
     switch (position) {
       case 'top-left': return 'top left';
@@ -154,26 +154,26 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
   const isOverlay = layout === 'overlay';
 
   return (
-    <div 
-      
+    <div
+
       ref={watermarkRef}
       style={watermarkStyle}
       onMouseDown={handleMouseDown}
       className="group pointer-events-auto touch-none"
       title="拖拽调整位置"
     >
-      <div 
-        id="watermark-preview-node" 
+      <div
+        id="watermark-preview-node"
         className={`backdrop-blur-sm rounded-lg px-3 py-2 border border-transparent hover:border-white/20 transition-colors ${getLayoutClasses()}`}
-        style={{ transform: 'none' }} 
+        style={{ transform: 'none' }}
       >
         <div className={`relative flex-shrink-0 ${isOverlay ? 'col-start-1 row-start-1' : ''}`}>
           {config.imageUrl ? (
-            <img 
-              src={config.imageUrl} 
-              alt="watermark" 
+            <img
+              src={config.imageUrl}
+              alt="watermark"
               className="object-contain select-none pointer-events-none"
-              style={{ 
+              style={{
                 height: `${config.fontSize * 1.5}px`,
                 width: 'auto',
                 maxWidth: '120px',
@@ -181,11 +181,11 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
               }}
             />
           ) : (
-            <div 
-              style={{ 
-                width: `${config.fontSize * 1.5}px`, 
+            <div
+              style={{
+                width: `${config.fontSize * 1.5}px`,
                 height: `${config.fontSize * 1.5}px`,
-                color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000' 
+                color: config.backgroundColor.includes('rgba(0, 0, 0') ? '#ffffff' : '#000000'
               }}
             >
               <WatermarkLogo />
@@ -194,11 +194,11 @@ export function Watermark({ config , scaleFactor = 1}: WatermarkProps) {
         </div>
 
         {config.text && (
-          <span 
+          <span
             className={`font-medium leading-none select-none ${isOverlay ? 'col-start-1 row-start-1 z-10 drop-shadow-md' : ''}`}
-            style={isOverlay ? { 
+            style={isOverlay ? {
               textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-              fontSize: '0.5em' 
+              fontSize: '0.5em'
             } : {}}
           >
             {config.text}

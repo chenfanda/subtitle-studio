@@ -3,7 +3,7 @@ import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { useTextElementStore } from '@/stores/useTextElementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useTemplateStore } from '@/stores/useTemplateStore';
-import { DEFAULT_SUBTITLE_STYLE , type SubtitlePosition } from '@/types/subtitle';
+import { DEFAULT_SUBTITLE_STYLE, type SubtitlePosition } from '@/types/subtitle';
 import { TemplateQuickAccess } from './TemplateQuickAccess';
 import { BasicEffectsSection } from './BasicEffectsSection';
 import { AlignmentSection } from './AlignmentSection';
@@ -18,6 +18,7 @@ import {
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
 import { Target, Hourglass, Check } from 'lucide-react';
 import { formatMillisecondsToTime } from '@/utils/timelineUtils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface RichTextEditorProps {
   targetType: 'subtitle' | 'textElement';
@@ -26,11 +27,12 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ targetType, targetId, onClose }: RichTextEditorProps) {
+  const { t } = useTranslation();
   const {
     subtitles,
     applyStyleToAllSubtitles,
     updateSubtitleRichText,
-    updateSubtitle 
+    updateSubtitle
   } = useSubtitleStore();
 
   const {
@@ -52,7 +54,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
   const currentObject = useMemo(() => targetType === 'subtitle'
     ? subtitles.find(s => s.id === targetId)
     : textElements.find(e => e.id === targetId)
-  , [subtitles, textElements, targetId, targetType]);
+    , [subtitles, textElements, targetId, targetType]);
 
   const [localText, setLocalText] = useState(currentObject?.text || '');
 
@@ -61,7 +63,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       setLocalText(currentObject.text);
     }
   }, [currentObject?.text]);
-  
+
 
   const currentAnimation = useMemo(() => {
     if (targetType === 'subtitle' && currentObject?.richText?.[0]?.animation) {
@@ -75,7 +77,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     onClose();
   };
 
-  
+
 
   const currentStyle = useMemo(() => {
     if (!currentObject) return DEFAULT_SUBTITLE_STYLE;
@@ -119,10 +121,10 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
         endIndex: currentObject.text.length
       };
 
-      if (targetType === 'subtitle') {
+    if (targetType === 'subtitle') {
       // 判断是否是全选操作
       const isFullSelection = selectionToApply.startIndex === 0 && selectionToApply.endIndex === currentObject.text.length;
-      
+
       const globalUpdates: any = {};
       const richTextUpdates: any = { ...updates };
 
@@ -141,11 +143,11 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       // 仅当用户【全选】时，我们才将这些属性视为“容器样式”，存入全局 style
       // 这样 SubtitleScene 就会把它们渲染到 Wrapper 上，形成完整的块
       const blockProps = [
-        'backgroundColor', 'backgroundShape', 'padding', 
-        'borderRadius', 'boxShadow', 'border', 'shadow', 
+        'backgroundColor', 'backgroundShape', 'padding',
+        'borderRadius', 'boxShadow', 'border', 'shadow',
         'borderColor', 'borderWidth', 'borderStyle'
       ];
-      
+
       if (isFullSelection) {
         blockProps.forEach(prop => {
           if (prop in updates) {
@@ -196,14 +198,14 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     }
   };
 
-   const handleApplyToAll = () => {
+  const handleApplyToAll = () => {
     if (!currentObject) return;
     setApplyState('loading');
 
     if (targetType === 'subtitle') {
-      
+
       const currentPosition = currentObject?.position as SubtitlePosition | undefined;
-      applyStyleToAllSubtitles(currentStyle, currentAnimation,currentPosition);
+      applyStyleToAllSubtitles(currentStyle, currentAnimation, currentPosition);
     } else {
       const elementType = getTextElementType(targetId);
       applyStyleToAllTextElementsOfType(elementType, currentStyle);
@@ -241,17 +243,17 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       // 支持 MM:SS.ms 或 HH:MM:SS.ms
       const parts = str.split(':');
       let totalMs = 0;
-      
+
       if (parts.length === 3) { // HH:MM:SS
-         const [h, m, sWithMs] = parts;
-         const [s, ms] = sWithMs.split('.');
-         totalMs = parseInt(h) * 3600000 + parseInt(m) * 60000 + parseInt(s) * 1000;
-         if (ms) totalMs += parseInt(ms.padEnd(3,'0').slice(0,3));
+        const [h, m, sWithMs] = parts;
+        const [s, ms] = sWithMs.split('.');
+        totalMs = parseInt(h) * 3600000 + parseInt(m) * 60000 + parseInt(s) * 1000;
+        if (ms) totalMs += parseInt(ms.padEnd(3, '0').slice(0, 3));
       } else if (parts.length === 2) { // MM:SS
-         const [m, sWithMs] = parts;
-         const [s, ms] = sWithMs.split('.');
-         totalMs = parseInt(m) * 60000 + parseInt(s) * 1000;
-         if (ms) totalMs += parseInt(ms.padEnd(3,'0').slice(0,3)); // 补全毫秒位
+        const [m, sWithMs] = parts;
+        const [s, ms] = sWithMs.split('.');
+        totalMs = parseInt(m) * 60000 + parseInt(s) * 1000;
+        if (ms) totalMs += parseInt(ms.padEnd(3, '0').slice(0, 3)); // 补全毫秒位
       }
       return isNaN(totalMs) ? null : totalMs;
     } catch (e) {
@@ -261,14 +263,14 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
 
   const handleTimeBlur = () => {
     if (!currentObject || targetType !== 'textElement') return;
-    
+
     const newStart = parseTimeStr(startTimeStr);
     const newEnd = parseTimeStr(endTimeStr);
-    
+
     const updates: any = {};
     if (newStart !== null && newStart !== currentObject.startTime) updates.startTime = newStart;
     if (newEnd !== null && newEnd !== currentObject.endTime) updates.endTime = newEnd;
-    
+
     if (Object.keys(updates).length > 0) {
 
       useTextElementStore.getState().updateTextElement(targetId, updates);
@@ -281,7 +283,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
     <div className="w-80 h-full bg-bg-primary border-l border-border-primary overflow-y-auto flex flex-col">
       <div className="flex-shrink-0 p-4 border-b border-border-secondary flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-text-primary">样式编辑</h2>
+          <h2 className="text-lg font-semibold text-text-primary">{t('样式编辑')}</h2>
         </div>
         <button
           onClick={handleClose}
@@ -292,23 +294,23 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-       {targetType === 'textElement' && (
+        {targetType === 'textElement' && (
           <div className="space-y-3 w-full">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-text-secondary">文字内容</label>
+              <label className="text-xs font-medium text-text-secondary">{t('文字内容')}</label>
               <textarea
                 value={localText}
                 onChange={(e) => handleTextChange(e.target.value)}
                 onBlur={handleTextBlur}
                 className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary resize-none focus:border-accent-purple focus:ring-1 focus:ring-accent-purple transition-colors"
                 rows={3}
-                placeholder="输入文字内容..."
+                placeholder={t('输入文字内容...')}
               />
             </div>
             <div className="flex items-center gap-2 w-full">
               {/* 开始时间 */}
               <div className="flex-1 min-w-0 space-y-1">
-                <label className="text-[10px] text-text-tertiary block truncate">开始</label>
+                <label className="text-[10px] text-text-tertiary block truncate">{t('开始')}</label>
                 <input
                   type="text"
                   value={startTimeStr}
@@ -318,10 +320,10 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
                   placeholder="00:00.00"
                 />
               </div>
-              
+
               <div className="text-text-disabled pt-4 flex-shrink-0">-</div>
               <div className="flex-1 min-w-0 space-y-1">
-                <label className="text-[10px] text-text-tertiary block truncate">结束</label>
+                <label className="text-[10px] text-text-tertiary block truncate">{t('结束')}</label>
                 <input
                   type="text"
                   value={endTimeStr}
@@ -399,19 +401,19 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
           {applyState === 'idle' && (
             <>
               <Target className="w-4 h-4" />
-              <span>运用于全长视频</span>
+              <span>{t('运用于全长视频')}</span>
             </>
           )}
           {applyState === 'loading' && (
             <>
               <Hourglass className="w-4 h-4" />
-              <span>运用中...</span>
+              <span>{t('运用中...')}</span>
             </>
           )}
           {applyState === 'applied' && (
             <>
               <Check className="w-4 h-4" />
-              <span>已运用</span>
+              <span>{t('已运用')}</span>
             </>
           )}
         </button>
@@ -421,7 +423,7 @@ export default function RichTextEditor({ targetType, targetId, onClose }: RichTe
         <SaveTemplateModal
           onClose={() => setIsSaveModalOpen(false)}
           onSave={handleConfirmSave}
-          initialName={`自定义富文本 ${customTemplateCount + 1}`}
+          initialName={`${t('自定义富文本')} ${customTemplateCount + 1}`}
         />
       )}
     </div>

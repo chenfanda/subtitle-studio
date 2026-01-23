@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { ColorPicker } from './ColorPicker';
 import type { SubtitleStyle } from '@/types/subtitle';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BasicEffectsSectionProps {
   targetType: 'subtitle' | 'textElement';
@@ -24,12 +25,13 @@ const FONT_OPTIONS = [
   { value: 'sans-serif', label: 'Sans Serif' }
 ];
 
-export function BasicEffectsSection({ 
-  targetType, 
-  style, 
+export function BasicEffectsSection({
+  targetType,
+  style,
   onChange,
   onSaveStyle
 }: BasicEffectsSectionProps) {
+  const { t } = useTranslation();
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -45,7 +47,7 @@ export function BasicEffectsSection({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-text-primary">基本效果</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('基本效果')}</h3>
         <button
           onClick={onSaveStyle}
           className="flex items-center gap-1 text-xs font-medium text-accent-purple hover:text-accent-purple/80 transition-colors"
@@ -53,12 +55,12 @@ export function BasicEffectsSection({
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          <span>保存样式</span>
+          <span>{t('保存样式')}</span>
         </button>
       </div>
-      
+
       <div>
-        <label className="text-xs text-text-secondary mb-2 block">文字字体</label>
+        <label className="text-xs text-text-secondary mb-2 block">{t('文字字体')}</label>
         <select
           value={style.fontFamily}
           onChange={(e) => onChange({ fontFamily: e.target.value })}
@@ -72,10 +74,10 @@ export function BasicEffectsSection({
           ))}
         </select>
       </div>
-      
+
       {targetType === 'subtitle' && (
         <div>
-          <label className="text-xs text-text-secondary mb-2 block">文字间距</label>
+          <label className="text-xs text-text-secondary mb-2 block">{t('文字间距')}</label>
           <div className="flex items-center gap-3">
             <input
               type="range"
@@ -93,9 +95,9 @@ export function BasicEffectsSection({
           </div>
         </div>
       )}
-      
+
       <div>
-        <label className="text-xs text-text-secondary mb-2 block">字体大小</label>
+        <label className="text-xs text-text-secondary mb-2 block">{t('字体大小')}</label>
         <input
           type="number"
           min="12"
@@ -106,9 +108,9 @@ export function BasicEffectsSection({
           className="w-full px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg text-sm text-text-primary focus:border-border-secondary focus:ring-0 transition-colors"
         />
       </div>
-      
+
       <div>
-        <label className="text-xs text-text-secondary mb-2 block">填充</label>
+        <label className="text-xs text-text-secondary mb-2 block">{t('填充')}</label>
         <div className="relative">
           <button
             ref={colorButtonRef}
@@ -116,7 +118,7 @@ export function BasicEffectsSection({
             className="w-10 h-10 rounded-full border-2 border-border-secondary hover:border-border-primary transition-colors cursor-pointer"
             style={{ backgroundColor: style.color }}
           />
-          
+
           {showColorPicker && (
             <ColorPicker
               value={style.color}
@@ -131,81 +133,80 @@ export function BasicEffectsSection({
           )}
         </div>
       </div>
-      
+
       <div>
-        <label className="text-xs text-text-secondary mb-2 block">格式</label>
+        <label className="text-xs text-text-secondary mb-2 block">{t('格式')}</label>
         {/* ... (按钮样式不变) ... */}
         <div className="grid grid-cols-4 gap-2">
           <button
-            onClick={() => onChange({ fontWeight: style.fontWeight >= 600 ? 400 : 700 })}
-            className={`h-10 rounded-lg border transition-all ${
-              style.fontWeight >= 600
+            onClick={() => {
+              const currentWeight = typeof style.fontWeight === 'string' ? parseInt(style.fontWeight) || 400 : style.fontWeight;
+              onChange({ fontWeight: currentWeight >= 600 ? 400 : 700 });
+            }}
+            className={`h-10 rounded-lg border transition-all ${(typeof style.fontWeight === 'string' ? parseInt(style.fontWeight) || 400 : style.fontWeight) >= 600
                 ? 'bg-accent-purple border-accent-purple text-white shadow-lg shadow-accent-purple/20'
                 : 'bg-bg-tertiary border-border-secondary text-text-secondary hover:border-border-primary'
-            }`}
-            title="粗体"
+              }`}
+            title={t('粗体')}
           >
             <strong>B</strong>
           </button>
-          
+
           <button
             onClick={() => onChange({ fontStyle: style.fontStyle === 'italic' ? 'normal' : 'italic' })}
-            className={`h-10 rounded-lg border transition-all ${
-              style.fontStyle === 'italic'
+            className={`h-10 rounded-lg border transition-all ${style.fontStyle === 'italic'
                 ? 'bg-accent-purple border-accent-purple text-white shadow-lg shadow-accent-purple/20'
                 : 'bg-bg-tertiary border-border-secondary text-text-secondary hover:border-border-primary'
-            }`}
-            title="斜体"
+              }`}
+            title={t('斜体')}
           >
             <em>I</em>
           </button>
-          
+
           <button
             onClick={() => {
               const current = style.textDecoration || '';
               const hasUnderline = current.includes('underline');
               const hasStrike = current.includes('line-through');
-              
+
               let newDecoration = '';
               if (!hasUnderline) {
                 newDecoration = hasStrike ? 'underline line-through' : 'underline';
               } else if (hasStrike) {
                 newDecoration = 'line-through';
               }
-              
+
               onChange({ textDecoration: newDecoration || 'none' });
             }}
-            className={`h-10 rounded-lg border transition-all ${
-              style.textDecoration?.includes('underline')
+            className={`h-10 rounded-lg border transition-all ${style.textDecoration?.includes('underline')
                 ? 'bg-accent-purple border-accent-purple text-white shadow-lg shadow-accent-purple/20'
                 : 'bg-bg-tertiary border-border-secondary text-text-secondary hover:border-border-primary'
-            }`}
-            title="下划线"
+              }`}
+            title={t('下划线')}
           >
             <u>U</u>
           </button>
-          
+
           <button
             onClick={() => {
               const current = style.textDecoration || '';
               const hasUnderline = current.includes('underline');
               const hasStrike = current.includes('line-through');
-              
+
               let newDecoration = '';
               if (!hasStrike) {
                 newDecoration = hasUnderline ? 'underline line-through' : 'line-through';
               } else if (hasUnderline) {
                 newDecoration = 'underline';
               }
-              
+
               onChange({ textDecoration: newDecoration || 'none' });
             }}
-            className={`h-10 rounded-lg border transition-all ${
-              style.textDecoration?.includes('line-through')
+            className={`h-10 rounded-lg border transition-all ${style.textDecoration?.includes('line-through')
                 ? 'bg-accent-purple border-accent-purple text-white shadow-lg shadow-accent-purple/20'
                 : 'bg-bg-tertiary border-border-secondary text-text-secondary hover:border-border-primary'
-            }`}
-            title="删除线"
+              }`}
+            title={t('删除线')}
           >
             <s>S</s>
           </button>

@@ -2,6 +2,7 @@ import { useVoiceoverStore } from '@/stores/useVoiceoverStore';
 import { useSubtitleStore } from '@/stores/useSubtitleStore';
 import { formatDuration } from '@/utils/audioUtils';
 import { ArrowLeft, Trash2, Volume2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface VoiceoverEditViewProps {
   onApply: () => void;
@@ -9,6 +10,7 @@ interface VoiceoverEditViewProps {
 }
 
 export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditViewProps) {
+  const { t } = useTranslation();
   const { selectedAudio, setDialogView } = useVoiceoverStore();
   const { removeSubtitleAudio } = useSubtitleStore();
 
@@ -31,7 +33,7 @@ export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditVi
           className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={18} />
-          <span className="text-sm">返回</span>
+          <span className="text-sm">{t('返回')}</span>
         </button>
       </div>
 
@@ -44,7 +46,7 @@ export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditVi
           <button
             onClick={handleDelete}
             className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors"
-            title="删除配音"
+            title={t('删除配音')}
           >
             <Trash2 size={18} />
           </button>
@@ -54,7 +56,7 @@ export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditVi
               {selectedAudio.name}
             </div>
             <div className="text-text-secondary">
-              时长: {formatDuration(selectedAudio.duration)}
+              {t('时长:')} {formatDuration(selectedAudio.duration)}
             </div>
           </div>
         </div>
@@ -66,7 +68,7 @@ export function VoiceoverEditView({ onApply, targetSubtitleId }: VoiceoverEditVi
           onClick={onApply}
           className="w-full py-3 rounded-lg bg-accent-purple hover:bg-accent-purple/90 text-white font-medium transition-colors"
         >
-          应用
+          {t('应用')}
         </button>
       </div>
     </div>

@@ -14,7 +14,7 @@ export function TemplatePanel() {
     { id: 'custom', name: '自定义' },
     { id: 'featured', name: '精选' },
     { id: 'dynamic', name: '动态效果' },
-    { id: 'static', name: '基本效果' }
+    { id: 'static', name: '基础效果' }
   ] as const;
 
   return (
