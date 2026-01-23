@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { ColorPicker } from './ColorPicker';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface StrokeSectionProps {
   stroke?: {
@@ -17,20 +18,21 @@ const STROKE_PRESETS = {
 };
 
 export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
+  const { t } = useTranslation();
   const enabled = stroke?.enabled || false;
   const color = stroke?.color || '#000000';
   const width = stroke?.width || STROKE_PRESETS.M;
-  
+
   const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const handleToggle = (checked: boolean) => {
     onChange({ enabled: checked, color, width });
     if (!checked) {
       setShowPicker(false);
     }
   };
-  
+
   const handleColorChange = (newColor: string) => {
     if (newColor === 'transparent') {
       onChange({ enabled: false, color, width });
@@ -62,7 +64,7 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">描边</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('描边')}</h3>
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -73,7 +75,7 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
           <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
-      
+
       {enabled && (
         <>
           <div className="flex items-center gap-2">
@@ -95,9 +97,9 @@ export function StrokeSection({ stroke, onChange }: StrokeSectionProps) {
               allowTransparent={true}
             />
           )}
-          
+
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">描边宽度</label>
+            <label className="text-xs text-text-secondary mb-2 block">{t('描边宽度')}</label>
             <div className="flex items-center gap-2">
               <button
                 className={`${btnBaseStyle} ${width === STROKE_PRESETS.S ? btnActiveStyle : btnInactiveStyle}`}

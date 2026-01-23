@@ -1,24 +1,26 @@
 import { useBrollStore } from '@/stores/useBrollStore';
 import type { BrollTransition } from '@/types/broll';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const transitions: Array<{
   type: BrollTransition;
   label: string;
   icon: string;
 }> = [
-  { type: 'none', label: '无', icon: '⊗' },
-  { type: 'fade', label: '淡入', icon: '◐' },
-  { type: 'glow', label: '光晕', icon: '✦' },
-];
+    { type: 'none', label: '无', icon: '⊗' },
+    { type: 'fade', label: '淡入', icon: '◐' },
+    { type: 'glow', label: '光晕', icon: '✦' },
+  ];
 
 export function BrollTransitionSelector() {
+  const { t } = useTranslation();
   const { selectedTransition, selectTransition } = useBrollStore();
 
   return (
     <div className="space-y-3">
       {/* 标题 */}
-      <div className="text-sm font-medium text-text-primary">过渡动画</div>
-      
+      <div className="text-sm font-medium text-text-primary">{t('过渡动画')}</div>
+
       {/* 预览卡片 - 可点击选择 */}
       <div className="grid grid-cols-3 gap-3">
         {transitions.map((transition) => (
@@ -39,9 +41,9 @@ export function BrollTransitionSelector() {
               {/* 图标 */}
               <span className="text-3xl mb-1">{transition.icon}</span>
               {/* 文字标签 */}
-              <span className="text-xs text-gray-300">{transition.label}</span>
+              <span className="text-xs text-gray-300">{t(transition.label)}</span>
             </div>
-            
+
             {/* 选中状态标记 */}
             {selectedTransition === transition.type && (
               <div className="absolute top-2 right-2 w-5 h-5 bg-accent-purple rounded-full flex items-center justify-center">

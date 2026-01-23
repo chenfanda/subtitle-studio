@@ -3,8 +3,10 @@ import { BrollCard } from './BrollCard';
 import { getBrollDuration, generateBrollThumbnail } from '@/utils/brollUtils';
 import type { BrollVideo } from '@/types/broll';
 import { Loader2, UploadCloud, AlertTriangle } from 'lucide-react'; // 1. 导入图标
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function BrollLocalView() {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedVideos, setUploadedVideos] = useState<BrollVideo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -20,14 +22,14 @@ export function BrollLocalView() {
 
     // 验证文件类型
     if (!file.type.startsWith('video/mp4')) {
-      setUploadError('仅支持 MP4 格式');
+      setUploadError(t('仅支持 MP4 格式'));
       return;
     }
 
     // 验证文件大小（50MB）
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-      setUploadError('文件大小不能超过 50MB');
+      setUploadError(t('文件大小不能超过 50MB'));
       return;
     }
 
@@ -42,7 +44,7 @@ export function BrollLocalView() {
 
       // 验证时长（最多180秒）
       if (duration > 180) {
-        setUploadError('视频时长不能超过 180 秒');
+        setUploadError(t('视频时长不能超过 180 秒'));
         URL.revokeObjectURL(videoUrl);
         setIsUploading(false);
         return;
@@ -57,7 +59,7 @@ export function BrollLocalView() {
         url: videoUrl,
         thumbnail,
         duration: Math.floor(duration),
-        tags: ['本地上传'],
+        tags: [t('本地上传')],
       };
 
       setUploadedVideos(prev => [...prev, newVideo]);
@@ -69,7 +71,7 @@ export function BrollLocalView() {
       }
     } catch (error) {
       setIsUploading(false);
-      setUploadError(error instanceof Error ? error.message : '上传失败');
+      setUploadError(error instanceof Error ? error.message : t('上传失败'));
     }
   };
 
@@ -118,15 +120,15 @@ export function BrollLocalView() {
           <>
             {/* 2. 替换加载动画 */}
             <Loader2 size={48} className="animate-spin text-accent-purple mb-3" />
-            <div className="text-text-secondary">上传中...</div>
+            <div className="text-text-secondary">{t('上传中...')}</div>
           </>
         ) : (
           <>
             {/* 3. 替换云朵图标 */}
             <UploadCloud size={64} className="mb-3 text-text-tertiary" />
-            <div className="text-text-primary font-medium mb-1">点击选择或拖拽上传</div>
+            <div className="text-text-primary font-medium mb-1">{t('点击选择或拖拽上传')}</div>
             <div className="text-sm text-text-secondary">
-              支持 MP4（最多 180 秒，50 MB）
+              {t('支持 MP4（最多 180 秒，50 MB）')}
             </div>
           </>
         )}
@@ -144,7 +146,7 @@ export function BrollLocalView() {
       {uploadedVideos.length > 0 && (
         <>
           <div className="text-sm font-medium text-text-primary">
-            已上传 ({uploadedVideos.length})
+            {t('已上传 (')}{uploadedVideos.length})
           </div>
           <div className="grid grid-cols-2 gap-4">
             {uploadedVideos.map((video) => (
@@ -157,7 +159,7 @@ export function BrollLocalView() {
       {/* 空状态 */}
       {uploadedVideos.length === 0 && !isUploading && (
         <div className="text-center text-text-tertiary text-sm py-8">
-          暂无已上传的视频
+          {t('暂无已上传的视频')}
         </div>
       )}
     </div>

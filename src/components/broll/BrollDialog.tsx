@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useBrollStore } from '@/stores/useBrollStore';
 import { BrollSearchView } from './BrollSearchView';
 import { BrollEditView } from './BrollEditView';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BrollDialogProps {
   open: boolean;
@@ -10,6 +11,7 @@ interface BrollDialogProps {
 }
 
 export default function BrollDialog({ open, onClose, targetSubtitleId }: BrollDialogProps) {
+  const { t } = useTranslation();
   const { dialogView, applyToSubtitle, resetDialog } = useBrollStore();
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function BrollDialog({ open, onClose, targetSubtitleId }: BrollDi
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-bg-secondary rounded-lg w-[600px] h-[85vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between p-4 border-b border-border-secondary flex-shrink-0">
-          <h3 className="text-lg font-semibold text-text-primary">B-roll</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{t('B-roll素材')}</h3>
           <button
             onClick={handleClose}
             className="w-8 h-8 rounded-full text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors flex items-center justify-center"
@@ -46,7 +48,7 @@ export default function BrollDialog({ open, onClose, targetSubtitleId }: BrollDi
         <div className="flex-1 overflow-hidden">
           {dialogView === 'search' && <BrollSearchView />}
           {dialogView === 'edit' && (
-            <BrollEditView 
+            <BrollEditView
               onApply={handleApply}
               targetSubtitleId={targetSubtitleId}
             />

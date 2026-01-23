@@ -1,26 +1,28 @@
 import { useState, useRef } from 'react';
 import { Square, Circle } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BackgroundSectionProps {
   backgroundColor?: string;
   backgroundShape?: number;
-  onChange: (updates: { 
-    backgroundColor?: string; 
+  onChange: (updates: {
+    backgroundColor?: string;
     backgroundShape?: number;
   }) => void;
 }
 
-export function BackgroundSection({ 
-  backgroundColor, 
+export function BackgroundSection({
+  backgroundColor,
   backgroundShape = 0,
-  onChange 
+  onChange
 }: BackgroundSectionProps) {
+  const { t } = useTranslation();
   const enabled = !!backgroundColor && backgroundColor !== 'transparent';
   const color = backgroundColor && backgroundColor !== 'transparent' ? backgroundColor : '#000000';
   const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const handleToggle = (checked: boolean) => {
     if (!checked) {
       onChange({ backgroundColor: 'transparent' });
@@ -29,7 +31,7 @@ export function BackgroundSection({
       onChange({ backgroundColor: color });
     }
   };
-  
+
   const handleColorChange = (newColor: string) => {
     onChange({ backgroundColor: newColor });
     if (newColor === 'transparent') {
@@ -45,11 +47,11 @@ export function BackgroundSection({
       left: rect.left
     };
   };
-  
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">背景</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('背景')}</h3>
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -60,7 +62,7 @@ export function BackgroundSection({
           <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
-      
+
       {enabled && (
         <>
           <div className="flex items-center gap-2">
@@ -81,9 +83,9 @@ export function BackgroundSection({
               allowTransparent={true}
             />
           )}
-          
+
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">背景形状</label>
+            <label className="text-xs text-text-secondary mb-2 block">{t('背景形状')}</label>
             <div className="flex items-center gap-3">
               {/* 📍 修改点 2: 替换了 '▢' 
                 * w-3.5 h-3.5 (14px) 视觉上匹配 text-xs (12px)
@@ -105,7 +107,7 @@ export function BackgroundSection({
                 但不影响图标替换。
             */}
             <div className="text-xs text-text-tertiary text-center mt-1">
-              {backgroundShape === 0 ? '方形' : backgroundShape === 50 ? '椭圆' : '圆角'}
+              {backgroundShape === 0 ? t('方形') : backgroundShape === 50 ? t('椭圆') : t('圆角')}
             </div>
           </div>
         </>

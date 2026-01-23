@@ -1,7 +1,9 @@
 import { useMediaStore } from '@/stores/useMediaStore';
 import type { SubtitleItem } from '@/types/subtitle';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function StickerLibrary({ currentSubtitle }: { currentSubtitle: SubtitleItem | null }) {
+  const { t } = useTranslation();
   // 从 Store 获取数据（现在 presetMedia 会在 loadPresets 执行后自动更新）
   const { presetMedia, uploadedMedia, placeOnTimeline } = useMediaStore();
 
@@ -15,7 +17,7 @@ export function StickerLibrary({ currentSubtitle }: { currentSubtitle: SubtitleI
 
   return (
     <div className="p-4 border-b border-white/5">
-      <h3 className="text-xs font-medium text-text-secondary mb-3 uppercase tracking-wider">贴纸库</h3>
+      <h3 className="text-xs font-medium text-text-secondary mb-3 uppercase tracking-wider">{t('贴纸库')}</h3>
       <div className="grid grid-cols-3 gap-2">
         {stickers.map((item) => (
           <button

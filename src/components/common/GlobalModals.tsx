@@ -98,7 +98,7 @@ function ExportModal() {
 
     const needsPremiumRes = store.exportSettings.resolution > 720 || store.exportSettings.format === 'gif';
     if (needsPremiumRes && !isPremium) {
-      store.setExportError('导出 1080p 或 GIF 格式是 Pro 会员功能。');
+      store.setExportError(t('导出 1080p 或 GIF 格式是 Pro 会员功能。'));
       return;
     }
 
@@ -131,7 +131,7 @@ function ExportModal() {
       store.setExportStatus('success');
     } catch (error: any) {
       if (error.message === 'Aborted') return;
-      store.setExportError(error instanceof Error ? error.message : '导出错误');
+      store.setExportError(error instanceof Error ? error.message : t('导出错误'));
     }
   };
 
@@ -149,14 +149,14 @@ function ExportModal() {
   const onCloudExportClick = async () => {
     if (isExporting) return;
     if (!isPremium) {
-      store.setExportError('云端高清渲染是 Pro 会员专属功能。');
+      store.setExportError(t('云端高清渲染是 Pro 会员专属功能。'));
       return;
     }
 
     const controller = store.initExport();
     store.setExportStatus('preparing');
     store.setExportProgress(0);
-    store.setStatusMessage('正在分析工程...');
+    store.setStatusMessage(t('正在分析工程...'));
     store.setExportError(null);
     store.setJobId('');
 
@@ -208,7 +208,7 @@ function ExportModal() {
         } catch (error: any) {
           if (error.message === 'Aborted') return;
           store.setExportStatus('idle');
-          store.setExportError(error instanceof Error ? error.message : '云端服务连接失败');
+          store.setExportError(error instanceof Error ? error.message : t('云端服务连接失败'));
         }
       }, 50);
     });
@@ -249,7 +249,7 @@ function ExportModal() {
 
       } catch (error) {
         console.error("Download failed:", error);
-        store.setExportError("下载文件失败，请检查网络或文件是否已过期");
+        store.setExportError(t("下载文件失败，请检查网络或文件是否已过期"));
       }
     }
   };
@@ -320,7 +320,7 @@ function ExportModal() {
         {store.exportError && (
           <div className="mb-6 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-400 text-sm flex items-center">
             <AlertTriangle className="w-4 h-4 mr-2 shrink-0" />
-            {store.exportError}
+            {t(store.exportError)}
           </div>
         )}
 
@@ -361,7 +361,7 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
           </div>
         </div>
         <div>
-          <label className="text-sm font-medium text-text-primary block mb-2">导出格式</label>
+          <label className="text-sm font-medium text-text-primary block mb-2">{t('导出格式')}</label>
           <div className="relative">
             <select
               className="w-full bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-2 appearance-none focus:outline-none focus:border-accent-purple"
@@ -374,7 +374,7 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
                   value={opt.value}
                   disabled={opt.premium && !isPremium}
                 >
-                  {opt.label} {opt.premium && !isPremium ? '(Pro)' : ''}
+                  {t(opt.label)} {opt.premium && !isPremium ? '(Pro)' : ''}
                 </option>
               ))}
             </select>
@@ -386,7 +386,7 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
           {!isPremium && (
             <p className="text-xs text-text-disabled mt-1">
               <Lock className="w-3 h-3 inline mr-1" />
-              多种格式转换仅限 Pro 会员
+              {t('多种格式转换仅限 Pro 会员')}
             </p>
           )}
         </div>
@@ -422,8 +422,8 @@ const SelectionView = ({ onLocalClick, onCloudClick, isPremium }: any) => {
 
       <button
         className={`relative flex flex-col items-start p-5 border-2 rounded-xl transition-all text-left group ${!isPremium
-            ? 'border-border-primary bg-bg-tertiary/10 opacity-80 hover:opacity-100'
-            : 'border-accent-purple/30 bg-accent-purple/5 hover:border-accent-purple hover:bg-accent-purple/10'
+          ? 'border-border-primary bg-bg-tertiary/10 opacity-80 hover:opacity-100'
+          : 'border-accent-purple/30 bg-accent-purple/5 hover:border-accent-purple hover:bg-accent-purple/10'
           }`}
         onClick={onCloudClick}
       >
@@ -470,7 +470,7 @@ const ProgressView = ({ status, progress, message, startTime, onCancel, onBackgr
   }, [startTime]);
 
   const getStatusText = () => {
-    if (message) return message;
+    if (message) return t(message);
     if (status === 'preparing') return t('正在分析工程...');
     if (status === 'uploading') return t('正在上传资源...');
     if (['processing_backend', 'polling'].includes(status)) return t('云端渲染中...');
@@ -510,10 +510,10 @@ const ProgressView = ({ status, progress, message, startTime, onCancel, onBackgr
       </div>
       <p className="text-text-disabled text-xs mt-4 opacity-70">
         {status === 'processing_frontend'
-          ? '正在使用浏览器算力，请勿关闭标签页'
+          ? t('正在使用浏览器算力，请勿关闭标签页')
           : ['processing_backend', 'polling'].includes(status)
-            ? '服务器正在进行云端渲染，您可以关闭此窗口'
-            : '正在准备资源，请保持网络连接'
+            ? t('服务器正在进行云端渲染，您可以关闭此窗口')
+            : t('正在准备资源，请保持网络连接')
         }
       </p>
     </div>

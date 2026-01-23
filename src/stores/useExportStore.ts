@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { api } from '@/utils/api';
 
-export type ExportStatus = 
+export type ExportStatus =
   | 'idle'
   | 'preparing'
   | 'uploading'
@@ -14,7 +14,7 @@ export type ExportStatus =
 
 export interface ExportSettings {
   resolution: number;
-  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3';  
+  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3';
   forceBackend: boolean;
 }
 
@@ -40,10 +40,10 @@ interface ExportStore {
   setJobId: (jobId: string) => void;
   setDownloadUrl: (url: string) => void;
   setResultBlob: (blob: Blob | null) => void;
-  
+
   initExport: () => AbortController;
   cancelExport: () => void;
-  
+
   monitorJob: () => Promise<void>;
   resetExport: () => void;
 }
@@ -135,7 +135,7 @@ export const useExportStore = create<ExportStore>()(
         state.exportError = null;
         state.abortController = controller;
         state.startTime = Date.now();
-        state.resultBlob = null; 
+        state.resultBlob = null;
         state.downloadUrl = null;
       });
       return controller;
@@ -172,7 +172,7 @@ export const useExportStore = create<ExportStore>()(
       try {
         const interval = setInterval(async () => {
           const currentState = get();
-          
+
           // 检查是否应该停止轮询 (已取消、已完成、或出错)
           if (currentState.exportStatus !== 'polling' || !currentState.jobId) {
             clearInterval(interval);
@@ -182,7 +182,7 @@ export const useExportStore = create<ExportStore>()(
           try {
             // 传递 signal 以支持取消
             const response = await api.getJobStatus(
-              currentState.jobId, 
+              currentState.jobId,
               currentState.abortController?.signal
             );
 
@@ -204,26 +204,24 @@ export const useExportStore = create<ExportStore>()(
                 state.abortController = null;
               });
             } else {
-              // 处理进度更新 (如果后端返回了 progress 字段)
+
               set((state) => {
                 if (typeof response.progress === 'number') {
-                  // 假设后端返回 0-100
+
                   state.exportProgress = response.progress / 100;
-                  state.statusMessage = `云端渲染中... ${Math.floor(response.progress)}%`;
-                } else {
-                  state.statusMessage = '云端渲染中...';
                 }
+                state.statusMessage = '云端渲染中...';
               });
             }
           } catch (e) {
-            // 如果是 AbortError，说明是用户取消，interval 会在下一次循环通过状态检查自动停止
+
             if (e instanceof Error && e.name === 'AbortError') {
-                return; 
+              return;
             }
-            // 忽略临时网络错误，继续轮询
+
             console.warn('Poll warning:', e);
           }
-          
+
         }, 3000);
 
       } catch (error) {

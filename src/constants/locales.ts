@@ -34,11 +34,18 @@ export const LOCALE_EN: Record<string, string> = {
 
     // Template Quick Access
     '精选模板': 'Featured Templates',
+    '查看更多': 'View More',
 
     // Quick Toolbar
     '发光颜色': 'Glow Color',
     '亮度': 'Brightness',
     '高亮': 'Highlight',
+    '样式': 'Style',
+
+    // Glow Section
+    '发光': 'Glow',
+    '发光强度': 'Glow Intensity',
+    '为文字轮廓添加发光效果': 'Add glow effect to text outline',
 
     // Alignment Section
     '对齐': 'Alignment',
@@ -48,9 +55,20 @@ export const LOCALE_EN: Record<string, string> = {
     '上对齐': 'Align Top',
     '下对齐': 'Align Bottom',
 
+    // Stroke Section
+    '描边': 'Stroke',
+    '描边宽度': 'Stroke Width',
+
     // Shadow Section
     '阴影': 'Shadow',
     '模糊': 'Blur',
+
+    // Background Section
+    '背景': 'Background',
+    '背景形状': 'Background Shape',
+    '方形': 'Square',
+    '椭圆': 'Ellipse',
+    '圆角': 'Rounded',
 
     // Watermark
     '拖拽调整位置': 'Drag to Adjust Position',
@@ -89,7 +107,44 @@ export const LOCALE_EN: Record<string, string> = {
     // Export Modal
     '导出视频': 'Export Video',
     '分辨率': 'Resolution',
-    '导出格式': 'Format',
+    '导出格式': 'Export Format',
+    '正在生成文字贴纸...': 'Generating text stickers...',
+    '正在生成水印...': 'Generating watermark...',
+    '正在处理水印...': 'Processing watermark...',
+    '正在上传水印...': 'Uploading watermark...',
+    '正在分析工程...': 'Analyzing project...',
+    '正在上传资源...': 'Uploading resources...',
+    '导出 1080p 或 GIF 格式是 Pro 会员功能。': 'Exporting 1080p or GIF is a Pro feature.',
+    '云端渲染中...': 'Rendering in cloud...',
+    '处理中...': 'Processing...',
+    '停止任务': 'Stop Task',
+    '后台运行': 'Run in Background',
+    '导出完成！': 'Export Complete!',
+    '您的视频已准备就绪。': 'Your video is ready.',
+    '导出完成': 'Export Complete',
+    '点击下载文件': 'Click to download file',
+    '检测到高级特效': 'Advanced Effects Detected',
+    'FFmpeg 不支持': 'Not supported by FFmpeg',
+    '自动移除': 'automatically removed',
+    '移除特效并继续': 'Remove Effects and Continue',
+    '多种格式转换仅限 Pro 会员': 'Format conversion is for Pro members only',
+    '导出错误': 'Export Error',
+    '云端服务连接失败': 'Cloud service connection failed',
+    '正在使用浏览器算力，请勿关闭标签页': 'Using browser processing power, please do not close the tab',
+    '服务器正在进行云端渲染，您可以关闭此窗口': 'Server is rendering in the cloud, you can close this window',
+    '正在准备资源，请保持网络连接': 'Preparing resources, please keep network connection',
+    '下载文件失败，请检查网络或文件是否已过期': 'Download failed, please check network or file expiration',
+    '云端高清渲染是 Pro 会员专属功能。': 'Cloud high-definition rendering is an exclusive feature for Pro members.',
+    '初始化中...': 'Initializing...',
+    '已取消': 'Cancelled',
+    '等待云端处理...': 'Waiting for cloud...',
+    '渲染完成': 'Render Complete',
+    '后端渲染失败': 'Backend rendering failed',
+    '轮询启动失败': 'Polling failed to start',
+    'MP4 (推荐)': 'MP4 (Recommended)',
+    'MOV 视频': 'MOV Video',
+    'AVI 视频': 'AVI Video',
+    'MP3 音频': 'MP3 Audio',
     '本地极速导出': 'Quick Export (Local)',
     '使用浏览器算力，速度快，无需上传。': 'Browser-based rendering. Fast & no upload.',
     '适合快速预览和简单剪辑。': 'Good for previews and simple edits.',
@@ -98,12 +153,6 @@ export const LOCALE_EN: Record<string, string> = {
     '服务器后台渲染，完美复刻所有特效。': 'Server-side rendering. Perfect quality.',
     '支持 高清画质和复杂动画。': 'Supports HD & complex effects.',
     '100% 还原编辑器效果': '100% Editor Fidelity',
-    '正在分析工程...': 'Analyzing project...',
-    '正在上传资源...': 'Uploading assets...',
-    '云端渲染中...': 'Rendering on cloud...',
-    '处理中...': 'Processing...',
-    '停止任务': 'Stop Task',
-    '后台运行': 'Run in Background',
 
     // Audio Panel
     '音乐': 'Music',
@@ -129,6 +178,19 @@ export const LOCALE_EN: Record<string, string> = {
     '点击删除 B-roll': 'Click to remove B-Roll',
     '点击添加 B-roll': 'Click to add B-Roll',
     '✓ 已添加 B-roll': '✓ B-Roll Added',
+    '本地': 'Local',
+    '搜索 B-roll': 'Search B-Roll',
+    '过渡动画': 'Transition',
+    '光晕': 'Glow',
+    '视频时长不能超过 180 秒': 'Video duration cannot exceed 180s',
+    '支持 MP4（最多 180 秒，50 MB）': 'Supports MP4 (Max 180s, 50MB)',
+    '暂无已上传的视频': 'No uploaded videos',
+    '已上传 (': 'Uploaded (',
+    '搜索中...': 'Searching...',
+    '暂无结果': 'No results',
+    '请尝试其他关键词': 'Please try other keywords',
+    'English': 'English',
+    '中文': 'Chinese',
 
     // Template Panel
     '精选': 'Featured',
@@ -223,9 +285,24 @@ export const LOCALE_EN: Record<string, string> = {
     '图片/Logo': 'Image/Logo',
     '当前使用默认 Logo': 'Default Logo',
     '输入文字...': 'Enter text...',
+    '下划线': 'Underline',
     '粗体': 'Bold',
     '斜体': 'Italic',
-    '下划线': 'Underline',
+
+    // Media
+    '贴纸库': 'Stickers Library',
+    '动图': 'GIF',
+    'GIF 动图': 'GIF Animation',
+    '表情': 'Emoji',
+    '贴纸': 'Sticker',
+    '暂无内容': 'No content',
+    '搜索贴纸...': 'Search stickers...',
+    '搜索动图...': 'Search GIFs...',
+    '文字颜色': 'Text Color',
+    '背景颜色': 'Background Color',
+    '整体大小 (px)': 'Overall Size (px)',
+    '不透明度': 'Opacity',
+    '无': 'None',
 
     // Audio Settings Panels
     '未添加背景音乐': 'No background music added',
@@ -478,7 +555,6 @@ export const LOCALE_EN: Record<string, string> = {
     '模糊进入': 'Blur In',
     '翻转进入': 'Flip In',
     '旋转放大': 'Rotate Scale',
-    '淡入': 'Fade In',
     '右侧滑入': 'Slide Right',
     '模糊淡入': 'Blur Fade',
     '描边生长': 'Stroke Grow',

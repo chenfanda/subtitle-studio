@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useBrollStore } from '@/stores/useBrollStore';
 import { BrollLibrary } from './BrollLibrary';
 import { BrollLocalView } from './BrollLocalView';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type TabType = 'library' | 'local';
 
 export function BrollSearchView() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('library');
   const { searchBroll } = useBrollStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,7 +38,7 @@ export function BrollSearchView() {
               }
             `}
           >
-            素材库
+            {t('素材库')}
           </button>
           <button
             onClick={() => setActiveTab('local')}
@@ -48,7 +50,7 @@ export function BrollSearchView() {
               }
             `}
           >
-            本地
+            {t('本地')}
           </button>
         </div>
       </div>
@@ -62,7 +64,7 @@ export function BrollSearchView() {
                 type="text"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                placeholder="搜索 B-roll"
+                placeholder={t('搜索 B-roll')}
                 className="
                   w-full px-3 py-2 pr-10
                   bg-bg-tertiary border border-border-secondary rounded-lg
@@ -82,16 +84,16 @@ export function BrollSearchView() {
                 🔍
               </button>
             </div>
-            
-            <select 
+
+            <select
               className="
                 px-3 py-2 bg-bg-tertiary border border-border-secondary rounded-lg
                 text-text-primary focus:outline-none focus:border-accent-purple
                 transition-colors
               "
             >
-              <option>English</option>
-              <option>中文</option>
+              <option>{t('English')}</option>
+              <option>{t('中文')}</option>
             </select>
           </form>
         </div>

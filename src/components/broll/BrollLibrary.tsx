@@ -1,14 +1,16 @@
 import { BrollCard } from './BrollCard';
 import { useSearchState } from '@/stores/useBrollStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function BrollLibrary() {
+  const { t } = useTranslation();
   const { results, isLoading } = useSearchState();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="text-text-secondary mb-2">搜索中...</div>
+          <div className="text-text-secondary mb-2">{t('搜索中...')}</div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-purple mx-auto"></div>
         </div>
       </div>
@@ -20,8 +22,8 @@ export function BrollLibrary() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center text-text-secondary">
           <div className="text-4xl mb-2">🎬</div>
-          <div>暂无结果</div>
-          <div className="text-sm mt-1">请尝试其他关键词</div>
+          <div>{t('暂无结果')}</div>
+          <div className="text-sm mt-1">{t('请尝试其他关键词')}</div>
         </div>
       </div>
     );

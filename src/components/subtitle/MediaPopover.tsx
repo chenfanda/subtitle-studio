@@ -3,6 +3,7 @@ import EmojiPicker, { EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-rea
 import { Search, X, Loader2, Image as ImageIcon, Smile, Sticker } from 'lucide-react';
 import { useMediaStore } from '@/stores/useMediaStore';
 import { MediaItem } from '@/types/media';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type TabType = 'emoji' | 'sticker' | 'gif';
 
@@ -14,18 +15,19 @@ interface MediaPopoverProps {
 }
 
 export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: MediaPopoverProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('emoji');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const { 
-    searchMedia, 
-    loadTrending, 
-    searchResults, 
-    trendingItems, 
-    uploadedMedia, 
-    presetMedia, 
+
+  const {
+    searchMedia,
+    loadTrending,
+    searchResults,
+    trendingItems,
+    uploadedMedia,
+    presetMedia,
     loadPresets,
-    searchState 
+    searchState
   } = useMediaStore();
 
   // 当弹窗打开或 Tab 切换时，加载数据
@@ -50,7 +52,7 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
     // 使用 emoji-picker-react 提供的 CDN URL 逻辑
     // 默认使用 Apple 风格 (或者您可以选 Google/Twitter)
     const emojiUrl = emojiData.getImageUrl(EmojiStyle.APPLE);
-    
+
     // 构造一个临时的 MediaItem
     const emojiMediaItem: MediaItem = {
       id: `emoji-${emojiData.unified}-${Date.now()}`,
@@ -70,11 +72,11 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
   const displayItems = useMemo(() => {
     if (activeTab === 'emoji') return [];
 
-    const targetType = activeTab; 
-    
+    const targetType = activeTab;
+
     const presetItems = presetMedia.filter(item => item.type === targetType);
     const localItems = uploadedMedia.filter(item => item.type === targetType);
-    
+
     const networkItems = searchQuery ? searchResults : trendingItems;
 
     const filteredNetworkItems = networkItems.filter(item => item.type === targetType);
@@ -91,15 +93,15 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
     if (activeTab === 'emoji') {
       return (
         <div className="h-full w-full emoji-container">
-          <EmojiPicker 
+          <EmojiPicker
             onEmojiClick={handleEmojiClick}
             width="100%"
             height={320}
-            theme={Theme.DARK} 
+            theme={Theme.DARK}
             lazyLoadEmojis={true}
             searchDisabled={false}
-            emojiStyle={EmojiStyle.APPLE} 
-            previewConfig={{ showPreview: false }} 
+            emojiStyle={EmojiStyle.APPLE}
+            previewConfig={{ showPreview: false }}
           />
         </div>
       );
@@ -114,25 +116,25 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
         ) : (
           displayItems.length > 0 ? (
             displayItems.map((item) => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="aspect-square relative group cursor-pointer rounded-lg overflow-hidden bg-bg-tertiary flex items-center justify-center p-1 hover:ring-2 hover:ring-accent-purple transition-all"
                 onClick={() => {
                   onSelectMedia(item);
                   // 贴纸/动图点击后通常关闭弹窗，或者保留以支持多选，这里选择保留
                 }}
               >
-                <img 
-                  src={item.preview || item.url} 
-                  alt="media" 
-                  className="max-w-full max-h-full object-contain pointer-events-none" 
+                <img
+                  src={item.preview || item.url}
+                  alt="media"
+                  className="max-w-full max-h-full object-contain pointer-events-none"
                   loading="lazy"
                 />
               </div>
             ))
           ) : (
             <div className="col-span-4 text-center text-xs text-text-tertiary py-8">
-              暂无内容
+              {t('暂无内容')}
             </div>
           )
         )}
@@ -150,32 +152,31 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
   };
 
   return (
-    <div 
+    <div
       className="fixed z-50 w-[340px] bg-bg-primary border border-border-secondary shadow-2xl rounded-xl flex flex-col overflow-hidden"
       style={popoverStyle}
     >
       {/* 头部 Tabs */}
       <div className="flex items-center bg-bg-tertiary border-b border-border-secondary relative">
         {[
-          { id: 'emoji', icon: Smile, label: '表情' },
-          { id: 'sticker', icon: Sticker, label: '贴纸' },
-          { id: 'gif', icon: ImageIcon, label: '动图' },
+          { id: 'emoji', icon: Smile, label: t('表情') },
+          { id: 'sticker', icon: Sticker, label: t('贴纸') },
+          { id: 'gif', icon: ImageIcon, label: t('动图') },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id as TabType); setSearchQuery(''); }}
-            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
-              activeTab === tab.id 
-                ? 'text-accent-purple bg-bg-primary border-b-2 border-accent-purple' 
-                : 'text-text-tertiary hover:text-text-primary hover:bg-bg-primary/50'
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${activeTab === tab.id
+              ? 'text-accent-purple bg-bg-primary border-b-2 border-accent-purple'
+              : 'text-text-tertiary hover:text-text-primary hover:bg-bg-primary/50'
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             <span className="text-[10px] font-medium">{tab.label}</span>
           </button>
         ))}
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="absolute top-2 right-2 p-1 text-text-tertiary hover:text-text-primary rounded-full hover:bg-bg-tertiary"
         >
           <X className="w-4 h-4" />
@@ -187,9 +188,9 @@ export function MediaPopover({ isOpen, onClose, onSelectMedia, position }: Media
         <div className="p-3 border-b border-border-secondary bg-bg-primary">
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
-            <input 
-              type="text" 
-              placeholder={`搜索 ${activeTab === 'sticker' ? '贴纸' : '动图'}...`}
+            <input
+              type="text"
+              placeholder={activeTab === 'sticker' ? t('搜索贴纸...') : t('搜索动图...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-bg-tertiary text-text-primary text-xs rounded-md pl-8 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-accent-purple border border-transparent focus:border-accent-purple/50 transition-all"

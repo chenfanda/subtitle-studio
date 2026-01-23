@@ -1,37 +1,39 @@
 import { useState, useRef } from 'react';
 import { ColorPicker } from './ColorPicker';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface HighlightColorSectionProps {
   color?: string;
   intensity?: number;
-  onChange: (updates: { 
-    color?: string; 
+  onChange: (updates: {
+    color?: string;
     intensity?: number;
   }) => void;
 }
 
-export function HighlightColorSection({ 
-  color, 
+export function HighlightColorSection({
+  color,
   intensity = 15,
-  onChange 
+  onChange
 }: HighlightColorSectionProps) {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(!!color);
   const [showPicker, setShowPicker] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
     if (!checked) {
       onChange({ color: undefined, intensity: intensity });
       setShowPicker(false);
     } else {
-      onChange({ 
+      onChange({
         color: color || '#FFFF00',
         intensity: intensity
       });
     }
   };
-  
+
   const handleColorChange = (newColor: string) => {
     if (newColor === 'transparent') {
       setEnabled(false);
@@ -50,11 +52,11 @@ export function HighlightColorSection({
       left: rect.left
     };
   };
-  
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">发光</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('发光')}</h3>
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -66,7 +68,7 @@ export function HighlightColorSection({
           <div className="w-11 h-6 bg-bg-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-purple"></div>
         </label>
       </div>
-      
+
       {enabled && (
         <>
           <div className="flex items-center gap-2">
@@ -87,9 +89,9 @@ export function HighlightColorSection({
               allowTransparent={true}
             />
           )}
-          
+
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">发光强度</label>
+            <label className="text-xs text-text-secondary mb-2 block">{t('发光强度')}</label>
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -106,9 +108,9 @@ export function HighlightColorSection({
               </span>
             </div>
           </div>
-          
+
           <p className="text-xs text-text-secondary">
-            为文字轮廓添加发光效果
+            {t('为文字轮廓添加发光效果')}
           </p>
         </>
       )}
