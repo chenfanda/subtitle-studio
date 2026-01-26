@@ -1,23 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// 定义用户信息结构
 interface UserInfo {
   id: string;
   nickname: string;
   avatar: string;
-  vipLevel: 'free' | 'pro'; // 会员等级
+  vipLevel: 'free' | 'pro';
 }
 
 interface UserState {
   isLoggedIn: boolean;
   userInfo: UserInfo | null;
-  
-  // 认证弹窗状态
+
   authModalOpen: boolean;
   authMode: 'login' | 'register';
-  
-  // 个人资料弹窗状态
+
+
   profileModalOpen: boolean;
 }
 interface Window {
@@ -27,21 +25,21 @@ interface Window {
 }
 
 interface UserActions {
-  // 动作
+
   login: (method: string, data: any) => Promise<void>;
   logout: () => void;
-  
-  // 弹窗控制
+
+
   openAuthModal: (mode?: 'login' | 'register') => void;
   closeAuthModal: () => void;
-  
+
   openProfileModal: () => void;
   closeProfileModal: () => void;
-  
-  // 更新资料
+
+
   updateProfile: (name: string, avatarFile: File | null) => Promise<void>;
 
-  // 临时调试用
+
   _temp_togglePremium: () => void;
 }
 
@@ -54,7 +52,6 @@ export const useUserStore = create<UserState & UserActions>()(
       authMode: 'login',
       profileModalOpen: false,
 
-      // 模拟登录
       login: async (method, data) => {
         await new Promise((resolve) => setTimeout(resolve, 800));
         const mockUser: UserInfo = {
@@ -76,22 +73,21 @@ export const useUserStore = create<UserState & UserActions>()(
       openProfileModal: () => set({ profileModalOpen: true }),
       closeProfileModal: () => set({ profileModalOpen: false }),
 
-      // 更新个人资料
       updateProfile: async (name, avatarFile) => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        
+
         const currentUser = get().userInfo;
         if (!currentUser) return;
 
         let newAvatarUrl = currentUser.avatar;
         if (newAvatarUrl.startsWith('blob:') || newAvatarUrl.startsWith('http')) {
-             newAvatarUrl = '/default-avatar.png';
+          newAvatarUrl = '/default-avatar.png';
         }
         if (avatarFile) {
-          
-            try {
+
+          try {
             const buffer = await avatarFile.arrayBuffer();
-            
+
             if ((window as any).electronAPI) {
               newAvatarUrl = await (window as any).electronAPI.saveAvatar(buffer, avatarFile.name);
             } else {
@@ -113,7 +109,6 @@ export const useUserStore = create<UserState & UserActions>()(
         });
       },
 
-      // 切换会员状态 (调试用)
       _temp_togglePremium: () => {
         const { userInfo } = get();
         if (!userInfo) return;
@@ -134,14 +129,11 @@ export const useUserStore = create<UserState & UserActions>()(
 
 
 
-// 1. 获取登录状态
 export const useIsLoggedIn = () => useUserStore((state) => state.isLoggedIn);
 
-// 2. 获取用户信息
 export const useUserInfo = () => useUserStore((state) => state.userInfo);
 
-// 3. 【修复报错】获取会员状态
-// 逻辑：如果用户信息存在且 vipLevel 为 'pro'，则返回 true
+
 export const useIsPremium = () => useUserStore((state) => {
   return state.userInfo?.vipLevel === 'pro';
 });

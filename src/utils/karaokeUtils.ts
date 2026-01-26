@@ -24,11 +24,11 @@ export function getKaraokeTimings(text: string, durationMs: number): KaraokeWord
   }
 
   if (tokens.length === 0) {
-    return [{ 
-      text, 
-      startTime: 0, 
-      endTime: durationMs, 
-      characters: splitToCharacters(text, 0, durationMs) 
+    return [{
+      text,
+      startTime: 0,
+      endTime: durationMs,
+      characters: splitToCharacters(text, 0, durationMs)
     }];
   }
 
@@ -73,6 +73,17 @@ export function getKaraokeTimings(text: string, durationMs: number): KaraokeWord
 }
 
 function splitToCharacters(text: string, startTime: number, endTime: number): KaraokeChar[] {
+  // Check if the text block contains alphanumeric characters (likely an English word)
+  // If so, we treat the entire block as a single unit to achieve word-by-word animation
+  if (/[a-zA-Z0-9']/.test(text)) {
+    return [{
+      char: text,
+      startTime: Math.round(startTime),
+      endTime: Math.round(endTime),
+      index: 0
+    }];
+  }
+
   const chars = Array.from(text);
   const duration = endTime - startTime;
   const timePerChar = duration / Math.max(chars.length, 1);
