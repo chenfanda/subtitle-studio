@@ -181,34 +181,35 @@ export const useExportStore = create<ExportStore>()(
 
           try {
             // 传递 signal 以支持取消
-            const response = await api.getJobStatus(
+            const resp = await api.getJobStatus(
               currentState.jobId,
               currentState.abortController?.signal
             );
+            const payload: any = (resp && (resp as any).data) ? (resp as any).data : resp;
 
-            if (response.status === 'completed') {
+            if (String(payload.status) === 'completed') {
               clearInterval(interval);
               set((state) => {
                 state.exportStatus = 'success';
                 state.exportProgress = 1;
                 state.statusMessage = '渲染完成';
-                const resultUrl = response.result?.url || response.result || response.url;
+                const resultUrl = payload.result?.url || payload.result || payload.url;
                 state.downloadUrl = resultUrl || null;
                 state.abortController = null;
               });
-            } else if (response.status === 'failed') {
+            } else if (String(payload.status) === 'failed') {
               clearInterval(interval);
               set((state) => {
                 state.exportStatus = 'error';
-                state.exportError = response.error || '后端渲染失败';
+                state.exportError = payload.error || '后端渲染失败';
                 state.abortController = null;
               });
             } else {
 
               set((state) => {
-                if (typeof response.progress === 'number') {
+                if (typeof payload.progress === 'number') {
 
-                  state.exportProgress = response.progress / 100;
+                  state.exportProgress = payload.progress / 100;
                 }
                 state.statusMessage = '云端渲染中...';
               });

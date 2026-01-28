@@ -23,10 +23,9 @@ export function UploadStage() {
   const { isLoggedIn, openAuthModal } = useUserStore();
 
   const handleFileUpload = (file: File) => {
+    const { isLoggedIn, accessToken } = useUserStore.getState();
 
-    const currentIsLoggedIn = useUserStore.getState().isLoggedIn;
-
-    if (!currentIsLoggedIn) {
+    if (!isLoggedIn || !accessToken) {
       openAuthModal('login');
       return;
     }
@@ -57,8 +56,8 @@ export function UploadStage() {
     setIsDragging(false);
 
     // 拖拽拦截
-    const currentIsLoggedIn = useUserStore.getState().isLoggedIn;
-    if (!currentIsLoggedIn) {
+    const { isLoggedIn, accessToken } = useUserStore.getState();
+    if (!isLoggedIn || !accessToken) {
       openAuthModal('login');
       return;
     }

@@ -36,7 +36,7 @@ export function HeaderBar() {
   const [showWatermarkPanel, setShowWatermarkPanel] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { isLoggedIn, userInfo, logout, openAuthModal, _temp_togglePremium, openProfileModal } = useUserStore();
+  const { isLoggedIn, userInfo, logout, openAuthModal, openPricingModal, openProfileModal } = useUserStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMaskPanel, setShowMaskPanel] = useState(false);
 
@@ -158,8 +158,8 @@ export function HeaderBar() {
                 onClick={handleUndo}
                 disabled={!canUndo()}
                 className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${canUndo()
-                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-                    : 'text-text-disabled cursor-not-allowed'
+                  ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                  : 'text-text-disabled cursor-not-allowed'
                   }`}
                 title="撤销 (Ctrl+Z)"
               >
@@ -170,8 +170,8 @@ export function HeaderBar() {
                 onClick={handleRedo}
                 disabled={!canRedo()}
                 className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${canRedo()
-                    ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-                    : 'text-text-disabled cursor-not-allowed'
+                  ? 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                  : 'text-text-disabled cursor-not-allowed'
                   }`}
                 title="重做 (Ctrl+Y)"
               >
@@ -189,8 +189,8 @@ export function HeaderBar() {
                     setShowMaskPanel(false); // 互斥：打开水印时关闭遮罩
                   }}
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${showWatermarkPanel
-                      ? 'bg-accent-purple text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                    ? 'bg-accent-purple text-white'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                     }`}
                   title={t('水印设置')}
                 >
@@ -214,8 +214,8 @@ export function HeaderBar() {
                 <button
                   onClick={() => setShowMaskPanel(!showMaskPanel)}
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${showMaskPanel
-                      ? 'bg-accent-purple text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                    ? 'bg-accent-purple text-white'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                     }`}
                   title={t('去除原始字幕 / 遮挡工具')}
                 >
@@ -244,8 +244,8 @@ export function HeaderBar() {
 
               <button
                 className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center justify-center min-w-[60px] ${isExporting
-                    ? 'bg-accent-purple/80 text-white animate-pulse ring-1 ring-accent-purple/50'
-                    : 'bg-accent-purple hover:bg-purple-600 text-white'
+                  ? 'bg-accent-purple/80 text-white animate-pulse ring-1 ring-accent-purple/50'
+                  : 'bg-accent-purple hover:bg-purple-600 text-white'
                   }`}
                 title={isExporting ? t("导出任务运行中 (点击查看详情)") : t("导出项目")}
                 onClick={() => useExportStore.getState().setShowExportModal(true)}
@@ -289,11 +289,11 @@ export function HeaderBar() {
                       {t('个人设置')}
                     </button>
                     <button
-                      onClick={() => { _temp_togglePremium(); setShowUserMenu(false); }}
-                      className="px-4 py-2 text-left text-sm text-yellow-500 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                      onClick={() => { openPricingModal(); setShowUserMenu(false); }}
+                      className="px-4 py-2 text-left text-sm text-yellow-500 hover:bg-white/5 flex items-center gap-2 transition-colors font-bold"
                     >
-                      <Crown size={14} />
-                      {userInfo.vipLevel === 'pro' ? t('切换为免费版') : t('模拟升级会员')}
+                      <Crown size={14} className="fill-current" />
+                      {userInfo.vipLevel === 'pro' ? t('续费会员') : t('升级 Pro 会员')}
                     </button>
 
                     <button

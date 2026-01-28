@@ -6,52 +6,52 @@ import { DEFAULT_SUBTITLE_STYLE } from '@/types/subtitle';
 export const convertTemplateToSubtitleStyle = (
   templateStyle: TextStyleTemplate['style']
 ): Partial<SubtitleStyle> => {
-  
+
   const convertedStyle: Partial<SubtitleStyle> = {
     ...DEFAULT_SUBTITLE_STYLE,
-    
+
     fontSize: templateStyle.fontSize || DEFAULT_SUBTITLE_STYLE.fontSize,
     fontFamily: templateStyle.fontFamily || DEFAULT_SUBTITLE_STYLE.fontFamily,
     color: templateStyle.color || DEFAULT_SUBTITLE_STYLE.color,
     backgroundColor: templateStyle.backgroundColor || DEFAULT_SUBTITLE_STYLE.backgroundColor,
-    
+
     fontWeight: templateStyle.fontWeight === 'bold' ? 700 : 400,
     fontStyle: templateStyle.fontStyle || 'normal',
-    
+
     stroke: templateStyle.stroke
       ? {
-          enabled: true,
-          color: templateStyle.stroke.color,
-          width: templateStyle.stroke.width,
-        }
+        enabled: true,
+        color: templateStyle.stroke.color,
+        width: templateStyle.stroke.width,
+      }
       : {
-          enabled: false,
-          color: '#000000',
-          width: 0,
-        },
-    
+        enabled: false,
+        color: '#000000',
+        width: 0,
+      },
+
     shadow: {
       ...DEFAULT_SUBTITLE_STYLE.shadow,
       enabled: false,
     },
-    
-    highlightColor: undefined,
-    highlightIntensity: 0,
-    
+
+    highlightColor: templateStyle.highlightColor,
+    highlightIntensity: templateStyle.highlightIntensity || 0,
+
     alignment: templateStyle.textAlign || DEFAULT_SUBTITLE_STYLE.alignment,
   };
   if (templateStyle.borderRadius) {
-      if (typeof templateStyle.borderRadius === 'number') {
-        convertedStyle.backgroundShape = templateStyle.borderRadius;
-      } else {
-        // 如果是字符串（例如 '20px' 或 '50%'），尝试解析出数字
-        const parsed = parseInt(templateStyle.borderRadius, 10);
-        if (!isNaN(parsed)) {
-          convertedStyle.backgroundShape = parsed;
-        }
+    if (typeof templateStyle.borderRadius === 'number') {
+      convertedStyle.backgroundShape = templateStyle.borderRadius;
+    } else {
+      // 如果是字符串（例如 '20px' 或 '50%'），尝试解析出数字
+      const parsed = parseInt(templateStyle.borderRadius, 10);
+      if (!isNaN(parsed)) {
+        convertedStyle.backgroundShape = parsed;
       }
     }
-  
+  }
+
   return convertedStyle;
 };
 
@@ -60,11 +60,11 @@ export const convertRichTextToPlainText = (richText: RichTextSegment[]): string 
 };
 
 export const createRichTextFromPlainText = (
-  text: string, 
+  text: string,
   style?: SubtitleStyle
 ): RichTextSegment[] => {
   if (!text) return [];
-  
+
   return [{
     text,
     style: style || { ...DEFAULT_SUBTITLE_STYLE },
@@ -77,7 +77,7 @@ export const updateRichTextFromPlainText = (
   newPlainText: string
 ): RichTextSegment[] => {
   if (!newPlainText) return [];
-  
+
   if (!existingSegments || existingSegments.length === 0) {
     return [{
       text: newPlainText,
@@ -85,26 +85,26 @@ export const updateRichTextFromPlainText = (
       animation: undefined
     }];
   }
-  
+
   if (existingSegments.length === 1) {
     return [{
       ...existingSegments[0],
       text: newPlainText
     }];
   }
-  
+
   const originalLength = convertRichTextToPlainText(existingSegments).length;
   const newLength = newPlainText.length;
-  
+
   if (Math.abs(originalLength - newLength) <= originalLength * 0.1) {
     let currentIndex = 0;
     const result: RichTextSegment[] = [];
-    
+
     for (const segment of existingSegments) {
       const segmentRatio = segment.text.length / originalLength;
       const newSegmentLength = Math.round(newLength * segmentRatio);
       const segmentText = newPlainText.substring(currentIndex, currentIndex + newSegmentLength);
-      
+
       if (segmentText) {
         result.push({
           ...segment,
@@ -113,7 +113,7 @@ export const updateRichTextFromPlainText = (
         currentIndex += newSegmentLength;
       }
     }
-    
+
     return result;
   } else {
     return [{
@@ -126,7 +126,7 @@ export const updateRichTextFromPlainText = (
 
 export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any): React.CSSProperties => {
   if (!style) return {};
-  
+
   const cssProperties: React.CSSProperties = {
     fontSize: `${style.fontSize}px`,
     fontFamily: style.fontFamily,
@@ -137,28 +137,28 @@ export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any)
     opacity: style.opacity,
     // textAlign: style.alignment, // 注意：SubtitleStyle 用 alignment，TextElement 用 textAlign
     textAlign: style.textAlign || style.alignment,
-    
+
     // --- 新增支持：图片背景与布局 ---
     backgroundImage: style.backgroundImage,
     backgroundSize: style.backgroundSize,
     backgroundRepeat: style.backgroundRepeat,
     backgroundPosition: 'center', // 默认居中
-    
+
     // --- 新增支持：Flex 布局 (用于社交媒体左图右文) ---
     display: style.display,
     alignItems: style.alignItems,
     justifyContent: style.justifyContent,
     gap: style.gap,
-    
+
     // --- 新增支持：内边距与圆角 ---
     padding: style.padding,
     border: style.border,
   };
-  
+
   // 处理圆角：兼容 TextElement 的 string/number 和 SubtitleStyle 的 backgroundShape
   if (style.borderRadius !== undefined) {
-    cssProperties.borderRadius = typeof style.borderRadius === 'number' 
-      ? `${style.borderRadius}px` 
+    cssProperties.borderRadius = typeof style.borderRadius === 'number'
+      ? `${style.borderRadius}px`
       : style.borderRadius;
   } else if (style.backgroundShape !== undefined && style.backgroundShape > 0) {
     // 兼容旧逻辑
@@ -168,10 +168,10 @@ export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any)
       cssProperties.borderRadius = `${style.backgroundShape}px`;
     }
   }
-  
+
   // 处理阴影逻辑
   const textShadows: string[] = [];
-  
+
   if (style.shadow?.enabled || (style.shadow && typeof style.shadow.offsetX === 'number')) {
     // 兼容两种 shadow 结构
     const shadow = style.shadow;
@@ -179,7 +179,7 @@ export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any)
       `${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.color}`
     );
   }
-  
+
   // 字幕特有的高亮逻辑 (TextElement 可能没有，安全访问)
   if (style.highlightColor) {
     const intensity = style.highlightIntensity || 15;
@@ -189,27 +189,27 @@ export const convertStyleToCSS = (style?: SubtitleStyle | TextStyleConfig | any)
       `0 0 ${intensity * 2}px ${style.highlightColor}`
     );
   }
-  
+
   if (textShadows.length > 0) {
     cssProperties.textShadow = textShadows.join(', ');
   }
-  
+
   // 处理描边
   if (style.stroke?.enabled && style.stroke.width > 0) {
     cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
   } else if (style.stroke && typeof style.stroke.width === 'number' && !('enabled' in style.stroke)) {
-     // 兼容 TextStyleConfig 的简单结构
-     cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
+    // 兼容 TextStyleConfig 的简单结构
+    cssProperties.WebkitTextStroke = `${style.stroke.width}px ${style.stroke.color}`;
   }
-  
+
   if (style.letterSpacing !== undefined && style.letterSpacing !== 0) {
     cssProperties.letterSpacing = `${style.letterSpacing}px`;
   }
-  
+
   if (style.textDecoration && style.textDecoration !== 'none') {
     cssProperties.textDecoration = style.textDecoration;
   }
-  
+
   return cssProperties;
 };
 export const applyStyleToSegments = (
@@ -220,11 +220,11 @@ export const applyStyleToSegments = (
 ): RichTextSegment[] => {
   const result: RichTextSegment[] = [];
   let currentIndex = 0;
-  
+
   for (const segment of segments) {
     const segmentStart = currentIndex;
     const segmentEnd = currentIndex + segment.text.length;
-    
+
     if (segmentEnd <= startIndex || segmentStart >= endIndex) {
       result.push({ ...segment });
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
@@ -246,8 +246,8 @@ export const applyStyleToSegments = (
             ...(segment.style?.stroke || {}),
             ...(newStyle.stroke || {})
           },
-          highlightIntensity: newStyle.highlightIntensity !== undefined 
-            ? newStyle.highlightIntensity 
+          highlightIntensity: newStyle.highlightIntensity !== undefined
+            ? newStyle.highlightIntensity
             : segment.style?.highlightIntensity,
           backgroundShape: newStyle.backgroundShape !== undefined
             ? newStyle.backgroundShape
@@ -262,7 +262,7 @@ export const applyStyleToSegments = (
         Math.min(segment.text.length, endIndex - segmentStart)
       );
       const afterText = segment.text.substring(Math.min(segment.text.length, endIndex - segmentStart));
-      
+
       if (beforeText) {
         result.push({
           text: beforeText,
@@ -270,7 +270,7 @@ export const applyStyleToSegments = (
           animation: segment.animation
         });
       }
-      
+
       if (selectedText) {
         result.push({
           text: selectedText,
@@ -290,8 +290,8 @@ export const applyStyleToSegments = (
               ...(segment.style?.stroke || {}),
               ...(newStyle.stroke || {})
             },
-            highlightIntensity: newStyle.highlightIntensity !== undefined 
-              ? newStyle.highlightIntensity 
+            highlightIntensity: newStyle.highlightIntensity !== undefined
+              ? newStyle.highlightIntensity
               : segment.style?.highlightIntensity,
             backgroundShape: newStyle.backgroundShape !== undefined
               ? newStyle.backgroundShape
@@ -300,7 +300,7 @@ export const applyStyleToSegments = (
           animation: segment.animation
         });
       }
-      
+
       if (afterText) {
         result.push({
           text: afterText,
@@ -309,10 +309,10 @@ export const applyStyleToSegments = (
         });
       }
     }
-    
+
     currentIndex += segment.text.length;
   }
-  
+
   return result;
 };
 
@@ -338,8 +338,8 @@ export const applyStyleToAllSegments = (
         ...(segment.style?.stroke || {}),
         ...(newStyle.stroke || {})
       },
-      highlightIntensity: newStyle.highlightIntensity !== undefined 
-        ? newStyle.highlightIntensity 
+      highlightIntensity: newStyle.highlightIntensity !== undefined
+        ? newStyle.highlightIntensity
         : segment.style?.highlightIntensity,
       backgroundShape: newStyle.backgroundShape !== undefined
         ? newStyle.backgroundShape
@@ -366,11 +366,11 @@ export const applyAnimationToSegments = (
 ): RichTextSegment[] => {
   const result: RichTextSegment[] = [];
   let currentIndex = 0;
-  
+
   for (const segment of segments) {
     const segmentStart = currentIndex;
     const segmentEnd = currentIndex + segment.text.length;
-    
+
     if (segmentEnd <= startIndex || segmentStart >= endIndex) {
       result.push({ ...segment });
     } else if (segmentStart >= startIndex && segmentEnd <= endIndex) {
@@ -386,7 +386,7 @@ export const applyAnimationToSegments = (
         Math.min(segment.text.length, endIndex - segmentStart)
       );
       const afterText = segment.text.substring(Math.min(segment.text.length, endIndex - segmentStart));
-      
+
       if (beforeText) {
         result.push({
           text: beforeText,
@@ -394,7 +394,7 @@ export const applyAnimationToSegments = (
           animation: segment.animation
         });
       }
-      
+
       if (selectedText) {
         result.push({
           text: selectedText,
@@ -402,7 +402,7 @@ export const applyAnimationToSegments = (
           animation: { ...animation }
         });
       }
-      
+
       if (afterText) {
         result.push({
           text: afterText,
@@ -411,10 +411,10 @@ export const applyAnimationToSegments = (
         });
       }
     }
-    
+
     currentIndex += segment.text.length;
   }
-  
+
   return result;
 };
 
@@ -429,13 +429,13 @@ export const applyAnimationToSegmentsByRange = (
 
 export const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegment[] => {
   if (segments.length <= 1) return segments;
-  
+
   const result: RichTextSegment[] = [segments[0]];
-  
+
   for (let i = 1; i < segments.length; i++) {
     const current = segments[i];
     const last = result[result.length - 1];
-    
+
     if (
       JSON.stringify(current.style) === JSON.stringify(last.style) &&
       JSON.stringify(current.animation) === JSON.stringify(last.animation)
@@ -445,7 +445,7 @@ export const mergeAdjacentSegments = (segments: RichTextSegment[]): RichTextSegm
       result.push(current);
     }
   }
-  
+
   return result;
 };
 
@@ -464,7 +464,7 @@ export const removeAnimationFromSegments = (
 export const getSegmentAnimations = (segments: RichTextSegment[]): AnimationEffect[] => {
   const animations: AnimationEffect[] = [];
   const seenAnimations = new Set<string>();
-  
+
   for (const segment of segments) {
     if (segment.animation) {
       const animationKey = JSON.stringify(segment.animation);
@@ -474,7 +474,7 @@ export const getSegmentAnimations = (segments: RichTextSegment[]): AnimationEffe
       }
     }
   }
-  
+
   return animations;
 };
 
@@ -491,7 +491,7 @@ export const convertSubtitleStyleToTemplate = (
   const templateStyle: TextStyleConfig = {
     fontFamily: safeStyle.fontFamily,
     fontSize: safeStyle.fontSize,
-    fontWeight: safeStyle.fontWeight >= 600 ? 'bold' : 'normal',
+    fontWeight: (typeof safeStyle.fontWeight === 'number' && safeStyle.fontWeight >= 600) || safeStyle.fontWeight === 'bold' || safeStyle.fontWeight === 'bolder' ? 'bold' : 'normal',
     fontStyle: safeStyle.fontStyle,
     color: safeStyle.color,
     backgroundColor: safeStyle.backgroundColor === 'transparent' ? undefined : safeStyle.backgroundColor,
@@ -504,11 +504,11 @@ export const convertSubtitleStyleToTemplate = (
       width: safeStyle.stroke.width,
     };
   }
-  
+
   if (safeStyle.backgroundShape && safeStyle.backgroundShape > 0) {
     templateStyle.borderRadius = safeStyle.backgroundShape;
   }
-  
+
   if (safeStyle.letterSpacing) {
     templateStyle.letterSpacing = safeStyle.letterSpacing;
   }

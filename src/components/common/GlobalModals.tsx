@@ -3,7 +3,7 @@ import { Modal } from './Modal';
 import { useUIStore } from '@/stores/useUIStore';
 import { useExportStore } from '@/stores/useExportStore';
 import { captureTextElementSnapshot } from '@/utils/textElementSnapshotUtils';
-import { useIsPremium } from '@/stores/useUserStore';
+import { useUserStore, useIsPremium } from '@/stores/useUserStore';
 import { UserProfileModal } from '../auth/UserProfileModal';
 import { useProjectStore } from '@/stores/useProjectStore';
 import { runFrontendExport } from '@/utils/frontendExporter';
@@ -11,6 +11,7 @@ import { runBackendExport } from '@/utils/backendExporter';
 import { downloadBlob } from '@/utils/fileUtils';
 import { checkFrontendCompatibility, sanitizeProjectForFrontend } from '@/utils/exportCapabilityUtils';
 import { AuthModal } from '../auth/AuthModal';
+import { PricingModal } from '../auth/PricingModal';
 import { api } from '@/utils/api';
 import { API_CLIENT } from '@/config/api-client'
 import {
@@ -30,6 +31,7 @@ export default function GlobalModals() {
       <ExportToast />
       <AuthModal />
       <UserProfileModal />
+      <PricingModal />
     </>
   );
 }
@@ -149,7 +151,7 @@ function ExportModal() {
   const onCloudExportClick = async () => {
     if (isExporting) return;
     if (!isPremium) {
-      store.setExportError(t('云端高清渲染是 Pro 会员专属功能。'));
+      useUserStore.getState().openPricingModal();
       return;
     }
 
@@ -340,6 +342,16 @@ const FORMAT_OPTIONS = [
 
 const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
   const { t } = useTranslation();
+
+  const handleFormatChange = (value: string) => {
+    const isPremiumFormat = FORMAT_OPTIONS.find(o => o.value === value)?.premium;
+    if (isPremiumFormat && !isPremium) {
+      useUserStore.getState().openPricingModal();
+      return;
+    }
+    onUpdate({ format: value });
+  };
+
   return (
     <div className="space-y-5 mb-6 border-b border-border-primary pb-6">
       <div className="grid grid-cols-2 gap-6">
@@ -352,8 +364,14 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
                 className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center ${settings.resolution === res
                   ? 'bg-accent-purple text-white'
                   : 'bg-bg-tertiary hover:bg-border-primary text-text-secondary'
-                  } ${res === 1080 && !isPremium ? 'opacity-60' : ''}`}
-                onClick={() => onUpdate({ resolution: res })}
+                  } ${res === 1080 && !isPremium ? 'opacity-60 cursor-pointer' : ''}`}
+                onClick={() => {
+                  if (res === 1080 && !isPremium) {
+                    useUserStore.getState().openPricingModal();
+                  } else {
+                    onUpdate({ resolution: res });
+                  }
+                }}
               >
                 {res}p {res === 1080 && !isPremium && <Lock className="w-3 h-3 ml-1.5 opacity-70" />}
               </button>
@@ -366,13 +384,15 @@ const SettingsPanel = ({ settings, isPremium, onUpdate }: any) => {
             <select
               className="w-full bg-bg-tertiary text-text-primary border border-border-primary rounded px-3 py-2 appearance-none focus:outline-none focus:border-accent-purple"
               value={settings.format}
-              onChange={(e) => onUpdate({ format: e.target.value })}
+              onChange={(e) => handleFormatChange(e.target.value)}
             >
               {FORMAT_OPTIONS.map(opt => (
                 <option
                   key={opt.value}
                   value={opt.value}
-                  disabled={opt.premium && !isPremium}
+                // We don't disable it here, we'll intercept on change or selection if possible
+                // But select with options is tricky for interception.
+                // For now, let's keep it disabled if not premium or handle in onUpdate
                 >
                   {t(opt.label)} {opt.premium && !isPremium ? '(Pro)' : ''}
                 </option>

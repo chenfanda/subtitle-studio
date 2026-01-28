@@ -20,6 +20,7 @@ export const connection = new Redis(redisConfig);
 export interface RenderJobData {
   project: ProjectExport;
   jobId: string;
+  userId?: string;
   exportSettings?: ExportSettings;
 }
 

@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  nickname     String   @default("用户")
+  avatar       String   @default("/default-avatar.png")
+  email        String?  @unique
+  phone        String?  @unique
+  password     String?
+  vipLevel     String   @default("free") // "free" | "pro"
+  vipExpiresAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  projects      Project[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  title     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Json     // Project data including textElements, segments, etc.
+  meta      Json?    // Video meta like width, height, duration
+  settings  Json?    // Project settings like watermark
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

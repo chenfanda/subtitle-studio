@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { pipeline } from 'stream/promises'; 
+import { pipeline } from 'stream/promises';
 import axios from 'axios';
 import { buildFfmpegCommand } from './ffmpegCommandBuilder';
 import { SERVER_CONFIG } from '../../server/config/server-config';
@@ -15,7 +15,7 @@ const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boole
   const cleanProject = JSON.parse(JSON.stringify(originalProject));
 
   if (!keepOverlays) {
-    cleanProject.content.subtitles = []; 
+    cleanProject.content.subtitles = [];
     // cleanProject.content.textElements = [];
     // cleanProject.content.placedMedia = []; 
   }
@@ -23,12 +23,12 @@ const sanitizeForGpuStage = (originalProject: ProjectExport, keepOverlays: boole
   // if (cleanProject.settings?.watermark && !keepOverlays) {
   //   cleanProject.settings.watermark.enabled = false;
   // }
-  
+
   return cleanProject;
 };
 
 const downloadRemoteAssets = async (
-  remoteUrls: { url: string; localPath: string }[], 
+  remoteUrls: { url: string; localPath: string }[],
   tempDir: string
 ): Promise<void> => {
   const downloadTasks = remoteUrls.map(async (item, index) => {
@@ -62,9 +62,10 @@ const downloadRemoteAssets = async (
 export const processWithGpu = async (
   project: ProjectExport,
   jobId: string,
-  settings: ExportSettings
+  settings: ExportSettings,
+  onSpawn?: (p: any) => void
 ): Promise<{ outputPath: string; isFinished: boolean }> => {
-  return new Promise(async (resolve, reject) => { 
+  return new Promise(async (resolve, reject) => {
     const tempDir = path.resolve(path.join(process.cwd(), 'temp', jobId));
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -80,18 +81,18 @@ export const processWithGpu = async (
     };
 
     const isFastPath = canUsePureFFmpeg(project);
-    
+
     if (isFastPath) {
-        console.log(`🚀 [GPU Mode] Fast Path`);
+      console.log(`🚀 [GPU Mode] Fast Path`);
     } else {
-        console.log(`🐢 [GPU Mode] Hybrid Path`);
+      console.log(`🐢 [GPU Mode] Hybrid Path`);
     }
 
     const stage1Project = sanitizeForGpuStage(project, isFastPath);
 
     if (!isFastPath) {
       project.content.textElements = [];
-      project.content.placedMedia = []; 
+      project.content.placedMedia = [];
     }
 
     const { command, mapper } = buildFfmpegCommand(
@@ -112,14 +113,14 @@ export const processWithGpu = async (
     const ffmpegArgs: string[] = [];
 
     mapper.remoteUrls.forEach(input => {
-       ffmpegArgs.push('-i', input.localPath);
+      ffmpegArgs.push('-i', input.localPath);
     });
 
     const filterAndOutputArgs = [...command];
 
     const lastArg = filterAndOutputArgs[filterAndOutputArgs.length - 1];
     if (lastArg === 'output.mp4' || lastArg === 'output.gif') {
-        filterAndOutputArgs.pop();
+      filterAndOutputArgs.pop();
     }
 
     ffmpegArgs.push(...filterAndOutputArgs);
@@ -128,8 +129,8 @@ export const processWithGpu = async (
     ffmpegArgs.push(outputPath);
 
     const dockerArgs = [
-      'run', 
-      '--rm', 
+      'run',
+      '--rm',
       '--gpus', 'all',
       '-w', '/',
       '-v', `${tempDir}:${tempDir}`,
@@ -144,6 +145,7 @@ export const processWithGpu = async (
     console.log(`🐳 [GPU Docker] Executing!`);
 
     const ffmpegProcess = spawn('docker', dockerArgs);
+    if (onSpawn) onSpawn(ffmpegProcess);
 
     let stderrData = '';
     ffmpegProcess.stderr.on('data', (data) => {
@@ -156,7 +158,7 @@ export const processWithGpu = async (
         resolve({ outputPath, isFinished: isFastPath });
       } else {
         console.error(`❌ [GPU Stage 1] Failed with code ${code}`);
-        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-2000)}`); 
+        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-2000)}`);
         reject(new Error(`FFmpeg GPU process exited with code ${code}`));
       }
     });
@@ -173,7 +175,8 @@ export const mergeFramesWithGpu = async (
   tempDir: string,
   framesDir: string,
   fps: number,
-  outputPath: string
+  outputPath: string,
+  onSpawn?: (p: any) => void
 ): Promise<void> => {
   return new Promise(async (resolve, reject) => {
     const absoluteTempDir = path.resolve(tempDir);
@@ -185,10 +188,10 @@ export const mergeFramesWithGpu = async (
 
     const ffmpegArgs = [
       '-y',
-      '-i', path.join(absoluteTempDir, 'base_video.mp4'), 
+      '-i', path.join(absoluteTempDir, 'base_video.mp4'),
       '-framerate', fps.toString(),
-      '-pattern_type', 'glob', 
-      '-i', path.join(absoluteFramesDir, '*.png'), 
+      '-pattern_type', 'glob',
+      '-i', path.join(absoluteFramesDir, '*.png'),
       '-filter_complex', '[0:v][1:v]overlay=0:0[v]',
       '-map', '[v]',
       '-map', '0:a',
@@ -213,6 +216,7 @@ export const mergeFramesWithGpu = async (
 
     console.log(`🐳 [GPU Docker] 开始 Stage 3 最终合成...`);
     const ffmpegProcess = spawn('docker', dockerArgs);
+    if (onSpawn) onSpawn(ffmpegProcess);
 
     let stderrData = '';
     ffmpegProcess.stderr.on('data', (data) => { stderrData += data.toString(); });
@@ -239,7 +243,8 @@ export const mergeFramesWithGpu = async (
 export const convertFormatWithGpu = async (
   inputPath: string, // 必须是 mp4
   outputPath: string,
-  targetFormat: string
+  targetFormat: string,
+  onSpawn?: (p: any) => void
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
     const absoluteInputDir = path.dirname(inputPath);
@@ -255,8 +260,8 @@ export const convertFormatWithGpu = async (
       case 'gif':
         // GIF 需要重新编码，生成调色板以保证质量，并降低帧率减小体积
         filterArgs = [
-            '-vf', 'fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', 
-            '-loop', '0'
+          '-vf', 'fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+          '-loop', '0'
         ];
         break;
       case 'mp3':
@@ -266,7 +271,7 @@ export const convertFormatWithGpu = async (
       case 'mov':
         // MP4 转 MOV 通常可以直接拷贝流，或者转为 ProRes (如果需要编辑)
         // 这里为了通用性，使用流拷贝
-        filterArgs = ['-c', 'copy']; 
+        filterArgs = ['-c', 'copy'];
         break;
       case 'avi':
         filterArgs = ['-c:v', 'libx264', '-c:a', 'aac'];
@@ -285,8 +290,9 @@ export const convertFormatWithGpu = async (
     ];
 
     console.log(`🐳 [Step 4] 开始格式转换: MP4 -> ${targetFormat.toUpperCase()}`);
-    
+
     const process = spawn('docker', args);
+    if (onSpawn) onSpawn(process);
 
     process.on('close', (code) => {
       if (code === 0) {

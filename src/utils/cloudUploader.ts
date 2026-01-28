@@ -1,5 +1,4 @@
-import { API_CLIENT } from '@/config/api-client'; 
-const API_UPLOAD_URL = API_CLIENT.ENDPOINTS.UPLOAD_FILE;
+import request from '@/utils/api';
 
 const uploadBlob = async (
   blobUrl: string,
@@ -14,46 +13,27 @@ const uploadBlob = async (
   const ext = blob.type.split('/')[1] || 'dat';
   formData.append('file', blob, `file.${ext}`);
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    if (signal) {
-      if (signal.aborted) {
-        return reject(new Error('Aborted'));
-      }
-      signal.addEventListener('abort', () => {
-        xhr.abort();
-        reject(new Error('Aborted'));
-      });
-    }
-
-    xhr.open('POST', API_UPLOAD_URL);
-
-    if (onProgress) {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          onProgress(event.loaded / event.total);
+  try {
+    const res: any = await request.post('/upload', formData, {
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress(progressEvent.loaded / progressEvent.total);
         }
-      };
+      },
+      signal,
+      // Ensure we don't let axios try to parse the content-type, let the browser handle it for FormData
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return res.url;
+  } catch (error: any) {
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
+      throw new Error('Aborted');
     }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          resolve(data.url);
-        } catch (e) {
-          reject(new Error('Invalid JSON response'));
-        }
-      } else {
-        reject(new Error(`Upload failed: ${xhr.statusText}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error'));
-
-    xhr.send(formData);
-  });
+    throw new Error(`Upload failed: ${error.response?.data?.error || error.message}`);
+  }
 };
 
 export const fileUploader = {

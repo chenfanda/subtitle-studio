@@ -3,17 +3,21 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { QueueEvents } from 'bullmq'; 
+import { QueueEvents } from 'bullmq';
 import multer from 'multer';
-import axios from 'axios';         
-import FormData from 'form-data';  
+import axios from 'axios';
+import FormData from 'form-data';
 
 
 import { SERVER_CONFIG } from './config/server-config';
-import { renderQueue, connection } from './queue'; 
-import './worker'; 
+import { renderQueue, connection } from './queue';
+import './worker';
 import { optimizationQueue } from './queue-optimization';
 import { pipeline } from 'stream/promises';
+import authRoutes from './routes/auth-routes';
+import userRoutes from './routes/user-routes';
+import { authenticateToken } from './middleware/auth-middleware';
+import { checkUserVipStatus } from './utils/vip';
 
 const app = express();
 
@@ -22,12 +26,12 @@ const CANCEL_CHANNEL = 'RENDER_CANCEL_CHANNEL';
 const TTS_SERVICE_URL = SERVER_CONFIG.INTERNAL_SERVICES.TTS_URL;
 
 app.use(cors({
-  origin: true, 
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
-app.use(express.json({ limit: '500mb' })); 
+app.use(express.json({ limit: '500mb' }));
 
 const optimizationQueueEvents = new QueueEvents('video-optimization-queue', { connection });
 
@@ -40,7 +44,12 @@ try {
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req: any, file, cb) => {
+    const userId = req.user?.userId || 'anonymous';
+    const userDir = path.join(uploadDir, userId);
+    if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
+    cb(null, userDir);
+  },
   filename: (req, file, cb) => {
     file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const ext = path.extname(file.originalname);
@@ -48,9 +57,9 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 } 
+  limits: { fileSize: 500 * 1024 * 1024 }
 });
 
 
@@ -63,32 +72,34 @@ const staticOptions = {
   etag: true,
   setHeaders: (res: express.Response) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*'); 
+    res.set('Access-Control-Allow-Origin', '*');
   }
 };
 
 app.use('/uploads', express.static(uploadDir, staticOptions));
 app.use('/downloads', express.static(downloadsDir, staticOptions));
 
-const allowLocalhostOnly = (req: express.Request, res: express.Response, next: express.NextFunction) => {  
-  const remote = req.ip || req.connection.remoteAddress;    
-  if (remote === '::1' || remote === '127.0.0.1' || remote === '::ffff:127.0.0.1') {  
-    next();  
-  } else {  
-    console.warn(`[Security] Blocked external access to temp dir from: ${remote}`);  
-    res.status(403).send('Forbidden');  
-  }  
-};  
-  
-  
-const tempDir = path.join(process.cwd(), 'temp');  
-if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });  
-  
-  
+const allowLocalhostOnly = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const remote = req.ip || req.connection.remoteAddress;
+  if (remote === '::1' || remote === '127.0.0.1' || remote === '::ffff:127.0.0.1') {
+    next();
+  } else {
+    console.warn(`[Security] Blocked external access to temp dir from: ${remote}`);
+    res.status(403).send('Forbidden');
+  }
+};
+
+
+const tempDir = path.join(process.cwd(), 'temp');
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+
 app.use('/temp', allowLocalhostOnly, express.static(tempDir));
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 
 
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', authenticateToken, (req, res) => {
   const uploadMiddleware = upload.single('file');
 
   uploadMiddleware(req, res, async (err) => {
@@ -101,40 +112,45 @@ app.post('/api/upload', (req, res) => {
     try {
       const job = await optimizationQueue.add('optimize', { filePath, fileName });
       const result = await job.waitUntilFinished(optimizationQueueEvents);
-      res.json({ url: result.url });
+      const userId = (req as any).user?.userId || 'anonymous';
+      // The worker returns paths without the userId segment if it just uses basename.
+      // We need to re-construct the full URL.
+      const optimizedFileName = path.basename(result.url);
+      res.json({ url: `/uploads/${userId}/${optimizedFileName}` });
     } catch (error) {
-      res.json({ url: `/uploads/${fileName}` });
+      const userId = (req as any).user?.userId || 'anonymous';
+      res.json({ url: `/uploads/${userId}/${fileName}` });
     }
   });
 });
 
 
-app.post('/api/process-media', upload.single('file'), async (req, res) => {
+app.post('/api/process-media', authenticateToken, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  
-  const filePath = req.file.path; 
+
+  const filePath = req.file.path;
 
   try {
     console.log(`[Gateway] Forwarding ${req.file.filename} to Internal ASR...`);
 
-    
+
     const internalFormData = new FormData();
     internalFormData.append('file', fs.createReadStream(filePath));
-    
-    
-    if(req.body.user_id) internalFormData.append('user_id', req.body.user_id);
-    if(req.body.project_id) internalFormData.append('project_id', req.body.project_id);
-    
-    
+
+
+    if (req.body.user_id) internalFormData.append('user_id', req.body.user_id);
+    if (req.body.project_id) internalFormData.append('project_id', req.body.project_id);
+
+
     const vocalSep = req.body.enable_vocal_separation === 'true' || req.body.enable_vocal_separation === true;
     internalFormData.append('enable_vocal_separation', vocalSep ? 'true' : 'false');
     const enableDiarization = req.body.enable_diarization === 'true' || req.body.enable_diarization === true;
     internalFormData.append('enable_diarization', enableDiarization ? 'true' : 'false');
 
-    
+
     const asrUrl = SERVER_CONFIG.INTERNAL_SERVICES.ASR_URL;
-    
+
     const response = await axios.post(asrUrl, internalFormData, {
       headers: { ...internalFormData.getHeaders() },
       maxContentLength: Infinity,
@@ -145,25 +161,25 @@ app.post('/api/process-media', upload.single('file'), async (req, res) => {
 
 
     const result = response.data;
-    
-    
+
+
     if (result?.data?.source_resources?.video) {
-        
-        result.data.source_resources.video = `/uploads/${req.file.filename}`;
+      const userId = (req as any).user?.userId || 'anonymous';
+      result.data.source_resources.video = `/uploads/${userId}/${req.file.filename}`;
     }
     console.log('DEBUG_NODE_RESPONSE:', JSON.stringify(result.data.source_resources, null, 2));
     res.json(result);
 
   } catch (error: any) {
     console.error('[Gateway Error]', error.message);
-    
+
     if (error.response) {
-       console.error('ASR Error Data:', error.response.data);
-       return res.status(error.response.status).json(error.response.data);
+      console.error('ASR Error Data:', error.response.data);
+      return res.status(error.response.status).json(error.response.data);
     }
     res.status(500).json({ error: 'Cloud Processing Service Unavailable' });
   }
-  
+
 });
 
 
@@ -174,7 +190,7 @@ app.get(/^\/(?:api\/)?static\/(.*)/, async (req, res) => {
     const asrBaseOrigin = asrServiceUrl.origin;
     const targetUrl = `${asrBaseOrigin}/static/${resourcePath}`;
 
-    
+
     const headers: Record<string, string> = {};
     if (req.headers.range) {
       headers['Range'] = req.headers.range as string;
@@ -184,19 +200,19 @@ app.get(/^\/(?:api\/)?static\/(.*)/, async (req, res) => {
       method: 'get',
       url: targetUrl,
       responseType: 'stream',
-      headers: headers, 
-      validateStatus: (status) => status < 500 
+      headers: headers,
+      validateStatus: (status) => status < 500
     });
 
 
     res.status(response.status);
-    
- 
+
+
     Object.keys(response.headers).forEach(key => {
       res.set(key, response.headers[key]);
     });
 
-    
+
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');
 
@@ -204,7 +220,7 @@ app.get(/^\/(?:api\/)?static\/(.*)/, async (req, res) => {
 
   } catch (error: any) {
     if (error.response) {
-      
+
       res.status(error.response.status).send(error.message);
     } else {
       console.error(`[Proxy Error] ${error.message}`);
@@ -234,7 +250,7 @@ app.get(/^\/api\/tts\/(.*)/, async (req, res) => {
 });
 
 app.post('/api/smart_dubbing/run', async (req, res) => {
-  let tempFilePath = ''; 
+  let tempFilePath = '';
 
   try {
     const { subtitles, audioUrl, outputFilename } = req.body;
@@ -243,57 +259,57 @@ app.post('/api/smart_dubbing/run', async (req, res) => {
 
     console.log(`[SmartDubbing] 接收到的源音频: ${audioUrl}`);
 
-    
-    
+
+
     const tempFileName = `temp_source_${Date.now()}_${path.basename(audioUrl).split('?')[0]}`;
-    
+
     tempFilePath = path.join(SERVER_CONFIG.PATHS.UPLOAD_DIR, tempFileName);
 
-    
+
     if (audioUrl.startsWith('http')) {
-  
+
       console.log(`[SmartDubbing] 正在从 URL 下载资源...`);
       const downloadStream = await axios({
         url: audioUrl,
         method: 'GET',
         responseType: 'stream'
       });
-      
+
       await pipeline(downloadStream.data, fs.createWriteStream(tempFilePath));
-    
+
     } else if (audioUrl.startsWith('/uploads/')) {
-   
+
       const filename = path.basename(audioUrl);
       const existingPath = path.join(SERVER_CONFIG.PATHS.UPLOAD_DIR, filename);
-      
+
       if (fs.existsSync(existingPath)) {
-        tempFilePath = existingPath; 
+        tempFilePath = existingPath;
       } else {
         throw new Error(`本地文件不存在: ${existingPath}`);
       }
     } else {
-     
-       throw new Error(`不支持的音频路径格式: ${audioUrl}`);
+
+      throw new Error(`不支持的音频路径格式: ${audioUrl}`);
     }
 
     console.log(`[SmartDubbing] 本地就绪，路径: ${tempFilePath}`);
 
 
     const ttsServiceUrl = `${SERVER_CONFIG.INTERNAL_SERVICES.TTS_URL.replace(/\/$/, '')}/smart_dubbing/run`;
-    
+
     const pythonPayload = {
       subtitles: subtitles,
-      original_audio_path: tempFilePath, 
+      original_audio_path: tempFilePath,
       output_filename: outputFilename,
       merge_threshold_ms: 500
     };
 
     const response = await axios.post(ttsServiceUrl, pythonPayload);
-    
-    
+
+
     const { audio_path, audio_id } = response.data;
-    
-    
+
+
     const resultFilename = path.basename(audio_path);
     const publicUrl = `/api/tts/download/${audio_id}`;
 
@@ -338,7 +354,7 @@ app.post('/api/tts/save_custom_voice', upload.single('audio_file'), async (req, 
     const formData = new FormData();
     formData.append('audio_file', fs.createReadStream(req.file.path));
     Object.keys(req.body).forEach(k => formData.append(k, req.body[k]));
-    
+
     const response = await axios.post(`${TTS_SERVICE_URL}/save_custom_voice`, formData, {
       headers: formData.getHeaders()
     });
@@ -351,31 +367,31 @@ app.post('/api/tts/save_custom_voice', upload.single('audio_file'), async (req, 
 
 
 app.post('/api/tts/tts_with_prompt', upload.single('prompt_audio'), async (req, res) => {
-  
+
   try {
     const formData = new FormData();
-    
-    
+
+
     if (req.file) {
       formData.append('prompt_audio', fs.createReadStream(req.file.path));
     }
 
-    
+
     Object.keys(req.body).forEach(k => formData.append(k, req.body[k]));
-    
-    
+
+
     const response = await axios.post(`${TTS_SERVICE_URL}/tts_with_prompt`, formData, {
-      headers: formData.getHeaders() 
+      headers: formData.getHeaders()
     });
 
-    
+
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
 
     res.json(response.data);
   } catch (e: any) {
-    
+
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -409,12 +425,25 @@ app.delete(/^\/api\/tts\/(.*)/, async (req, res) => {
 });
 
 
-app.post('/api/export', async (req, res) => {
+app.post('/api/export', authenticateToken, async (req: any, res) => {
   try {
     const body = req.body;
-    
+    const userId = req.user?.userId || 'anonymous';
+
+    // Hard VIP check for Cloud Export
+    const { isPremium } = await checkUserVipStatus(userId);
+    if (!isPremium) {
+      return res.status(403).json({ error: 'Cloud rendering is a Pro feature.' });
+    }
+
     const project = body.project || body;
     const exportSettings = body.exportSettings || { resolution: 1080, format: 'mp4' };
+
+    // Hard VIP check for Resolution
+    if (exportSettings.resolution > 720 && !isPremium) {
+      return res.status(403).json({ error: 'High resolution export (1080p+) is a Pro feature.' });
+    }
+
     if (!project || !project.content) {
       return res.status(400).json({ error: '无效的项目数据' });
     }
@@ -424,17 +453,18 @@ app.post('/api/export', async (req, res) => {
     await renderQueue.add('render', {
       project,
       jobId,
+      userId,
       exportSettings
     }, {
-      jobId, 
+      jobId,
       removeOnComplete: 100,
       removeOnFail: 200
     });
-    
-    res.json({ 
-      jobId, 
+
+    res.json({
+      jobId,
       status: 'queued',
-      message: '任务已加入队列' 
+      message: '任务已加入队列'
     });
 
   } catch (error: any) {
@@ -498,7 +528,7 @@ app.get('/api/avatar', async (req, res) => {
     const { seed } = req.query;
     // 转发请求到 DiceBear
     const targetUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-    
+
     const response = await axios({
       method: 'get',
       url: targetUrl,
@@ -506,7 +536,7 @@ app.get('/api/avatar', async (req, res) => {
     });
 
     res.set('Content-Type', 'image/svg+xml');
-    
+
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');
 

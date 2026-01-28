@@ -2,9 +2,10 @@ import path from 'path';
 import fs from 'fs';
 import { bundle, WebpackOverrideFn } from '@remotion/bundler';
 import { renderFrames, selectComposition } from '@remotion/renderer';
-import { mergeFramesWithGpu , convertFormatWithGpu} from '../src/utils/backend-gpu-processor';
+import { mergeFramesWithGpu, convertFormatWithGpu } from '../src/utils/backend-gpu-processor';
 import type { ProjectExport } from '../src/types/project';
 import os from 'os';
+import { spawn } from 'child_process';
 
 const API_PORT = process.env.PORT || 8000;
 const API_BASE_URL = `http://localhost:${API_PORT}`;
@@ -14,7 +15,7 @@ let currentBundlePath: string | null = null;
 
 interface ExportSettings {
   resolution: number;
-  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3'; 
+  format: 'mp4' | 'gif' | 'mov' | 'avi' | 'mp3';
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,7 +70,7 @@ const normalizeProjectUrls = (rawProject: ProjectExport): ProjectExport => {
 
   if (project.video?.url) project.video.url = fixUrl(project.video.url);
   if (project.content?.backgroundMusic?.url) project.content.backgroundMusic.url = fixUrl(project.content.backgroundMusic.url);
-  
+
   if (Array.isArray(project.content?.videoSequenceSegments)) {
     project.content.videoSequenceSegments = project.content.videoSequenceSegments.map((seg: any) => ({
       ...seg,
@@ -96,13 +97,64 @@ const normalizeProjectUrls = (rawProject: ProjectExport): ProjectExport => {
   return project;
 };
 
+const mergeFramesWithCpu = async (
+  tempDir: string,
+  framesDir: string,
+  fps: number,
+  outputPath: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // Find absolute paths
+    const absoluteTempDir = path.resolve(tempDir);
+    const absoluteFramesDir = path.resolve(framesDir);
+    const hostFfmpegPath = path.join(process.cwd(), 'node_modules', '@remotion', 'compositor-linux-x64-gnu', 'ffmpeg');
+
+    const args = [
+      '-y',
+      '-i', path.join(absoluteTempDir, 'base_video.mp4'),
+      '-framerate', fps.toString(),
+      '-pattern_type', 'glob',
+      '-i', path.join(absoluteFramesDir, '*.png'),
+      '-filter_complex', '[0:v][1:v]overlay=0:0[v]',
+      '-map', '[v]',
+      '-map', '0:a',
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      outputPath
+    ];
+
+    console.log(`📡 [CPU Merger] Starting fallback synthesis with host FFmpeg...`);
+    const ffmpegProcess = spawn(hostFfmpegPath, args);
+
+    let stderrData = '';
+    ffmpegProcess.stderr.on('data', (data) => { stderrData += data.toString(); });
+
+    ffmpegProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log(`✅ [CPU Merger] Synthesis successful: ${outputPath}`);
+        resolve();
+      } else {
+        console.error(`❌ [CPU Merger] Synthesis failed Code: ${code}`);
+        console.error(`[FFmpeg Error Log]: ${stderrData.slice(-1000)}`);
+        reject(new Error(`FFmpeg CPU merge failed with record: ${code}`));
+      }
+    });
+
+    ffmpegProcess.on('error', (err) => {
+      console.error(`❌ [FFmpeg Error]`, err);
+      reject(err);
+    });
+  });
+};
+
 export const renderVideo = async (
-  rawProject: ProjectExport, 
+  rawProject: ProjectExport,
   jobId: string,
-  exportSettings?: ExportSettings, 
+  userId: string = 'anonymous',
+  exportSettings?: ExportSettings,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
-  
+
   const tempDir = path.join(process.cwd(), 'temp', jobId);
   const framesDir = path.join(tempDir, 'frames');
   currentTempDir = tempDir;
@@ -113,7 +165,7 @@ export const renderVideo = async (
   let bundleLocation: string | null = null;
 
   try {
-    if (onProgress) onProgress(1); 
+    if (onProgress) onProgress(1);
     const project = normalizeProjectUrls(rawProject);
     const entryPoint = path.join(process.cwd(), 'src', 'remotion', 'index.ts');
 
@@ -129,17 +181,19 @@ export const renderVideo = async (
         },
       };
     };
-    
-    if (onProgress) onProgress(5); 
-    bundleLocation = await bundle({ 
-      entryPoint, 
-      webpackOverride, 
-      publicDir: path.join(process.cwd(), 'public') 
+
+    if (onProgress) onProgress(5);
+    console.log('📦 [Child] Starting Remotion bundling...');
+    bundleLocation = await bundle({
+      entryPoint,
+      webpackOverride,
+      publicDir: path.join(process.cwd(), 'public')
     });
 
     if (onProgress) onProgress(10);
+    console.log('📋 [Child] Selecting composition...');
     currentBundlePath = bundleLocation;
-    
+
     if (process.send && bundleLocation) {
       process.send({ type: 'bundle_path', path: bundleLocation });
     }
@@ -147,10 +201,10 @@ export const renderVideo = async (
     const composition = await selectComposition({
       serveUrl: bundleLocation,
       id: 'MainVideo',
-      inputProps: { project }, 
+      inputProps: { project },
       chromiumOptions: { headless: true }
     });
-    
+
     if (onProgress) onProgress(15);
 
     const fps = composition.fps || 30;
@@ -158,53 +212,51 @@ export const renderVideo = async (
     if (durationInFrames > 0) {
       composition.durationInFrames = durationInFrames;
     }
-    
+
     console.log(`🎬 [Child] 开始进入截图循环... 目标总帧数: ${composition.durationInFrames}`);
     const totalFrames = composition.durationInFrames;
-    let monitorLastPercent = 15; 
+    let monitorLastPercent = 15;
 
-    const progressMonitor = setInterval(() => {  
-      try {  
-        const files = fs.readdirSync(framesDir);  
-        const currentCount = files.filter(f => f.endsWith('.png')).length;  
-          
-        if (currentCount > 0) {  
+    const progressMonitor = setInterval(() => {
+      try {
+        const files = fs.readdirSync(framesDir);
+        const currentCount = files.filter(f => f.endsWith('.png')).length;
+
+        if (currentCount > 0) {
           const rawRatio = currentCount / totalFrames;
-          const percent = 15 + Math.round(rawRatio * 80);  
+          const percent = 15 + Math.round(rawRatio * 80);
 
-          if (percent > monitorLastPercent) {  
-            monitorLastPercent = percent;  
-            // console.log(`📡 [Monitor] 已生成 ${currentCount}/${totalFrames} 帧 (Internal: ${percent}%)`);  
-              
-            if (onProgress) onProgress(percent);  
-          }  
-        }  
-      } catch (e) {  
-      }  
+          if (percent > monitorLastPercent) {
+            monitorLastPercent = percent;
+            if (onProgress) onProgress(percent);
+          }
+        }
+      } catch (e) {
+      }
     }, 1000);
-    
+
     await renderFrames({
       composition,
       serveUrl: bundleLocation,
       outputDir: framesDir,
       inputProps: { project },
-      imageFormat: 'png', 
+      imageFormat: 'png',
       concurrency: 6,
-      frameName: (f: number) => `${f}`, 
+      frameName: (f: number) => `${f}`,
       chromiumOptions: {
-        headless: true, 
+        headless: true,
         ignoreCertificateErrors: true,
         args: [
-          '--no-sandbox', 
+          '--no-sandbox',
           '--ignore-gpu-blocklist',
-          '--disable-setuid-sandbox', 
-          '--enable-gpu-rasterization', 
+          '--disable-setuid-sandbox',
+          '--enable-gpu-rasterization',
           '--enable-zero-copy',
-          '--disable-dev-shm-usage' 
+          '--disable-dev-shm-usage'
         ]
       } as any,
-      
-     onFrameRendered: () => {},
+
+      onFrameRendered: () => { },
     } as any);
 
     clearInterval(progressMonitor);
@@ -212,31 +264,40 @@ export const renderVideo = async (
     const sampleFiles = fs.readdirSync(framesDir);
     console.log(`📂 [Debug] 截图完成，首个文件: ${sampleFiles[0]}, 总数: ${sampleFiles.length}`);
 
-    const finalVideoPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.mp4`);
-    await mergeFramesWithGpu(tempDir, framesDir, fps, finalVideoPath);
-    if (onProgress) onProgress(98);
-    
-    const targetFormat = exportSettings?.format || 'mp4';
-     if (targetFormat !== 'mp4') {
-       console.log(`🔄 [Step 4] Remotion渲染完成，开始转换格式: ${targetFormat}`);
-       if (onProgress) onProgress(98);
+    const downloadDir = path.join(process.cwd(), 'public', 'downloads', userId);
+    if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir, { recursive: true });
 
-       const finalOutputPath = path.join(process.cwd(), 'public', 'downloads', `${jobId}.${targetFormat}`);
-       
-       try {
-         await convertFormatWithGpu(finalVideoPath, finalOutputPath, targetFormat);
-         
-         if (onProgress) onProgress(100);
-         return `/downloads/${jobId}.${targetFormat}`;
-       } catch (e) {
-         console.error(`[Step 4] 转换失败，降级返回 MP4:`, e);
-         return `/downloads/${jobId}.mp4`;
-       }
+    const finalVideoPath = path.join(downloadDir, `${jobId}.mp4`);
+
+    if (process.env.IS_GPU_AVAILABLE === 'true') {
+      await mergeFramesWithGpu(tempDir, framesDir, fps, finalVideoPath);
+    } else {
+      await mergeFramesWithCpu(tempDir, framesDir, fps, finalVideoPath);
+    }
+
+    if (onProgress) onProgress(98);
+
+    const targetFormat = exportSettings?.format || 'mp4';
+    if (targetFormat !== 'mp4') {
+      console.log(`🔄 [Step 4] Remotion渲染完成，开始转换格式: ${targetFormat}`);
+      if (onProgress) onProgress(98);
+
+      const finalOutputPath = path.join(downloadDir, `${jobId}.${targetFormat}`);
+
+      try {
+        await convertFormatWithGpu(finalVideoPath, finalOutputPath, targetFormat);
+
+        if (onProgress) onProgress(100);
+        return `/downloads/${userId}/${jobId}.${targetFormat}`;
+      } catch (e) {
+        console.error(`[Step 4] 转换失败，降级返回 MP4:`, e);
+        return `/downloads/${userId}/${jobId}.mp4`;
+      }
     }
 
     if (onProgress) onProgress(100);
 
-    return `/downloads/${jobId}.mp4`;
+    return `/downloads/${userId}/${jobId}.mp4`;
 
   } finally {
     if (currentTempDir) await deleteWithRetry(currentTempDir);
@@ -247,9 +308,9 @@ export const renderVideo = async (
 if (process.env.IS_RENDER_CHILD === 'true') {
   process.on('message', async (msg: any) => {
     if (msg.type === 'start') {
-      const { project, jobId , exportSettings } = msg;
+      const { project, jobId, userId, exportSettings } = msg;
       try {
-        const url = await renderVideo(project, jobId, exportSettings,(progress) => {
+        const url = await renderVideo(project, jobId, userId, exportSettings, (progress) => {
           if (process.send) process.send({ type: 'progress', value: progress });
         });
         if (process.send) process.send({ type: 'success', url });
